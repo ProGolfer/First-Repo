@@ -1,2 +1,3 @@
-This is a storage readme for the golf money game app
-Updated by Jarvis
+Today's Golf Money Game app is live and stored locally.
+https://chevy-cabinet-streams-tag.trycloudflare.com
+
