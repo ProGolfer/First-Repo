@@ -1,0 +1,52 @@
+{
+  "courses": [
+    {
+      "id": "cliffside",
+      "name": "Cliffside Golf Club",
+      "holes": [
+        {"hole": 1, "par": 4, "lat": 34.0522, "lng": -118.2437, "name": "Meadow"},
+        {"hole": 2, "par": 5, "lat": 34.0525, "lng": -118.2440, "name": "Valley"},
+        {"hole": 3, "par": 3, "lat": 34.0528, "lng": -118.2443, "name": "Summit"},
+        {"hole": 4, "par": 4, "lat": 34.0531, "lng": -118.2446, "name": "Ridge"},
+        {"hole": 5, "par": 4, "lat": 34.0534, "lng": -118.2449, "name": "Canyon"},
+        {"hole": 6, "par": 5, "lat": 34.0537, "lng": -118.2452, "name": "Lake"},
+        {"hole": 7, "par": 3, "lat": 34.0540, "lng": -118.2455, "name": "Peak"},
+        {"hole": 8, "par": 4, "lat": 34.0543, "lng": -118.2458, "name": "Glen"},
+        {"hole": 9, "par": 4, "lat": 34.0546, "lng": -118.2461, "name": "Fairway"},
+        {"hole": 10, "par": 4, "lat": 34.0549, "lng": -118.2464, "name": "Windsor"},
+        {"hole": 11, "par": 3, "lat": 34.0552, "lng": -118.2467, "name": "Springs"},
+        {"hole": 12, "par": 5, "lat": 34.0555, "lng": -118.2470, "name": "Riverside"},
+        {"hole": 13, "par": 4, "lat": 34.0558, "lng": -118.2473, "name": "Pines"},
+        {"hole": 14, "par": 4, "lat": 34.0561, "lng": -118.2476, "name": "Cliffs"},
+        {"hole": 15, "par": 4, "lat": 34.0564, "lng": -118.2479, "name": "Dunes"},
+        {"hole": 16, "par": 3, "lat": 34.0567, "lng": -118.2482, "name": "Bunker"},
+        {"hole": 17, "par": 4, "lat": 34.0570, "lng": -118.2485, "name": "Island"},
+        {"hole": 18, "par": 5, "lat": 34.0573, "lng": -118.2488, "name": "Clubhouse"}
+      ]
+    },
+    {
+      "id": "pebblebeach",
+      "name": "Pebble Beach Golf Links",
+      "holes": [
+        {"hole": 1, "par": 4, "lat": 36.5685, "lng": -121.9500, "name": "Dunes"},
+        {"hole": 2, "par": 5, "lat": 36.5690, "lng": -121.9505, "name": "Boneyard"},
+        {"hole": 3, "par": 4, "lat": 36.5695, "lng": -121.9510, "name": "Wishbone"},
+        {"hole": 4, "par": 4, "lat": 36.5700, "lng": -121.9515, "name": "Split"},
+        {"hole": 5, "par": 3, "lat": 36.5705, "lng": -121.9520, "name": "Seawall"},
+        {"hole": 6, "par": 5, "lat": 36.5710, "lng": -121.9525, "name": "Pass"},
+        {"hole": 7, "par": 3, "lat": 36.5715, "lng": -121.9530, "name": "Shore"},
+        {"hole": 8, "par": 4, "lat": 36.5720, "lng": -121.9535, "name": "Lone Star"},
+        {"hole": 9, "par": 5, "lat": 36.5725, "lng": -121.9540, "name": "The Green"},
+        {"hole": 10, "par": 4, "lat": 36.5730, "lng": -121.9545, "name": "Rocky"},
+        {"hole": 11, "par": 3, "lat": 36.5735, "lng": -121.9550, "name": "Ghost Tree"},
+        {"hole": 12, "par": 4, "lat": 36.5740, "lng": -121.9555, "name": "Staircase"},
+        {"hole": 13, "par": 5, "lat": 36.5745, "lng": -121.9560, "name": "Witch"},
+        {"hole": 14, "par": 4, "lat": 36.5750, "lng": -121.9565, "name": "Gold"},
+        {"hole": 15, "par": 4, "lat": 36.5755, "lng": -121.9570, "name": "Restless"},
+        {"hole": 16, "par": 3, "lat": 36.5760, "lng": -121.9575, "name": "Seventeen"},
+        {"hole": 17, "par": 4, "lat": 36.5765, "lng": -121.9580, "name": "Big Rock"},
+        {"hole": 18, "par": 5, "lat": 36.5770, "lng": -121.9585, "name": "Finish"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "games": {
+    "849DJZ": {
+      "gameId": "849DJZ",
+      "courseName": "Cliffside Golf Club",
+      "gameType": "Nassau",
+      "buyIn": 20,
+      "date": "2026-03-30",
+      "created": "2026-03-30T16:36:01.968Z",
+      "admin": {
+        "name": "Gabe",
+        "password": "golf123"
+      },
+      "players": [],
+      "status": "open",
+      "showLeaderboard": false
+    },
+    "WWHOUD": {
+      "gameId": "WWHOUD",
+      "courseName": "Pebble Beach",
+      "gameType": "Nassau",
+      "buyIn": 50,
+      "date": "2026-03-30",
+      "created": "2026-03-30T16:37:14.693Z",
+      "admin": {
+        "name": "Gabe",
+        "password": "test123"
+      },
+      "players": [],
+      "status": "open",
+      "showLeaderboard": false
+    },
+    "UI8Y1C": {
+      "gameId": "UI8Y1C",
+      "courseName": "Cliffside",
+      "courseId": "cliffside",
+      "gameType": "Nassau",
+      "buyIn": 0,
+      "date": "2026-03-30",
+      "created": "2026-03-30T18:25:45.878Z",
+      "admin": {
+        "name": "Gabe",
+        "password": "test123"
+      },
+      "players": [],
+      "status": "open",
+      "showLeaderboard": false,
+      "currentHole": 1
+    }
+  }
+}
