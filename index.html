@@ -99,16 +99,18 @@
 
     <div id="view-admin-dashboard" class="card hidden">
       <div class="header"><h1>⚙️ Admin Dashboard</h1></div>
+      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:15px;text-align:center;">
+        <div style="font-size:14px;color:#666;">Registration</div>
+        <div style="font-size:24px;font-weight:bold;color:#2e7d32;">OPEN</div>
+        <div style="font-size:14px;color:#666;">Closes at <span id="close-time-display">9:30 AM</span></div>
+      </div>
       <div class="tabs">
         <button class="tab-btn active" onclick="switchAdminTab('players')">Manage Players</button>
         <button class="tab-btn" onclick="switchAdminTab('settings')">Settings</button>
       </div>
       
       <div id="admin-players">
-        <div class="admin-section">
-          <h3>Manage Players</h3>
-          <table><thead><tr><th>Name</th><th>Status</th><th>Action</th></tr></thead><tbody id="players-table-body"></tbody></table>
-        </div>
+        <div id="admin-players-list"></div>
       </div>
       
       <div id="admin-settings" class="hidden">
@@ -178,14 +180,20 @@
 
     function loadAdminPlayers(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-      document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
-        <td>${i+1}</td><td>${p.name}</td>
-        <td><select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:5px;">${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}</select></td>
-        <td class="${p.status==='approved'?'status-approved':'status-pending'}">${p.status}</td>
-        <td>${p.status!=='approved'?`<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓</button>`:'✓'}</td>
-        <td><button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button></td>
-      </tr>`).join('');
+      let html = players.length ? players.map((p,i) => `
+        <div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:bold;">${p.name}</div>
+            <div style="font-size:12px;color:#666;">${p.status}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            ${p.status!=='approved' ? `<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve</button>` : '<span style="color:green;">✓ Approved</span>'}
+            <button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button>
+          </div>
+        </div>
+      `).join('') : '<div style="padding:20px;text-align:center;color:#999;">No players registered</div>';
+      
+      document.getElementById('admin-players-list').innerHTML = html;
     }
 
     function changeTeam(id,teamId){
