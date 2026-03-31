@@ -7,7 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 500px; margin: 0 auto; margin: 0 auto; }
+    .container { max-width: 100%; margin: 0 auto; }
     .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
     .header { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; padding: 25px; text-align: center; border-radius: 20px 20px 0 0; margin: -20px -20px 20px -20px; }
     .header h1 { font-size: 26px; }
@@ -64,7 +64,7 @@
         <ul id="player-list" class="player-list"></ul>
       </div>
       <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      <div style="text-align:center;margin-top:15px;"><a href="javascript:void(0)" onclick="showAdminLogin() style="color:#2d5a27;">🔒 Admin Access</a></div>
     </div>
 
     <div id="view-confirm" class="card hidden">
