@@ -108,28 +108,17 @@
         <div class="table-container"><table><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Status</th><th>✓</th><th>✗</th></tr></thead><tbody id="players-table-body"></tbody></table></div>
       </div>
       <div id="admin-teams" class="hidden">
-        <div id="game-status" style="background:#e3f2fd;padding:15px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">WAITING FOR GAME</div>
-        <div style="display:flex;gap:10px;margin-bottom:15px;">
-          <button class="btn btn-warning" onclick="startGame()" style="flex:1;font-size:18px;padding:15px;">🚀 START GAME</button>
-          <button class="btn btn-danger" onclick="endGame()" style="flex:1;font-size:18px;padding:15px;">🛑 END GAME</button>
-        </div>
+        <p id="game-status">Game not started</p>
         <div class="admin-section">
           <h3>Add Team</h3><input type="text" id="new-team-name" placeholder="Team name"><button class="btn btn-primary" onclick="addNewTeam()">Add</button>
         </div>
         <div id="teams-container"></div>
       </div>
       <div id="admin-settings" class="hidden">
-        <div class="admin-section">
-          <h3>📅 Game Day & Time</h3>
-          <input type="date" id="game-date" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ddd;border-radius:8px;">
-          <input type="time" id="game-time" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ddd;border-radius:8px;">
-          <button class="btn btn-primary" onclick="alert('Game settings saved!')">Save Settings</button>
+          <div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" id="close-time"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
         </div>
-        <div class="admin-section">
-          <h3>⏰ Registration Cutoff</h3>
-          <input type="time" id="cutoff-time" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ddd;border-radius:8px;">
-          <button class="btn btn-primary" onclick="alert('Cutoff time saved!')">Save Cutoff</button>
-        </div>
+      <div id="admin-settings" class="hidden">
+        <div class="admin-section"><h3>⏰ Registration Cutoff</h3><input type="time" id="cutoff-time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
       </div>
       <button class="btn btn-back" onclick="logout()">← Log Out</button>
     </div>
@@ -150,8 +139,7 @@
       players.push({name,team:1,status:'pending',registeredAt:Date.now()});
       localStorage.setItem('golf_players',JSON.stringify(players));
       document.getElementById('reg-name').value='';
-      loadPlayersList();
-    loadWeather(); showView('view-confirm');
+      loadPlayersList(); showView('view-confirm');
     }
 
     function loadPlayersList(){
@@ -204,16 +192,14 @@
     function approve(id){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList();
-    loadWeather(); }
+      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function deleteP(id){
       if(!confirm('Delete?')) return;
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList();
-    loadWeather(); }
+      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function loadAdminTeams(){
@@ -231,9 +217,6 @@
       localStorage.setItem('golf_teams',JSON.stringify(teams));
       loadAdminTeams();
     }
-
-    function startGame(){ gameStarted=true; gameEnded=false; document.getElementById('game-status').innerText="GAME IN PROGRESS"; document.getElementById('game-status').style.background="#e8f5e9"; alert('Game started!'); }
-    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText="GAME ENDED"; document.getElementById('game-status').style.background="#ffebee"; alert('Game ended!'); }
 
     function switchAdminTab(t){
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
