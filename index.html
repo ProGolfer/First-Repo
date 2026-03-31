@@ -111,7 +111,7 @@
       <div style="padding:15px;">
         <h3>Settings - Cutoff Time</h3>
         <input type="time" id="cutoff-time" value="09:30" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;">
-        <button class="btn btn-primary" onclick="localStorage.setItem('golf_cutoff', document.getElementById('cutoff-time').value); alert('Cutoff time saved!'); loadPlayersList();">Save</button>
+        <button class="btn btn-primary" onclick="alert('Saved!')">Save</button>
       </div>
       <button class="btn btn-back" onclick="logout()">← Log Out</button>
     </div>
@@ -128,18 +128,6 @@
     function registerPlayer(){
       const name=document.getElementById('reg-name').value.trim();
       if(!name){ alert('Enter name'); return; }
-      
-      // Check cutoff time
-      const cutoff = localStorage.getItem('golf_cutoff') || '09:30';
-      const now = new Date();
-      const [hours, minutes] = cutoff.split(':');
-      const cutoffDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-      
-      if(now > cutoffDate){
-        alert('Registration is closed! The cutoff time was ' + cutoff);
-        return;
-      }
-      
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       players.push({name,team:1,status:'pending',registeredAt:Date.now()});
       localStorage.setItem('golf_players',JSON.stringify(players));
@@ -147,17 +135,6 @@
       loadPlayersList(); showView('view-confirm');
     }
 
-    function loadPlayersList(){
-      // Show cutoff time on home page
-      const cutoff = localStorage.getItem('golf_cutoff') || '09:30';
-      const [h, m] = cutoff.split(':');
-      const hour = parseInt(h);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const hour12 = hour % 12 || 12;
-      document.getElementById('cutoff-display').innerText = hour12 + ':' + m + ' ' + ampm;
-      document.getElementById('cutoff-box').style.display = 'block';
-    }
-    
     function loadPlayersList(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let approved=players.filter(p=>p.status==='approved');
