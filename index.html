@@ -99,25 +99,37 @@
 
     <div id="view-admin-dashboard" class="card hidden">
       <div class="header"><h1>⚙️ Admin Dashboard</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:15px;text-align:center;">
-        <div style="font-size:14px;color:#666;">Registration</div>
-        <div style="font-size:24px;font-weight:bold;color:#2e7d32;">OPEN</div>
-        <div style="font-size:14px;color:#666;">Closes at <span id="close-time-display">9:30 AM</span></div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchAdminTab('players')">Manage Players</button>
+        <button class="tab-btn" onclick="switchAdminTab('settings')">Settings</button>
       </div>
-      <div style="padding:15px;">
-        <h3>Players</h3>
-        <div id="players-list"></div>
+      
+      <div id="admin-players">
+        <div class="admin-section">
+          <h3>Manage Players (0)</h3>
+          <div style="color:#999;padding:20px;text-align:center;">No players registered yet</div>
+        </div>
       </div>
-      <div style="padding:15px;">
-        <h3>Settings - Cutoff Time</h3>
-        <input type="time" id="cutoff-time" value="09:30" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;">
-        <button class="btn btn-primary" onclick="alert('Saved!')">Save</button>
+      
+      <div id="admin-settings" class="hidden">
+        <div class="admin-section">
+          <h3>⏰ Registration Closing Time</h3>
+          <input type="time" id="cutoff-time" value="09:30" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
       </div>
+      
       <button class="btn btn-back" onclick="logout()">← Log Out</button>
     </div>
   </div>
 
   <script>
+    function saveSettings(){
+      const cutoff = document.getElementById('cutoff-time').value;
+      localStorage.setItem('golf_cutoff', cutoff);
+      alert('Settings saved!');
+    }
+
     let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
     let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
     let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
