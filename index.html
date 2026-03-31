@@ -114,10 +114,10 @@
       </div>
       
       <div id="admin-settings" class="hidden">
-        <div class="admin-section">
+        <div class="admin-section" style="background:#f8f9fa;padding:15px;border-radius:10px;">
           <h3>⏰ Registration Closing Time</h3>
-          <input type="time" id="cutoff-time" value="09:30" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;">
-          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          <input type="time" id="cutoff-time" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;font-size:16px;">
+          <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;padding:15px;font-size:16px;">Save Time</button>
         </div>
       </div>
       
@@ -129,7 +129,12 @@
     function saveSettings(){
       const cutoff = document.getElementById('cutoff-time').value;
       localStorage.setItem('golf_cutoff', cutoff);
-      alert('Settings saved!');
+      const [h,m] = cutoff.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      document.getElementById('close-time-display').innerText = hour12 + ':' + m + ' ' + ampm;
+      alert('Closing time set to ' + hour12 + ':' + m + ' ' + ampm);
     }
 
     let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
@@ -180,15 +185,18 @@
 
     function loadAdminPlayers(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+      let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
       let html = players.length ? players.map((p,i) => `
-        <div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-weight:bold;">${p.name}</div>
-            <div style="font-size:12px;color:#666;">${p.status}</div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            ${p.status!=='approved' ? `<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve</button>` : '<span style="color:green;">✓ Approved</span>'}
+        <div style="padding:12px;border-bottom:1px solid #eee;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:bold;font-size:16px;">${p.name}</div>
             <button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
+              ${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}
+            </select>
+            ${p.status!=='approved' ? `<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve</button>` : '<span style="color:green;padding:8px;">✓ Approved</span>'}
           </div>
         </div>
       `).join('') : '<div style="padding:20px;text-align:center;color:#999;">No players registered</div>';
