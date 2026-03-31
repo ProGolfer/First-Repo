@@ -1,12 +1,3 @@
 [build]
   publish = "."
-  command = "echo 'No build needed'"
-
-[dev]
-  command = "echo 'No dev server'"
-  targetPort = 80
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  command = "echo 'Static site - no build needed'"
