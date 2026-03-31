@@ -221,8 +221,7 @@
     }
 
     function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){
-    function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
+    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
 
     function switchAdminTab(t){
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
