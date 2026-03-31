@@ -46,10 +46,10 @@
       <div class="header"><h1>⛳ Golf Money Game</h1></div>
       <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
         <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span style="font-size:20px;font-weight:bold;">72°F</span><br><small>Temp</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">16</span><br><small>Wind</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">29%</span><br><small>Humidity</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">Clear</span><br><small>Sky</small></div>
+          <div><span style="font-size:20px;font-weight:bold;" id="weather-temp">--°F</span><br><small>Temp</small></div>
+          <div><span style="font-size:20px;font-weight:bold;" id="weather-wind">--</span><br><small>Wind</small></div>
+          <div><span style="font-size:20px;font-weight:bold;" id="weather-humidity">--%</span><br><small>Humidity</small></div>
+          <div><span style="font-size:20px;font-weight:bold;" id="weather-sky">--</span><br><small>Sky</small></div>
         </div>
       </div>
       <div class="form-group">
@@ -132,6 +132,23 @@
     let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
 
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
+    function loadWeather(){
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos=>{
+          const lat=pos.coords.latitude, lon=pos.coords.longitude;
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,relative_humidity_2m,weather_code`)
+          .then(r=>r.json()).then(d=>{
+            const w=d.current;
+            document.getElementById("weather-temp").innerText=Math.round(w.temperature_2m)+"°F";
+            document.getElementById("weather-wind").innerText=Math.round(w.wind_speed_10m*0.621371);
+            document.getElementById("weather-humidity").innerText=w.relative_humidity_2m+"%";
+            const codes={0:"Clear",1:"Mainly Clear",2:"Partly Cloudy",3:"Overcast",45:"Fog",48:"Fog",51:"Drizzle",61:"Rain",71:"Snow",80:"Showers",95:"Thunderstorm"};
+            document.getElementById("weather-sky").innerText=codes[w.weather_code]||"Unknown";
+          });
+        },()=>{});
+      }
+    }
+
     function showAdminLogin(){ showView('view-admin'); }
 
     function registerPlayer(){
@@ -234,6 +251,8 @@
 
     function logout(){ showView('view-home'); }
     loadPlayersList();
+    // Load weather
+    loadWeather();
   </script>
 </body>
 </html>
