@@ -63,7 +63,7 @@
         <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
-      <button class="btn btn-secondary" onclick="showView('view-game')">🏆 My Team Scores</button>
+      <button class="btn btn-secondary" onclick="showView('view-game')">📊 View Today's Leaderboard & Averages</button>
       <button class="btn btn-secondary" onclick="showView('view-settings')">⚙️ Settings</button>
     </div>
 
@@ -215,6 +215,16 @@
       localStorage.setItem('golf_players',JSON.stringify(players));
       document.getElementById('reg-name').value='';
       loadPlayersList(); showView('view-confirm');
+    }
+
+    function loadPlayersList(){
+      const cutoff = localStorage.getItem("golf_cutoff") || "09:30";
+      const [h,m] = cutoff.split(":");
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? "PM" : "AM";
+      const hour12 = hour % 12 || 12;
+      const displayEl = document.getElementById("cutoff-time-display");
+      if(displayEl) displayEl.innerText = hour12 + ":" + m + " " + ampm;
     }
 
     function loadPlayersList(){
