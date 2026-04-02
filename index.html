@@ -246,14 +246,18 @@
             <div style="font-weight:bold;font-size:16px;">${p.name}</div>
             <button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button>
           </div>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <select onchange="changeTeamAndApprove('${p.registeredAt}',this.value)" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+            <select id="team-select-${p.registeredAt}" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
               <option value="">-- Select Team --</option>
-              ${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}
+              ${teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
             </select>
+            <button class="btn btn-primary btn-small" onclick="assignTeam('${p.registeredAt}')">Add to Team</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
             <span style="padding:8px;${p.team && p.team > 0 ? 'color:green;font-weight:bold;' : 'color:#999;'}">
-              ${p.team && p.team > 0 ? '✓ Team Selected' : 'No team'}
+              ${p.team && p.team > 0 ? '✓ On Team: ' + teams.find(t=>t.id===p.team)?.name : 'No team assigned'}
             </span>
+            <button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve Player</button>
           </div>
         </div>
       `).join('') : '<div style="padding:20px;text-align:center;color:#999;">No players registered</div>';
@@ -261,17 +265,30 @@
       document.getElementById('admin-players-list').innerHTML = html;
     }
 
-    function changeTeamAndApprove(id,teamId){
-      if(!teamId) return;
+    function assignTeam(id){
+      let select = document.getElementById('team-select-' + id);
+      let teamId = select.value;
+      if(!teamId){ alert('Please select a team first'); return; }
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
       if(idx>-1){ 
         players[idx].team=parseInt(teamId); 
-        players[idx].status='approved';  // Auto-approve when team is selected
         localStorage.setItem('golf_players',JSON.stringify(players)); 
         loadAdminPlayers(); 
         loadPlayersList();
       }
+    }
+
+    function approve(id){
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+      let idx=players.findIndex(p=>p.registeredAt==id);
+      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    }
+
+    function changeTeam(id,teamId){
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+      let idx=players.findIndex(p=>p.registeredAt==id);
+      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
     }
 
     
