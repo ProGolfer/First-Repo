@@ -246,6 +246,7 @@
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
+              <option value="">-- Select Team --</option>
               ${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}
             </select>
             ${p.status!=='approved' ? `<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve</button>` : '<span style="color:green;padding:8px;">✓ Approved</span>'}
