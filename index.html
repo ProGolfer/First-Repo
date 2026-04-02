@@ -179,7 +179,19 @@
     }
 
     function adminLogin(){
-      if(document.getElementById('admin-password').value==='golf123'){ showView('view-admin-dashboard'); loadAdminPlayers(); }
+      if(document.getElementById('admin-password').value==='golf123'){ showView('view-admin-dashboard'); loadAdminPlayers(); loadSettings(); }
+    }
+    
+    function loadSettings(){
+      // Load saved cutoff time
+      const cutoff = localStorage.getItem('golf_cutoff') || '09:30';
+      document.getElementById('cutoff-time').value = cutoff;
+      const [h,m] = cutoff.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      document.getElementById('close-time-display').innerText = hour12 + ':' + m + ' ' + ampm;
+    }
       else alert('Invalid password');
     }
 
