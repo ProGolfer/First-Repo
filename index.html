@@ -188,10 +188,10 @@
     function loadPlayersList(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
-      // Only show players with a team assigned
-      let withTeam = players.filter(p=>p.team && p.team > 0);
-      document.getElementById('player-count').textContent=withTeam.length;
-      let html = withTeam.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No players with teams yet</li>';
+      // Only show approved players with a team
+      let ready = players.filter(p=>p.status==='approved' && p.team && p.team > 0);
+      document.getElementById('player-count').textContent=ready.length;
+      let html = ready.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">Waiting for approval & team assignment</li>';
       document.getElementById('player-list').innerHTML=html;
     }
 
