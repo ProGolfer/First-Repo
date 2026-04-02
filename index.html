@@ -188,12 +188,11 @@
     function loadPlayersList(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
-      // Show all approved players - show team name only if assigned
       let approved = players.filter(p=>p.status==='approved');
       document.getElementById('player-count').textContent=approved.length;
       let html = approved.map(p=>{
-        let teamName = (p.team && p.team > 0) ? teams.find(t=>t.id===p.team)?.name : 'Pending team assignment';
-        return `<li class="player-item"><span>${p.name}</span><span>${teamName}</span></li>`;
+        let statusText = (p.team && p.team > 0) ? teams.find(t=>t.id===p.team)?.name : 'Approved (waiting for team)';
+        return `<li class="player-item"><span>${p.name}</span><span>${statusText}</span></li>`;
       }).join('')||'<li style="color:#999;">Waiting for approval</li>';
       document.getElementById('player-list').innerHTML=html;
     }
@@ -248,11 +247,13 @@
             <button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button>
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
+            <select onchange="changeTeamAndApprove('${p.registeredAt}',this.value)" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
               <option value="">-- Select Team --</option>
               ${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}
             </select>
-            ${p.status!=='approved' ? `<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓ Approve</button>` : '<span style="color:green;padding:8px;">✓ Approved</span>'}
+            <span style="padding:8px;${p.team && p.team > 0 ? 'color:green;font-weight:bold;' : 'color:#999;'}">
+              ${p.team && p.team > 0 ? '✓ Team Selected' : 'No team'}
+            </span>
           </div>
         </div>
       `).join('') : '<div style="padding:20px;text-align:center;color:#999;">No players registered</div>';
@@ -260,17 +261,20 @@
       document.getElementById('admin-players-list').innerHTML = html;
     }
 
-    function changeTeam(id,teamId){
+    function changeTeamAndApprove(id,teamId){
+      if(!teamId) return;
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
+      if(idx>-1){ 
+        players[idx].team=parseInt(teamId); 
+        players[idx].status='approved';  // Auto-approve when team is selected
+        localStorage.setItem('golf_players',JSON.stringify(players)); 
+        loadAdminPlayers(); 
+        loadPlayersList();
+      }
     }
 
-    function approve(id){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
-    }
+    
 
     function deleteP(id){
       if(!confirm('Delete?')) return;
