@@ -114,6 +114,11 @@
       </div>
       
       <div id="admin-settings" class="hidden">
+        <div class="admin-section" style="background:#f8f9fa;padding:15px;border-radius:10px;margin-bottom:15px;">
+          <h3>🔐 Admin Access</h3>
+          <input type="password" id="admin-password-settings" placeholder="Enter admin password" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;font-size:16px;">
+          <button class="btn btn-warning" onclick="adminLoginFromSettings()" style="width:100%;padding:15px;font-size:16px;">Login as Admin</button>
+        </div>
         <div class="admin-section" style="background:#f8f9fa;padding:15px;border-radius:10px;">
           <h3>⏰ Registration Closing Time</h3>
           <input type="time" id="cutoff-time" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;font-size:16px;">
@@ -126,6 +131,15 @@
   </div>
 
   <script>
+    function adminLoginFromSettings(){
+      if(document.getElementById('admin-password-settings').value==='golf123'){
+        showView('view-admin-dashboard');
+        loadAdminPlayers();
+      } else {
+        alert('Invalid password');
+      }
+    }
+
     function saveSettings(){
       const cutoff = document.getElementById('cutoff-time').value;
       localStorage.setItem('golf_cutoff', cutoff);
