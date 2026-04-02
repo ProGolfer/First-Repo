@@ -216,6 +216,10 @@
         showView('view-admin-dashboard'); 
         loadAdminPlayers(); 
         loadSettings(); 
+        // Show players tab by default
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelector('.tab-btn').classList.add('active');
+        document.getElementById('admin-players').classList.remove('hidden');
       } else {
         alert('Invalid password');
       }
@@ -291,9 +295,9 @@
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       event.target.classList.add('active');
       document.getElementById('admin-players').classList.add('hidden');
-      document.getElementById('admin-teams').classList.add('hidden');
+      document.getElementById('admin-settings').classList.add('hidden');
       document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='teams') loadAdminTeams();
+      if(t==='players') loadAdminPlayers();
     }
 
     function logout(){ showView('view-home'); }
