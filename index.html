@@ -64,6 +64,24 @@
         <ul id="player-list" class="player-list"></ul>
       </div>
       <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
+      <button class="btn btn-secondary" onclick="showView('view-settings')">⚙️ Settings</button>
+    </div>
+
+    <div id="view-settings" class="card hidden">
+      <div class="header"><h1>⚙️ Settings</h1></div>
+      <div style="padding:15px;">
+        <div style="background:#f8f9fa;padding:15px;border-radius:10px;margin-bottom:15px;">
+          <h3>🔐 Admin Access</h3>
+          <input type="password" id="admin-password-settings" placeholder="Enter admin password" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;font-size:16px;">
+          <button class="btn btn-warning" onclick="adminLoginFromSettings()" style="width:100%;padding:15px;font-size:16px;">Login as Admin</button>
+        </div>
+        <div style="background:#f8f9fa;padding:15px;border-radius:10px;">
+          <h3>⏰ Registration Closing Time</h3>
+          <input type="time" id="cutoff-time" style="width:100%;padding:12px;margin:10px 0;border:2px solid #ddd;border-radius:8px;font-size:16px;">
+          <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;padding:15px;font-size:16px;">Save Time</button>
+        </div>
+      </div>
+      <button class="btn btn-secondary" onclick="showView('view-home')">← Back</button>
     </div>
 
     <div id="view-confirm" class="card hidden">
