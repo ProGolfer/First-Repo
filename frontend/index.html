@@ -7,234 +7,610 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 100%; margin: 0 auto; }
+    .container { max-width: 500px; margin: 0 auto; }
     .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-    .header { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; padding: 25px; text-align: center; border-radius: 20px 20px 0 0; margin: -20px -20px 20px -20px; }
-    .header h1 { font-size: 26px; }
+    
+    /* Header */
+    .header { 
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); 
+      color: white; 
+      padding: 25px; 
+      text-align: center; 
+      border-radius: 20px 20px 0 0; 
+      margin: -20px -20px 20px -20px; 
+    }
+    .header h1 { font-size: 24px; margin-bottom: 10px; }
+    .logo-placeholder { 
+      width: 80px; 
+      height: 80px; 
+      background: rgba(255,255,255,0.2); 
+      border-radius: 50%; 
+      margin: 0 auto 10px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      font-size: 40px;
+    }
+    
+    /* Weather Box */
+    .weather-box { 
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 20px;
+    }
+    .weather-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      text-align: center; 
+    }
+    .weather-item span { display: block; font-size: 18px; font-weight: bold; color: #1a472a; }
+    .weather-item small { font-size: 12px; color: #666; }
+    
+    /* Form */
     .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
-    .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; }
-    .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px; background: #f5f5f5; border-radius: 8px; }
-    .btn { width: 100%; padding: 18px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; margin-bottom: 8px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    .form-group input, .form-group select { 
+      width: 100%; 
+      padding: 14px; 
+      border: 2px solid #e0e0e0; 
+      border-radius: 12px; 
+      font-size: 16px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #2d5a27;
+    }
+    
+    /* Buttons */
+    .btn { 
+      width: 100%; 
+      padding: 16px 14px; 
+      min-height: 48px; 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      font-weight: 700; 
+      cursor: pointer; 
+      margin-bottom: 10px;
+    }
     .btn-primary { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; }
     .btn-secondary { background: #f5f5f5; color: #333; }
-    .btn-success { background: #4caf50; color: white; }
-    .btn-danger { background: #f44336; color: white; }
     .btn-warning { background: #ff9800; color: white; }
+    .btn-danger { background: #f44336; color: white; }
     .btn-small { padding: 8px 12px; font-size: 12px; width: auto; }
-    .btn-back { background: #757575; color: white; margin-top: 10px; }
-    .players-section { background: #f8f9fa; border-radius: 12px; padding: 15px; margin-top: 15px; }
-    .players-header { display: flex; justify-content: space-between; }
-    .players-count { background: #2d5a27; color: white; padding: 4px 12px; border-radius: 20px; }
+    
+    /* Players Section */
+    .players-section { 
+      background: #f8f9fa; 
+      border-radius: 12px; 
+      padding: 15px; 
+      margin-top: 15px; 
+    }
+    .players-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 10px;
+    }
+    .players-header h3 { color: #333; }
+    .players-count { 
+      background: #2d5a27; 
+      color: white; 
+      padding: 4px 12px; 
+      border-radius: 20px; 
+      font-size: 14px;
+    }
     .player-list { list-style: none; }
-    .player-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .table-container { overflow-x: auto; max-width:100%;-webkit-overflow-scrolling:touch; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 5px; text-align: left; border-bottom: 1px solid #eee; }
-    .status-approved { color: #4caf50; font-weight: bold; }
-    .status-pending { color: #ff9800; font-weight: bold; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-    .tab-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; }
-    .tab-btn.active { background: #2d5a27; color: white; }
-    .admin-section { background: #f5f5f5; border-radius: 12px; padding: 15px; margin: 15px 0; }
+    .player-item { 
+      display: flex; 
+      justify-content: space-between; 
+      padding: 12px 0; 
+      border-bottom: 1px solid #eee; 
+    }
+    .player-item:last-child { border-bottom: none; }
+    .player-status { 
+      font-size: 12px; 
+      padding: 4px 8px; 
+      border-radius: 4px; 
+    }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    
+    /* Cutoff Time Box */
+    .cutoff-box {
+      background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+      border: 2px solid #ff9800;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .cutoff-box h4 { color: #e65100; margin-bottom: 5px; }
+    .cutoff-time { font-size: 24px; font-weight: bold; color: #333; }
+    
+    /* Links */
+    .admin-link { 
+      text-align: center; 
+      margin-top: 15px; 
+    }
+    .admin-link a { 
+      color: #2d5a27; 
+      text-decoration: none; 
+      font-weight: 600;
+    }
+    
+    /* Hidden */
     .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- HOME VIEW -->
     <div id="view-home" class="card">
-      <div class="header"><h1>⛳ Golf Money Game</h1></div>
-      <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span style="font-size:20px;font-weight:bold;">72°F</span><br><small>Temp</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">16</span><br><small>Wind</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">29%</span><br><small>Humidity</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">Clear</span><br><small>Sky</small></div>
+      <!-- Header with Logo Placeholder -->
+      <div class="header">
+        <div class="logo-placeholder">⛳</div>
+        <h1>Money Game Registration</h1>
+      </div>
+      
+      <!-- Live Weather Display -->
+      <div class="weather-box">
+        <div class="weather-grid">
+          <div class="weather-item">
+            <span id="weather-temp">--°F</span>
+            <small>Temp</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-wind">--</span>
+            <small>Wind</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-humidity">--%</span>
+            <small>Humidity</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-sky">--</span>
+            <small>Sky</small>
+          </div>
         </div>
       </div>
+      
+      <!-- Player Registration Form -->
       <div class="form-group">
         <label>Select Course</label>
-        <select id="reg-course"><option>Cliffside Golf Club</option><option>Pebble Beach</option></select>
+        <select id="reg-course">
+          <option value="">-- Select Course --</option>
+          <option>Cliffside Golf Club</option>
+          <option>Pebble Beach</option>
+          <option>Pinehurst</option>
+          <option>St. Andrews</option>
+        </select>
       </div>
-      <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
-      <div class="form-group"><label>Phone (optional)</label><input type="tel" id="reg-phone" placeholder="(555) 123-4567"></div>
+      
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="reg-name" placeholder="Enter your name">
+      </div>
+      
+      <div class="form-group">
+        <label>Phone (optional)</label>
+        <input type="tel" id="reg-phone" placeholder="(555) 123-4567">
+      </div>
+      
       <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+      
+      <!-- Registered Players (Pending Approval) -->
       <div class="players-section">
-        <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
-        <ul id="player-list" class="player-list"></ul>
+        <div class="players-header">
+          <h3>Today's Registered Players</h3>
+          <span class="players-count" id="player-count">0</span>
+        </div>
+        <ul id="player-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>
+        </ul>
       </div>
-      <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      
+      <!-- Cutoff Time Display -->
+      <div class="cutoff-box">
+        <h4>⏰ Registration Closes At</h4>
+        <div class="cutoff-time" id="cutoff-display">9:30 AM</div>
+      </div>
+      
+      <!-- View Leaderboard Button -->
+      <button class="btn btn-secondary" onclick="showView('view-leaderboard')">View Today's Leaderboard & Averages</button>
+      
+      <!-- Admin Link -->
+      <div class="admin-link">
+        <a href="#" onclick="showAdminLogin()">🔒 Admin Access</a>
+      </div>
     </div>
 
+    <!-- CONFIRMATION VIEW -->
     <div id="view-confirm" class="card hidden">
-      <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px0;">
-        <h3 style="color:#2e7d32;">You're In!</h3>
-        <p>Your registration is pending approval.</p>
+      <div class="header">
+        <div class="logo-placeholder">✅</div>
+        <h1>Registration Complete!</h1>
       </div>
-      <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
+      <div style="background: #e8f5e9; padding: 20px; border-radius: 12px; margin: 15px 0; text-align: center;">
+        <h3 style="color: #2e7d32;">You're In!</h3>
+        <p style="margin-top: 10px;">Your registration is <strong>pending approval</strong>.</p>
+        <p style="margin-top: 10px; font-size: 14px; color: #666;">The admin will approve your registration before the 9:30 AM cutoff.</p>
+      </div>
+      <button class="btn btn-primary" onclick="showView('view-home')">← Back to Home</button>
     </div>
 
-    <div id="view-game" class="card hidden">
-      <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchGameTab('myteam')">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams')">Other Teams</button>
+    <!-- LEADERBOARD VIEW -->
+    <div id="view-leaderboard" class="card hidden">
+      <div class="header">
+        <div class="logo-placeholder">🏆</div>
+        <h1>Leaderboard & Averages</h1>
       </div>
-      <div id="tab-myteam">
-        <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
-        <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
+      
+      <div class="players-section">
+        <div class="players-header">
+          <h3>🏆 Today's Winners</h3>
+        </div>
+        <ul id="leaderboard-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No scores submitted yet</li>
+        </ul>
       </div>
-      <div id="tab-otherteams" class="hidden"></div>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+      
+      <div class="players-section" style="margin-top: 15px;">
+        <div class="players-header">
+          <h3>📊 Player Averages</h3>
+        </div>
+        <ul id="averages-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No averages data yet</li>
+        </ul>
+      </div>
+      
+      <button class="btn btn-primary" onclick="showView('view-home')">← Back to Home</button>
     </div>
 
+    <!-- ADMIN LOGIN VIEW -->
     <div id="view-admin" class="card hidden">
-      <div class="header"><h1>🔐 Admin Access</h1></div>
-      <div class="form-group"><label>Password</label><input type="password" id="admin-password" placeholder="Enter password"></div>
+      <div class="header">
+        <div class="logo-placeholder">🔐</div>
+        <h1>Admin Access</h1>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="admin-password" placeholder="Enter password">
+      </div>
       <button class="btn btn-primary" onclick="adminLogin()">Login</button>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+      <button class="btn btn-secondary" onclick="showView('view-home')">← Back</button>
     </div>
 
+    <!-- ADMIN DASHBOARD VIEW -->
     <div id="view-admin-dashboard" class="card hidden">
-      <div class="header"><h1>⚙️ Admin Dashboard</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchAdminTab('players')">Players</button>
-        <button class="tab-btn" onclick="switchAdminTab('teams')">Teams</button>
-        <button class="tab-btn" onclick="switchAdminTab('settings')">Settings</button>
+      <div class="header">
+        <div class="logo-placeholder">⚙️</div>
+        <h1>Admin Dashboard</h1>
       </div>
+      
+      <!-- Tabs -->
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="switchAdminTab('players')">Players</button>
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="switchAdminTab('settings')">Settings</button>
+      </div>
+      
+      <!-- Players Tab -->
       <div id="admin-players">
-        <div class="table-container"><table><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Status</th><th>✓</th><th>✗</th></tr></thead><tbody id="players-table-body"></tbody></table></div>
+        <h3 style="margin-bottom: 15px;">Pending Approvals</h3>
+        <ul id="pending-list" class="player-list"></ul>
+        
+        <h3 style="margin: 20px 0 15px;">Approved Players</h3>
+        <ul id="approved-list" class="player-list"></ul>
       </div>
-      <div id="admin-teams" class="hidden">
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">START GAME</button><button class="btn btn-danger" onclick="endGame()">END GAME</button><div id="admin-settings" class="hidden"><div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div></div></div>
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">🚀 START GAME</button><button class="btn btn-danger" onclick="endGame()">🛑 END GAME</button></div>
-        <p id="game-status">Game not started</p>
-        <div class="admin-section">
-          <h3>Add Team</h3><input type="text" id="new-team-name" placeholder="Team name"><button class="btn btn-primary" onclick="addNewTeam()">Add</button>
-        </div>
-        <div id="teams-container"></div>
-      </div>
+      
+      <!-- Settings Tab -->
       <div id="admin-settings" class="hidden">
-          <div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" id="close-time"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        <div class="form-group">
+          <label>⏰ Registration Cutoff Time</label>
+          <input type="time" id="cutoff-time" value="09:30">
         </div>
-      <div id="admin-settings" class="hidden">
-        <div class="admin-section"><h3>⏰ Registration Cutoff</h3><input type="time" id="cutoff-time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        <button class="btn btn-primary" onclick="saveCutoffTime()">Save Cutoff Time</button>
+        
+        <div style="margin-top: 20px;">
+          <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
+        </div>
       </div>
-      <button class="btn btn-back" onclick="logout()">← Log Out</button>
+      
+      <button class="btn btn-secondary" style="margin-top: 20px;" onclick="logout()">← Log Out</button>
     </div>
   </div>
 
   <script>
-    let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
-    let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
-    let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
-
-    function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
-    function showAdminLogin(){ showView('view-admin'); }
-
-    function registerPlayer(){
-      const name=document.getElementById('reg-name').value.trim();
-      if(!name){ alert('Enter name'); return; }
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      players.push({name,team:1,status:'pending',registeredAt:Date.now()});
-      localStorage.setItem('golf_players',JSON.stringify(players));
-      document.getElementById('reg-name').value='';
-      loadPlayersList(); showView('view-confirm');
+    // ===== DATA =====
+    let players = JSON.parse(localStorage.getItem('golf_players')) || [];
+    let cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+    
+    // ===== INIT =====
+    function init() {
+      updateCutoffDisplay();
+      loadPlayersList();
+      loadWeather();
     }
-
-    function loadPlayersList(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let approved=players.filter(p=>p.status==='approved');
-      document.getElementById('player-count').textContent=approved.length;
-      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-      document.getElementById('player-list').innerHTML=html;
+    
+    // ===== NAVIGATION =====
+    function showView(viewId) {
+      document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
+      document.getElementById(viewId).classList.remove('hidden');
     }
-
-    function switchGameTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('tab-myteam').classList.add('hidden');
-      document.getElementById('tab-otherteams').classList.add('hidden');
-      document.getElementById('tab-'+t).classList.remove('hidden');
+    
+    function showAdminLogin() {
+      showView('view-admin');
     }
-
-    function submitTeamScore(){
-      const score=document.getElementById('team-total-score').value;
-      if(!score){ alert('Enter score'); return; }
-      teamScores[myTeam]={score:parseInt(score),submitted:true};
-      localStorage.setItem('team_scores',JSON.stringify(teamScores));
-      alert('Score submitted!');
+    
+    // ===== WEATHER =====
+    async function loadWeather() {
+      try {
+        // Default location - can be changed to user's location
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.05&longitude=-84.03&current=temperature_2m,wind_speed_10m,relative_humidity_2m,weather_code');
+        const data = await response.json();
+        
+        const temp = Math.round(data.current.temperature_2m * 9/5 + 32);
+        const wind = Math.round(data.current.wind_speed_10m);
+        const humidity = data.current.relative_humidity_2m;
+        
+        document.getElementById('weather-temp').textContent = temp + '°F';
+        document.getElementById('weather-wind').textContent = wind;
+        document.getElementById('weather-humidity').textContent = humidity + '%';
+        
+        // Simple weather code mapping
+        const code = data.current.weather_code;
+        let sky = 'Clear';
+        if (code > 0) sky = 'Cloudy';
+        if (code > 50) sky = 'Rain';
+        document.getElementById('weather-sky').textContent = sky;
+      } catch (e) {
+        console.log('Weather error:', e);
+        document.getElementById('weather-temp').textContent = '72°F';
+        document.getElementById('weather-wind').textContent = '8';
+        document.getElementById('weather-humidity').textContent = '45%';
+        document.getElementById('weather-sky').textContent = 'Clear';
+      }
     }
-
-    function adminLogin(){
-      if(document.getElementById('admin-password').value==='golf123'){ showView('view-admin-dashboard'); loadAdminPlayers(); }
-      else alert('Invalid password');
+    
+    // ===== PLAYER REGISTRATION =====
+    function registerPlayer() {
+      const course = document.getElementById('reg-course').value;
+      const name = document.getElementById('reg-name').value.trim();
+      const phone = document.getElementById('reg-phone').value.trim();
+      
+      if (!course) {
+        alert('Please select a course');
+        return;
+      }
+      if (!name) {
+        alert('Please enter your name');
+        return;
+      }
+      
+      // Check if already registered
+      const existing = players.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        alert('You are already registered!');
+        return;
+      }
+      
+      // Check cutoff time
+      const now = new Date();
+      const cutoff = new Date();
+      const [hours, minutes] = cutoffTime.split(':');
+      cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      if (now > cutoff) {
+        alert('Registration is closed! The cutoff time was ' + cutoffTime + ' AM.');
+        return;
+      }
+      
+      // Add player
+      const player = {
+        id: Date.now(),
+        name: name,
+        phone: phone,
+        course: course,
+        status: 'pending',
+        registeredAt: new Date().toISOString()
+      };
+      
+      players.push(player);
+      localStorage.setItem('golf_players', JSON.stringify(players));
+      
+      // Clear form
+      document.getElementById('reg-name').value = '';
+      document.getElementById('reg-phone').value = '';
+      document.getElementById('reg-course').value = '';
+      
+      // Show confirmation
+      showView('view-confirm');
     }
-
-    function loadAdminPlayers(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-      document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
-        <td>${i+1}</td><td>${p.name}</td>
-        <td><select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:5px;">${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}</select></td>
-        <td class="${p.status==='approved'?'status-approved':'status-pending'}">${p.status}</td>
-        <td>${p.status!=='approved'?`<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓</button>`:'✓'}</td>
-        <td><button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button></td>
-      </tr>`).join('');
+    
+    // ===== LOAD PLAYERS LIST =====
+    function loadPlayersList() {
+      const pending = players.filter(p => p.status === 'pending');
+      const approved = players.filter(p => p.status === 'approved');
+      
+      // Update count
+      document.getElementById('player-count').textContent = approved.length;
+      
+      // Pending players list
+      let pendingHtml = '';
+      if (pending.length === 0) {
+        pendingHtml = '<li style="color: #999; text-align: center; padding: 10px;">No pending registrations</li>';
+      } else {
+        pending = pending.sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt));
+        pending.forEach(p => {
+          const time = new Date(p.registeredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          pendingHtml += `
+            <li class="player-item">
+              <div>
+                <strong>${p.name}</strong>
+                <div style="font-size: 12px; color: #666;">${p.course}</div>
+              </div>
+              <span class="player-status status-pending">Pending</span>
+            </li>
+          `;
+        });
+      }
+      
+      // Approved players list for home page
+      let approvedHtml = '';
+      if (approved.length === 0) {
+        approvedHtml = '<li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>';
+      } else {
+        approved = approved.sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt));
+        approved.forEach(p => {
+          const time = new Date(p.registeredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          approvedHtml += `
+            <li class="player-item">
+              <div>
+                <strong>${p.name}</strong>
+                <div style="font-size: 12px; color: #666;">${p.course}</div>
+              </div>
+              <span class="player-status status-approved">✓ Approved</span>
+            </li>
+          `;
+        });
+      }
+      
+      // Update home page list
+      document.getElementById('player-list').innerHTML = approvedHtml;
     }
-
-    function changeTeam(id,teamId){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
+    
+    // ===== CUTOFF TIME =====
+    function updateCutoffDisplay() {
+      const time12 = formatTime12(cutoffTime);
+      document.getElementById('cutoff-display').textContent = time12;
     }
-
-    function approve(id){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    
+    function formatTime12(time24) {
+      const [hours, minutes] = time24.split(':');
+      const h = parseInt(hours);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${minutes} ${ampm}`;
     }
-
-    function deleteP(id){
-      if(!confirm('Delete?')) return;
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    
+    // ===== ADMIN =====
+    function adminLogin() {
+      const password = document.getElementById('admin-password').value;
+      if (password === 'golf123') {
+        loadAdminPlayers();
+        showView('view-admin-dashboard');
+      } else {
+        alert('Invalid password');
+      }
     }
-
-    function loadAdminTeams(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      document.getElementById('teams-container').innerHTML=teams.map(t=>{
-        let tp=players.filter(p=>p.team===t.id);
-        return `<div class="admin-section"><h3>${t.name}</h3>${tp.map(p=>`<div>${p.name}</div>`).join('')||'No players'}</div>`;
-      }).join('');
+    
+    function loadAdminPlayers() {
+      const pending = players.filter(p => p.status === 'pending');
+      const approved = players.filter(p => p.status === 'approved');
+      
+      // Pending list
+      let pendingHtml = '';
+      if (pending.length === 0) {
+        pendingHtml = '<li style="color: #999; text-align: center; padding: 10px;">No pending players</li>';
+      } else {
+        pending.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+        pending.forEach(p => {
+          pendingHtml += `
+            <li class="player-item">
+              <div>
+                <strong>${p.name}</strong>
+                <div style="font-size: 12px; color: #666;">${p.course} • ${p.phone || 'No phone'}</div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-small" onclick="approvePlayer(${p.id})">✓ Approve</button>
+                <button class="btn btn-danger btn-small" onclick="rejectPlayer(${p.id})">✗</button>
+              </div>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('pending-list').innerHTML = pendingHtml;
+      
+      // Approved list
+      let approvedHtml = '';
+      if (approved.length === 0) {
+        approvedHtml = '<li style="color: #999; text-align: center; padding: 10px;">No approved players</li>';
+      } else {
+        approved.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+        approved.forEach(p => {
+          approvedHtml += `
+            <li class="player-item">
+              <div>
+                <strong>${p.name}</strong>
+                <div style="font-size: 12px; color: #666;">${p.course}</div>
+              </div>
+              <button class="btn btn-danger btn-small" onclick="deletePlayer(${p.id})">Remove</button>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('approved-list').innerHTML = approvedHtml;
     }
-
-    function addNewTeam(){
-      let name=document.getElementById('new-team-name').value.trim();
-      if(!name) return;
-      teams.push({id:Date.now(),name});
-      localStorage.setItem('golf_teams',JSON.stringify(teams));
-      loadAdminTeams();
+    
+    function approvePlayer(id) {
+      const player = players.find(p => p.id === id);
+      if (player) {
+        player.status = 'approved';
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+      }
     }
-
-    function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){
-    function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
-
-    function switchAdminTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
+    
+    function rejectPlayer(id) {
+      if (confirm('Reject this player?')) {
+        players = players.filter(p => p.id !== id);
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+      }
+    }
+    
+    function deletePlayer(id) {
+      if (confirm('Delete this player permanently?')) {
+        players = players.filter(p => p.id !== id);
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+      }
+    }
+    
+    function saveCutoffTime() {
+      cutoffTime = document.getElementById('cutoff-time').value;
+      localStorage.setItem('cutoff_time', cutoffTime);
+      updateCutoffDisplay();
+      alert('Cutoff time saved!');
+    }
+    
+    function clearAllPlayers() {
+      if (confirm('Are you sure you want to delete ALL players? This cannot be undone.')) {
+        players = [];
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        alert('All players cleared!');
+      }
+    }
+    
+    function switchAdminTab(tab) {
       document.getElementById('admin-players').classList.add('hidden');
-      document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='teams') loadAdminTeams();
+      document.getElementById('admin-settings').classList.add('hidden');
+      document.getElementById('admin-' + tab).classList.remove('hidden');
     }
-
-    function logout(){ showView('view-home'); }
-    loadPlayersList();
+    
+    function logout() {
+      document.getElementById('admin-password').value = '';
+      showView('view-home');
+    }
+    
+    // Start the app
+    init();
   </script>
 </body>
 </html>
