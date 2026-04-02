@@ -191,7 +191,7 @@
       let approved = players.filter(p=>p.status==='approved');
       document.getElementById('player-count').textContent=approved.length;
       let html = approved.map(p=>{
-        let statusText = (p.team && p.team > 0) ? teams.find(t=>t.id===p.team)?.name : 'Approved (waiting for team)';
+        let statusText = (p.team && p.team > 0) ? 'Team: ' + teams.find(t=>t.id===p.team)?.name : 'Pending team assignment';
         return `<li class="player-item"><span>${p.name}</span><span>${statusText}</span></li>`;
       }).join('')||'<li style="color:#999;">Waiting for approval</li>';
       document.getElementById('player-list').innerHTML=html;
@@ -248,7 +248,7 @@
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
             <select id="team-select-${p.registeredAt}" style="padding:8px;border-radius:6px;border:1px solid #ddd;">
-              <option value="">-- Select Team --</option>
+              <option value="" selected>-- Select Team --</option>
               ${teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
             </select>
             <button class="btn btn-primary btn-small" onclick="assignTeam('${p.registeredAt}')">Add to Team</button>
