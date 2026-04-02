@@ -97,13 +97,18 @@
       <div class="header"><h1>🏆 My Team Scores</h1></div>
       <div class="tabs">
         <button class="tab-btn active" onclick="switchGameTab('myteam')">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams')">Other Teams</button>
+        <button class="tab-btn" onclick="switchGameTab('leaderboard')">Leaderboard</button>
       </div>
       <div id="tab-myteam">
         <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
         <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
       </div>
-      <div id="tab-otherteams" class="hidden"></div>
+      <div id="tab-leaderboard" class="hidden">
+        <div style="padding:15px;">
+          <h3>🏆 Team Rankings</h3>
+          <div id="leaderboard-display"></div>
+        </div>
+      </div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
