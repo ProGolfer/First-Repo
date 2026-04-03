@@ -940,12 +940,21 @@
       let html = '';
       for (let i = 1; i <= numTeams; i++) {
         if (teamGroups[i] && teamGroups[i].length > 0) {
+          // Sort: captains first
+          teamGroups[i].sort((a, b) => {
+            const aIsCaptain = captains[a.id] === true;
+            const bIsCaptain = captains[b.id] === true;
+            if (aIsCaptain && !bIsCaptain) return -1;
+            if (!aIsCaptain && bIsCaptain) return 1;
+            return 0;
+          });
+          
           html += `<li style="background: #e8f5e9; margin: 8px 0; padding: 12px; border-radius: 8px;">
             <div style="font-weight: bold; color: #1a472a; margin-bottom: 8px;">Team ${i}</div>
             <ul style="list-style: none; padding-left: 10px;">`;
           teamGroups[i].forEach(p => {
             const isCaptain = captains[p.id] === true;
-            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9;">${p.name} ${isCaptain ? '👑' : ''}</li>`;
+            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9; ${isCaptain ? 'font-weight: bold; color: #1a472a;' : ''}">${p.name} ${isCaptain ? '👑 (Captain)' : ''}</li>`;
           });
           html += `</ul></li>`;
         }
