@@ -603,6 +603,10 @@
     function adminLogin() {
       const password = document.getElementById('admin-password').value;
       if (password === 'golf123') {
+        // Remember password for 2 hours after login
+        const expiry = Date.now() + (2 * 60 * 60 * 1000);
+        localStorage.setItem('admin_password_expiry', expiry);
+        
         loadAdminPlayers();
         updatePendingBadge();
         showView('view-admin-dashboard');
@@ -611,9 +615,16 @@
       }
     }
     
-    function checkRememberedPassword() {
+    function showAdminLogin() {
+      // Check if password is remembered for 2 hours
       const expiry = localStorage.getItem('admin_password_expiry');
-      return expiry && Date.now() < parseInt(expiry);
+      if (expiry && Date.now() < parseInt(expiry)) {
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
+        return;
+      }
+      showView('view-admin');
     }
     
     function togglePassword() {
@@ -849,8 +860,8 @@
       }
     }
     
-    // Check for remembered password on page load
-    checkRememberedPassword();
+    // Start the app
+    init();
   </script>
 </body>
 </html>
