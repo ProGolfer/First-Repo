@@ -510,6 +510,9 @@
     
     // ===== LOAD PLAYERS LIST (Home Page) =====
     function loadPlayersList() {
+      // Use global players (refreshed from localStorage)
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      
       const pending = players.filter(p => p.status === 'pending');
       const approved = players.filter(p => p.status === 'approved');
       
