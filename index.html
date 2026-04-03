@@ -197,11 +197,7 @@
       <div class="form-group">
         <label>Select Course</label>
         <select id="reg-course">
-          <option value="">-- Select Course --</option>
-          <option>Cliffside Golf Club</option>
-          <option>Pebble Beach</option>
-          <option>Pinehurst</option>
-          <option>St. Andrews</option>
+          <option value="Cliffside Golf Club" selected>Cliffside Golf Club</option>
         </select>
       </div>
       
@@ -240,6 +236,14 @@
       <!-- Admin Link -->
       <div class="admin-link">
         <a href="#" onclick="showAdminLogin()">🔒 Admin Access</a>
+      </div>
+      
+      <!-- Teams Display (After Submit) -->
+      <div id="teams-display" class="players-section" style="margin-top: 20px;">
+        <div class="players-header">
+          <h3>🏌️ Teams</h3>
+        </div>
+        <ul id="teams-list" class="player-list"></ul>
       </div>
     </div>
 
@@ -293,7 +297,10 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="admin-password" placeholder="Enter password">
+        <div style="position: relative;">
+          <input type="password" id="admin-password" placeholder="Enter password" style="padding-right: 45px;">
+          <span onclick="togglePassword()" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px;">👁️</span>
+        </div>
       </div>
       <button class="btn btn-primary" onclick="adminLogin()">Login</button>
       <button class="btn btn-secondary" onclick="showView('view-home')">← Back</button>
@@ -343,6 +350,8 @@
         
         <h3 style="margin-bottom: 15px;">Select a Team for Approved Players</h3>
         <ul id="team-assign-list" class="player-list"></ul>
+        
+        <button class="btn btn-primary" style="margin-top: 20px;" onclick="submitTeams()">Submit Teams</button>
       </div>
       
       <!-- Settings Tab -->
@@ -378,6 +387,7 @@
       loadPlayersList();
       loadWeather();
       updateRegistrationStatus();
+      loadTeamsDisplay();
     }
     
     // ===== NAVIGATION =====
@@ -570,11 +580,35 @@
     function adminLogin() {
       const password = document.getElementById('admin-password').value;
       if (password === 'golf123') {
+        // Remember password for 2 hours
+        const expiry = Date.now() + (2 * 60 * 60 * 1000); // 2 hours
+        localStorage.setItem('admin_password_expiry', expiry);
+        
         loadAdminPlayers();
         updatePendingBadge();
         showView('view-admin-dashboard');
       } else {
         alert('Invalid password');
+      }
+    }
+    
+    function checkRememberedPassword() {
+      const expiry = localStorage.getItem('admin_password_expiry');
+      if (expiry && Date.now() < parseInt(expiry)) {
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
+        return true;
+      }
+      return false;
+    }
+    
+    function togglePassword() {
+      const input = document.getElementById('admin-password');
+      if (input.type === 'password') {
+        input.type = 'text';
+      } else {
+        input.type = 'password';
       }
     }
     
@@ -661,6 +695,7 @@
               <option value="Team 3" ${p.team === 'Team 3' ? 'selected' : ''}>Team 3</option>
               <option value="Team 4" ${p.team === 'Team 4' ? 'selected' : ''}>Team 4</option>
               <option value="Team 5" ${p.team === 'Team 5' ? 'selected' : ''}>Team 5</option>
+              <option value="Team 6" ${p.team === 'Team 6' ? 'selected' : ''}>Team 6</option>
             </select>
           `;
           
@@ -745,8 +780,60 @@
       showView('view-home');
     }
     
-    // Start the app
-    init();
+    // ===== TEAMS =====
+    function loadTeamsDisplay() {
+      const teamsSubmitted = localStorage.getItem('teams_submitted') === 'true';
+      const teamsSection = document.getElementById('teams-display');
+      
+      if (!teamsSubmitted) {
+        teamsSection.classList.add('hidden');
+        return;
+      }
+      
+      teamsSection.classList.remove('hidden');
+      
+      // Group players by team
+      const teamGroups = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+      const approvedWithTeam = players.filter(p => p.status === 'approved' && p.team);
+      
+      approvedWithTeam.forEach(p => {
+        const teamNum = p.team.replace('Team ', '');
+        if (teamGroups[teamNum]) {
+          teamGroups[teamNum].push(p);
+        }
+      });
+      
+      let html = '';
+      for (let i = 1; i <= 6; i++) {
+        if (teamGroups[i].length > 0) {
+          html += `<li style="background: #e8f5e9; margin: 8px 0; padding: 12px; border-radius: 8px;">
+            <div style="font-weight: bold; color: #1a472a; margin-bottom: 8px;">Team ${i}</div>
+            <ul style="list-style: none; padding-left: 10px;">`;
+          teamGroups[i].forEach(p => {
+            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9;">${p.name}</li>`;
+          });
+          html += `</ul></li>`;
+        }
+      }
+      
+      if (!html) {
+        html = '<li style="color: #999; text-align: center; padding: 10px;">No teams yet</li>';
+      }
+      
+      document.getElementById('teams-list').innerHTML = html;
+    }
+    
+    function submitTeams() {
+      if (confirm('Are you sure you want to submit the teams? This will lock in the team assignments.')) {
+        localStorage.setItem('teams_submitted', 'true');
+        alert('Teams submitted successfully!');
+        showView('view-home');
+        loadTeamsDisplay();
+      }
+    }
+    
+    // Check for remembered password on page load
+    checkRememberedPassword();
   </script>
 </body>
 </html>
