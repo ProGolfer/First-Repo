@@ -405,10 +405,16 @@
     }
     
     function showAdminLogin() {
-      // Check if password is already remembered
-      if (checkRememberedPassword()) {
-        return; // Already logged in, function handles redirect
+      // Check if password is already remembered for 2 hours
+      const expiry = localStorage.getItem('admin_password_expiry');
+      if (expiry && Date.now() < parseInt(expiry)) {
+        // Already logged in - go to dashboard
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
+        return;
       }
+      // Not remembered - show login form
       showView('view-admin');
     }
     
@@ -620,14 +626,7 @@
     
     function checkRememberedPassword() {
       const expiry = localStorage.getItem('admin_password_expiry');
-      if (expiry && Date.now() < parseInt(expiry)) {
-        // Auto-login if password is remembered
-        loadAdminPlayers();
-        updatePendingBadge();
-        showView('view-admin-dashboard');
-        return true;
-      }
-      return false;
+      return expiry && Date.now() < parseInt(expiry);
     }
     
     function togglePassword() {
