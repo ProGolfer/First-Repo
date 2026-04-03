@@ -236,8 +236,8 @@
       
       <!-- Cutoff Time Display -->
       <div class="cutoff-box">
-        <h4>⏰ Registration Closes At</h4>
-        <div class="cutoff-time" id="cutoff-display">9:30 AM</div>
+        <h4>⏰ Registration Hours</h4>
+        <div class="cutoff-time"><span id="open-display">6:00 AM</span> - <span id="cutoff-display">9:30 AM</span></div>
       </div>
       
       <!-- View Leaderboard Button -->
@@ -385,10 +385,14 @@
       <!-- Settings Tab -->
       <div id="admin-settings" class="hidden">
         <div class="form-group">
-          <label>⏰ Registration Cutoff Time</label>
+          <label>⏰ Registration Opens At</label>
+          <input type="time" id="open-time" value="06:00">
+        </div>
+        <div class="form-group">
+          <label>⏰ Registration Closes At</label>
           <input type="time" id="cutoff-time" value="09:30">
         </div>
-        <button class="btn btn-primary" onclick="saveCutoffTime()">Save Cutoff Time</button>
+        <button class="btn btn-primary" onclick="saveTimes()">Save Times</button>
         
         <button class="btn btn-warning" style="margin-top: 15px;" onclick="toggleRegistration()">
           <span id="toggle-reg-btn">Close Registration Now</span>
@@ -461,6 +465,7 @@
     function registerPlayer() {
       // Always read current state from localStorage
       const isClosed = localStorage.getItem('registration_closed') === 'true';
+      const openTime = localStorage.getItem('open_time') || '06:00';
       const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
       
       // Check if registration is closed manually
@@ -469,11 +474,21 @@
         return;
       }
       
-      // Check cutoff time
+      // Check registration hours
       const now = new Date();
+      const open = new Date();
       const cutoff = new Date();
-      const [hours, minutes] = cutoffTime.split(':');
-      cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      const [openH, openM] = openTime.split(':');
+      const [closeH, closeM] = cutoffTime.split(':');
+      
+      open.setHours(parseInt(openH), parseInt(openM), 0, 0);
+      cutoff.setHours(parseInt(closeH), parseInt(closeM), 0, 0);
+      
+      if (now < open) {
+        alert('Registration opens at ' + formatTime12(openTime) + '. Please come back then!');
+        return;
+      }
       
       if (now > cutoff) {
         alert('Registration is closed! The cutoff time was ' + formatTime12(cutoffTime) + '.');
@@ -556,9 +571,15 @@
     
     // ===== CUTOFF TIME =====
     function updateCutoffDisplay() {
-      const time12 = formatTime12(cutoffTime);
-      document.getElementById('cutoff-display').textContent = time12;
-      document.getElementById('team-cutoff-time').textContent = time12;
+      const openTime = localStorage.getItem('open_time') || '06:00';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      const openTime12 = formatTime12(openTime);
+      const cutoffTime12 = formatTime12(cutoffTime);
+      
+      document.getElementById('open-display').textContent = openTime12;
+      document.getElementById('cutoff-display').textContent = cutoffTime12;
+      document.getElementById('team-cutoff-time').textContent = cutoffTime12;
     }
     
     function formatTime12(time24) {
@@ -576,17 +597,28 @@
       
       // Always read current values from localStorage
       const isManualClosed = localStorage.getItem('registration_closed') === 'true';
+      const openTime = localStorage.getItem('open_time') || '06:00';
       const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
       
-      // Check if cutoff time has passed
+      // Check registration hours
       const now = new Date();
+      const open = new Date();
       const cutoff = new Date();
-      const [hours, minutes] = cutoffTime.split(':');
-      cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      const [openH, openM] = openTime.split(':');
+      const [closeH, closeM] = cutoffTime.split(':');
+      
+      open.setHours(parseInt(openH), parseInt(openM), 0, 0);
+      cutoff.setHours(parseInt(closeH), parseInt(closeM), 0, 0);
       
       const isClosed = isManualClosed || now > cutoff;
+      const isNotOpenYet = now < open;
       
-      if (isClosed) {
+      if (isNotOpenYet) {
+        statusEl.textContent = 'NOT OPEN YET';
+        statusEl.style.color = '#ff9800';
+        detailEl.textContent = 'Registration opens at ' + formatTime12(openTime);
+      } else if (isClosed) {
         statusEl.textContent = 'CLOSED';
         statusEl.style.color = '#c62828';
         detailEl.textContent = 'Registration is closed. No new players can register.';
@@ -824,12 +856,16 @@
       loadAdminPlayers();
     }
     
-    function saveCutoffTime() {
-      cutoffTime = document.getElementById('cutoff-time').value;
+    function saveTimes() {
+      const openTime = document.getElementById('open-time').value;
+      const cutoffTime = document.getElementById('cutoff-time').value;
+      
+      localStorage.setItem('open_time', openTime);
       localStorage.setItem('cutoff_time', cutoffTime);
+      
       updateCutoffDisplay();
       updateRegistrationStatus();
-      alert('Cutoff time saved!');
+      alert('Registration times saved!');
     }
     
     function saveAdminCode() {
