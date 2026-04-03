@@ -314,7 +314,9 @@
       
       <!-- Tabs -->
       <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-        <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('manage')">Manage Players</button>
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('manage')">
+          Manage Players<span id="pending-badge" style="background: #f44336; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px; display: none;">0</span>
+        </button>
         <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('teams')">Select a Team</button>
         <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('settings')">Settings</button>
       </div>
@@ -539,16 +541,17 @@
         detailEl.textContent = 'Registration is open until ' + formatTime12(cutoffTime);
       }
       
-      // Update team selection visibility
+      // Team selection notice
       const teamNotice = document.getElementById('team-selection-notice');
       const teamAvailable = document.getElementById('team-selection-available');
       
       if (isClosed) {
-        teamNotice.classList.remove('hidden');
-        teamAvailable.classList.add('hidden');
-      } else {
         teamNotice.classList.add('hidden');
         teamAvailable.classList.remove('hidden');
+      } else {
+        teamNotice.classList.remove('hidden');
+        teamNotice.innerHTML = `<strong>⏰ Registration Still Open</strong><div style="font-size: 12px; margin-top: 5px;">Team selection will be available after registration closes at <span id="team-cutoff-time">${formatTime12(cutoffTime)}</span></div>`;
+        teamAvailable.classList.add('hidden');
       }
       
       // Update button text
@@ -568,9 +571,21 @@
       const password = document.getElementById('admin-password').value;
       if (password === 'golf123') {
         loadAdminPlayers();
+        updatePendingBadge();
         showView('view-admin-dashboard');
       } else {
         alert('Invalid password');
+      }
+    }
+    
+    function updatePendingBadge() {
+      const pending = players.filter(p => p.status === 'pending');
+      const badge = document.getElementById('pending-badge');
+      if (pending.length > 0) {
+        badge.textContent = pending.length;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
       }
     }
     
@@ -670,6 +685,7 @@
         localStorage.setItem('golf_players', JSON.stringify(players));
         loadAdminPlayers();
         loadPlayersList();
+        updatePendingBadge();
       }
     }
     
@@ -679,6 +695,7 @@
         localStorage.setItem('golf_players', JSON.stringify(players));
         loadAdminPlayers();
         loadPlayersList();
+        updatePendingBadge();
       }
     }
     
