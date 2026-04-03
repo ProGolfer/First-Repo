@@ -217,6 +217,12 @@
       
       <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
       
+      <!-- Players Waiting for Approval -->
+      <div id="pending-approval-bar" style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 15px 0; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #856404; font-weight: 600;">⏳ Players Waiting for Approval</span>
+        <span id="pending-count" style="background: #856404; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold;">0</span>
+      </div>
+      
       <!-- Registered Players (Approved Only) -->
       <div class="players-section">
         <div class="players-header">
@@ -504,7 +510,13 @@
     
     // ===== LOAD PLAYERS LIST (Home Page) =====
     function loadPlayersList() {
+      const pending = players.filter(p => p.status === 'pending');
       const approved = players.filter(p => p.status === 'approved');
+      
+      // Update pending count
+      document.getElementById('pending-count').textContent = pending.length;
+      
+      // Update approved count
       document.getElementById('player-count').textContent = approved.length;
       
       let html = '';
