@@ -202,9 +202,6 @@
         <label>Select Course</label>
         <select id="reg-course">
           <option value="Cliffside Golf Club" selected>Cliffside Golf Club</option>
-          <option>Pebble Beach</option>
-          <option>Pinehurst</option>
-          <option>St. Andrews</option>
         </select>
       </div>
       
@@ -519,7 +516,7 @@
       
       document.getElementById('reg-name').value = '';
       document.getElementById('reg-phone').value = '';
-      document.getElementById('reg-course').value = '';
+      document.getElementById('reg-course').value = 'Cliffside Golf Club';
       
       showView('view-confirm');
     }
