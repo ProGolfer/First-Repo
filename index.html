@@ -249,7 +249,7 @@
       </div>
       
       <!-- Teams Display (After Submit) -->
-      <div id="teams-display" class="players-section" style="margin-top: 20px;">
+      <div id="teams-display" class="players-section hidden" style="margin-top: 20px;">
         <div class="players-header">
           <h3>🏌️ Teams</h3>
         </div>
@@ -909,6 +909,8 @@
     
     // ===== TEAMS =====
     function loadTeamsDisplay() {
+      // Always read fresh from localStorage
+      let players = JSON.parse(localStorage.getItem('golf_players')) || [];
       const teamsSubmitted = localStorage.getItem('teams_submitted') === 'true';
       const teamsSection = document.getElementById('teams-display');
       
