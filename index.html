@@ -268,7 +268,7 @@
         <p style="margin-top: 10px;">Your registration is <strong>pending approval</strong>.</p>
         <p style="margin-top: 10px; font-size: 14px; color: #666;">The admin will approve your registration before the cutoff time.</p>
       </div>
-      <button class="btn btn-primary" onclick="showView('view-home')">← Back to Home</button>
+      <button class="btn btn-primary" onclick="showView('view-home'); loadPlayersList();">← Back to Home</button>
     </div>
 
     <!-- LEADERBOARD VIEW -->
@@ -296,7 +296,7 @@
         </ul>
       </div>
       
-      <button class="btn btn-primary" onclick="showView('view-home')">← Back to Home</button>
+      <button class="btn btn-primary" onclick="showView('view-home'); loadPlayersList();">← Back to Home</button>
     </div>
 
     <!-- ADMIN LOGIN VIEW -->
@@ -313,7 +313,7 @@
         </div>
       </div>
       <button class="btn btn-primary" onclick="adminLogin()">Login</button>
-      <button class="btn btn-secondary" onclick="showView('view-home')">← Back</button>
+      <button class="btn btn-secondary" onclick="showView('view-home'); loadPlayersList();">← Back</button>
     </div>
 
     <!-- ADMIN DASHBOARD VIEW -->
@@ -884,6 +884,7 @@
     
     // Start the app
     init();
+    loadPlayersList();
   </script>
 </body>
 </html>
