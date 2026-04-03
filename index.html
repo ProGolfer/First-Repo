@@ -361,6 +361,19 @@
         
         <div id="team-selection-available" class="hidden">
           <p style="text-align: center; margin-bottom: 15px; color: #4caf50;"><strong>Registration is now CLOSED</strong><br>You can now assign players to teams:</p>
+          
+          <!-- Number of Teams -->
+          <div class="form-group" style="margin-top: 20px;">
+            <label>🏌️ Number of Teams</label>
+            <select id="num-teams" onchange="updateNumTeams()" style="padding: 10px;">
+              <option value="1">1 Team</option>
+              <option value="2">2 Teams</option>
+              <option value="3">3 Teams</option>
+              <option value="4" selected>4 Teams</option>
+              <option value="5">5 Teams</option>
+              <option value="6">6 Teams</option>
+            </select>
+          </div>
         </div>
         
         <h3 style="margin-bottom: 15px;">Select a Team for Approved Players</h3>
@@ -724,22 +737,33 @@
         const isClosed = isManualClosed || now > cutoff;
         
         allApproved.forEach(p => {
+          // Get number of teams from dropdown or default to 4
+          const numTeamsSelect = document.getElementById('num-teams');
+          const numTeams = numTeamsSelect ? parseInt(numTeamsSelect.value) : 4;
+          
+          // Build dynamic team options
+          let teamOptionsHtml = '<option value="">-- Select --</option>';
+          for (let i = 1; i <= numTeams; i++) {
+            teamOptionsHtml += `<option value="Team ${i}" ${p.team === 'Team ' + i ? 'selected' : ''}>Team ${i}</option>`;
+          }
+          
+          // Check if player is captain
+          const captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+          const isCaptain = captains[p.id] === true;
+          
           const teamOptions = `
             <select onchange="assignTeam(${p.id}, this.value)" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
-              <option value="">-- Select --</option>
-              <option value="Team 1" ${p.team === 'Team 1' ? 'selected' : ''}>Team 1</option>
-              <option value="Team 2" ${p.team === 'Team 2' ? 'selected' : ''}>Team 2</option>
-              <option value="Team 3" ${p.team === 'Team 3' ? 'selected' : ''}>Team 3</option>
-              <option value="Team 4" ${p.team === 'Team 4' ? 'selected' : ''}>Team 4</option>
-              <option value="Team 5" ${p.team === 'Team 5' ? 'selected' : ''}>Team 5</option>
-              <option value="Team 6" ${p.team === 'Team 6' ? 'selected' : ''}>Team 6</option>
+              ${teamOptionsHtml}
             </select>
+            <label style="margin-left: 10px; font-size: 12px;">
+              <input type="checkbox" ${isCaptain ? 'checked' : ''} onchange="toggleCaptain(${p.id}, this.checked)"> 👑 Captain
+            </label>
           `;
           
           teamHtml += `
             <li class="player-item">
               <div class="player-info">
-                <div class="player-name">${p.name}</div>
+                <div class="player-name">${p.name} ${isCaptain ? '👑' : ''}</div>
                 <div class="player-detail">${p.course}</div>
               </div>
               ${isClosed ? teamOptions : '<span class="status-badge status-closed">Registration Open</span>'}
@@ -781,6 +805,23 @@
         loadAdminPlayers();
         alert(`${player.name} assigned to ${teamName}`);
       }
+    }
+    
+    function updateNumTeams() {
+      const numTeams = document.getElementById('num-teams').value;
+      localStorage.setItem('num_teams', numTeams);
+      loadAdminPlayers();
+    }
+    
+    function toggleCaptain(playerId, isCaptain) {
+      let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+      if (isCaptain) {
+        captains[playerId] = true;
+      } else {
+        delete captains[playerId];
+      }
+      localStorage.setItem('team_captains', JSON.stringify(captains));
+      loadAdminPlayers();
     }
     
     function saveCutoffTime() {
@@ -842,9 +883,16 @@
       
       teamsSection.classList.remove('hidden');
       
+      // Get number of teams
+      const numTeams = parseInt(localStorage.getItem('num_teams') || '4');
+      
       // Group players by team
-      const teamGroups = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+      const teamGroups = {};
+      for (let i = 1; i <= numTeams; i++) {
+        teamGroups[i] = [];
+      }
       const approvedWithTeam = players.filter(p => p.status === 'approved' && p.team);
+      const captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
       
       approvedWithTeam.forEach(p => {
         const teamNum = p.team.replace('Team ', '');
@@ -854,13 +902,14 @@
       });
       
       let html = '';
-      for (let i = 1; i <= 6; i++) {
-        if (teamGroups[i].length > 0) {
+      for (let i = 1; i <= numTeams; i++) {
+        if (teamGroups[i] && teamGroups[i].length > 0) {
           html += `<li style="background: #e8f5e9; margin: 8px 0; padding: 12px; border-radius: 8px;">
             <div style="font-weight: bold; color: #1a472a; margin-bottom: 8px;">Team ${i}</div>
             <ul style="list-style: none; padding-left: 10px;">`;
           teamGroups[i].forEach(p => {
-            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9;">${p.name}</li>`;
+            const isCaptain = captains[p.id] === true;
+            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9;">${p.name} ${isCaptain ? '👑' : ''}</li>`;
           });
           html += `</ul></li>`;
         }
