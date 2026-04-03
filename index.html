@@ -540,13 +540,17 @@
       const statusEl = document.getElementById('reg-status-text');
       const detailEl = document.getElementById('reg-status-detail');
       
+      // Always read current values from localStorage
+      const isManualClosed = localStorage.getItem('registration_closed') === 'true';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
       // Check if cutoff time has passed
       const now = new Date();
       const cutoff = new Date();
       const [hours, minutes] = cutoffTime.split(':');
       cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       
-      const isClosed = registrationClosed || now > cutoff;
+      const isClosed = isManualClosed || now > cutoff;
       
       if (isClosed) {
         statusEl.textContent = 'CLOSED';
@@ -689,9 +693,11 @@
         // Check if registration is closed
         const now = new Date();
         const cutoff = new Date();
+        const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
         const [h, m] = cutoffTime.split(':');
         cutoff.setHours(parseInt(h), parseInt(m), 0, 0);
-        const isClosed = registrationClosed || now > cutoff;
+        const isManualClosed = localStorage.getItem('registration_closed') === 'true';
+        const isClosed = isManualClosed || now > cutoff;
         
         allApproved.forEach(p => {
           const teamOptions = `
