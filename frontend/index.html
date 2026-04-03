@@ -392,6 +392,14 @@
       loadWeather();
       updateRegistrationStatus();
       loadTeamsDisplay();
+      
+      // Check if admin session is remembered
+      const expiry = localStorage.getItem('admin_password_expiry');
+      if (expiry && Date.now() < parseInt(expiry)) {
+        // Auto-login silently without showing admin view
+        loadAdminPlayers();
+        updatePendingBadge();
+      }
     }
     
     // ===== NAVIGATION =====
@@ -401,6 +409,10 @@
     }
     
     function showAdminLogin() {
+      // Check if password is already remembered
+      if (checkRememberedPassword()) {
+        return; // Already logged in, function handles redirect
+      }
       showView('view-admin');
     }
     
@@ -604,9 +616,12 @@
     }
     
     function checkRememberedPassword() {
-      // Just check if we have a valid session - don't auto-redirect
       const expiry = localStorage.getItem('admin_password_expiry');
       if (expiry && Date.now() < parseInt(expiry)) {
+        // Auto-login if password is remembered
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
         return true;
       }
       return false;
