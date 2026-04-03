@@ -396,14 +396,6 @@
       loadWeather();
       updateRegistrationStatus();
       loadTeamsDisplay();
-      
-      // Check if admin session is remembered
-      const expiry = localStorage.getItem('admin_password_expiry');
-      if (expiry && Date.now() < parseInt(expiry)) {
-        // Auto-login silently without showing admin view
-        loadAdminPlayers();
-        updatePendingBadge();
-      }
     }
     
     // ===== NAVIGATION =====
