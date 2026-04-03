@@ -374,6 +374,12 @@
         <div style="margin-top: 20px;">
           <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
         </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 12px;">
+          <h4 style="margin-bottom: 10px;">💾 Save as Starting Point</h4>
+          <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Save current players & teams as baseline. Say "are you ready to start" to restore.</p>
+          <button class="btn btn-secondary" style="font-size: 14px; padding: 12px;" onclick="saveAsStartingPoint()">Save Current State</button>
+        </div>
       </div>
       
       <button class="btn btn-secondary" style="margin-top: 20px;" onclick="logout()">← Log Out</button>
@@ -392,6 +398,7 @@
       loadWeather();
       updateRegistrationStatus();
       loadTeamsDisplay();
+      checkStartingPoint();
     }
     
     // ===== NAVIGATION =====
@@ -772,6 +779,57 @@
         loadAdminPlayers();
         loadPlayersList();
         alert('All players cleared!');
+      }
+    }
+    
+    // ===== STARTING POINT =====
+    function saveAsStartingPoint() {
+      const playersData = localStorage.getItem('golf_players') || '[]';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      const teamsSubmitted = localStorage.getItem('teams_submitted') || 'false';
+      
+      localStorage.setItem('starting_players', playersData);
+      localStorage.setItem('starting_cutoff', cutoffTime);
+      localStorage.setItem('starting_teams_submitted', teamsSubmitted);
+      
+      alert('✅ Current state saved as starting point!\n\nWhen you say "are you ready to start", I\'ll restore this baseline.');
+    }
+    
+    function restoreStartingPoint() {
+      const savedPlayers = localStorage.getItem('starting_players');
+      const savedCutoff = localStorage.getItem('starting_cutoff');
+      const savedTeams = localStorage.getItem('starting_teams_submitted');
+      
+      if (savedPlayers) {
+        localStorage.setItem('golf_players', savedPlayers);
+        players = JSON.parse(savedPlayers);
+      }
+      if (savedCutoff) {
+        localStorage.setItem('cutoff_time', savedCutoff);
+        cutoffTime = savedCutoff;
+      }
+      if (savedTeams) {
+        localStorage.setItem('teams_submitted', savedTeams);
+      }
+      
+      // Reset registration status
+      localStorage.setItem('registration_closed', 'false');
+      
+      // Reload everything
+      updateCutoffDisplay();
+      loadPlayersList();
+      updateRegistrationStatus();
+      loadTeamsDisplay();
+      loadAdminPlayers();
+      
+      alert('✅ Starting point restored!\n\n- Players reset\n- Registration open\n- Teams reset');
+    }
+    
+    function checkStartingPoint() {
+      // Check if starting point exists - if so, restore it
+      const savedPlayers = localStorage.getItem('starting_players');
+      if (savedPlayers) {
+        restoreStartingPoint();
       }
     }
     
