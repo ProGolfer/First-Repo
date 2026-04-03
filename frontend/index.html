@@ -384,7 +384,6 @@
     // ===== DATA =====
     let players = JSON.parse(localStorage.getItem('golf_players')) || [];
     let cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
-    let registrationClosed = localStorage.getItem('registration_closed') === 'true';
     
     // ===== INIT =====
     function init() {
@@ -580,11 +579,12 @@
     }
     
     function toggleRegistration() {
-      registrationClosed = !registrationClosed;
-      localStorage.setItem('registration_closed', registrationClosed);
+      const isCurrentlyClosed = localStorage.getItem('registration_closed') === 'true';
+      const newState = !isCurrentlyClosed;
+      localStorage.setItem('registration_closed', newState);
       updateRegistrationStatus();
       loadAdminPlayers();
-      alert(registrationClosed ? 'Registration is now CLOSED' : 'Registration is now OPEN');
+      alert(newState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
     }
     
     // ===== ADMIN =====
@@ -604,11 +604,9 @@
     }
     
     function checkRememberedPassword() {
+      // Just check if we have a valid session - don't auto-redirect
       const expiry = localStorage.getItem('admin_password_expiry');
       if (expiry && Date.now() < parseInt(expiry)) {
-        loadAdminPlayers();
-        updatePendingBadge();
-        showView('view-admin-dashboard');
         return true;
       }
       return false;
