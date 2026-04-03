@@ -434,9 +434,24 @@
     
     // ===== REGISTRATION =====
     function registerPlayer() {
-      // Check if registration is closed
-      if (registrationClosed) {
+      // Always read current state from localStorage
+      const isClosed = localStorage.getItem('registration_closed') === 'true';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      // Check if registration is closed manually
+      if (isClosed) {
         alert('Registration is CLOSED for today!');
+        return;
+      }
+      
+      // Check cutoff time
+      const now = new Date();
+      const cutoff = new Date();
+      const [hours, minutes] = cutoffTime.split(':');
+      cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      if (now > cutoff) {
+        alert('Registration is closed! The cutoff time was ' + formatTime12(cutoffTime) + '.');
         return;
       }
       
@@ -458,19 +473,6 @@
       if (existing) {
         alert('You are already registered!');
         return;
-      }
-      
-      // Check cutoff time (if manual close not used)
-      if (!registrationClosed) {
-        const now = new Date();
-        const cutoff = new Date();
-        const [hours, minutes] = cutoffTime.split(':');
-        cutoff.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
-        if (now > cutoff) {
-          alert('Registration is closed! The cutoff time was ' + formatTime12(cutoffTime) + '.');
-          return;
-        }
       }
       
       // Add player
