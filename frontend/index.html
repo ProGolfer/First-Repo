@@ -980,13 +980,34 @@
     }
     
     function loadTeamScores() {
-      const numTeams = parseInt(localStorage.getItem('num_teams') || '4');
+      // Get players and find how many teams are actually playing
+      let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
+      let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
+      
+      // Find unique teams that have players
+      let activeTeams = new Set();
+      teamPlayers.forEach(p => {
+        if (p.team && p.team.startsWith('Team ')) {
+          activeTeams.add(p.team.replace('Team ', ''));
+        }
+      });
+      
+      // Convert to number and find max
+      let numTeams = 0;
+      if (activeTeams.size > 0) {
+        let teamNums = Array.from(activeTeams).map(n => parseInt(n));
+        numTeams = Math.max(...teamNums);
+      }
+      
+      if (numTeams === 0) {
+        document.getElementById('team-scores-input').innerHTML = '<p style="text-align: center; color: #999;">No teams yet - submit teams first</p>';
+        return;
+      }
+      
       const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
       
       // Get team captains
       let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
-      let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
-      let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
       
       // Find captains for each team
       let teamCaptains = {};
