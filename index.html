@@ -405,6 +405,18 @@
           <span id="toggle-reg-btn">Close Registration Now</span>
         </button>
         
+        <!-- Clear Team Score -->
+        <div style="margin-top: 20px; padding: 15px; background: #ffebee; border-radius: 12px;">
+          <h4 style="margin-bottom: 10px;">🗑️ Clear Team Score</h4>
+          <div class="form-group">
+            <label>Select Team to Clear</label>
+            <select id="clear-team-select" style="padding: 10px;">
+              <option value="">-- Select Team --</option>
+            </select>
+          </div>
+          <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
+        </div>
+        
         <div style="margin-top: 20px;">
           <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
         </div>
@@ -711,6 +723,27 @@
     }
     
     function loadAdminPlayers() {
+      // Populate clear team dropdown
+      const clearSelect = document.getElementById('clear-team-select');
+      if (clearSelect) {
+        let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
+        let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
+        let activeTeams = new Set();
+        teamPlayers.forEach(p => {
+          if (p.team && p.team.startsWith('Team ')) {
+            activeTeams.add(p.team.replace('Team ', ''));
+          }
+        });
+        let teamNums = Array.from(activeTeams).map(n => parseInt(n));
+        let numTeams = teamNums.length > 0 ? Math.max(...teamNums) : 0;
+        
+        let options = '<option value="">-- Select Team --</option>';
+        for (let i = 1; i <= numTeams; i++) {
+          options += `<option value="${i}">Team ${i}</option>`;
+        }
+        clearSelect.innerHTML = options;
+      }
+      
       const pending = players.filter(p => p.status === 'pending');
       const approvedNoTeam = players.filter(p => p.status === 'approved' && (!p.team || p.team === null));
       const approvedWithTeam = players.filter(p => p.status === 'approved' && p.team);
@@ -893,6 +926,32 @@
         loadAdminPlayers();
         loadPlayersList();
         alert('All players cleared!');
+      }
+    }
+    
+    function clearSpecificTeamScore() {
+      const teamNum = document.getElementById('clear-team-select').value;
+      if (!teamNum) {
+        alert('Please select a team to clear');
+        return;
+      }
+      
+      if (confirm(`Are you sure you want to clear Team ${teamNum}'s score?`)) {
+        // Clear this team's score
+        const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
+        delete scores[`team${teamNum}_front`];
+        delete scores[`team${teamNum}_back`];
+        localStorage.setItem('team_scores', JSON.stringify(scores));
+        
+        // Remove from submitted teams
+        let submittedTeams = JSON.parse(localStorage.getItem('submitted_teams') || '[]');
+        submittedTeams = submittedTeams.filter(t => t !== parseInt(teamNum));
+        localStorage.setItem('submitted_teams', JSON.stringify(submittedTeams));
+        
+        alert(`Team ${teamNum} score cleared!`);
+        loadAdminPlayers();
+        loadTeamsDisplay();
+        loadTeamScores();
       }
     }
     
