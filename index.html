@@ -1121,46 +1121,110 @@
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
           <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName} ${statusHtml}</div>`;
         
-        // If team has submitted AND ALL teams have submitted → show scores
-        // Otherwise → just show status, hide scores
-        const showScores = allScoresSubmitted;
+        // Find winning team(s)
+        let winningScore = -1;
+        let winners = [];
         
-        if (showScores && isSubmitted && front && back) {
-          // Show submitted score (read-only)
+        for (let i = 1; i <= numTeams; i++) {
+          if (allScoresSubmitted) {
+            const total = parseInt(scores[`team${i}_front`] || 0) + parseInt(scores[`team${i}_back`] || 0);
+            if (total > winningScore) {
+              winningScore = total;
+              winners = [i]; // New highest score, reset winners
+            } else if (total === winningScore && total !== 0) { // Check for ties, ignore if score is 0
+              winners.push(i); // Add to existing winners
+            }
+          }
+        }
+        
+        // Add emoji to winning team(s)
+        if (allScoresSubmitted) {
+          html = ''; // Rebuild HTML to include winner emoji
+          for (let i = 1; i <= numTeams; i++) {
+            const front = scores[`team${i}_front`] || '';
+            const back = scores[`team${i}_back`] || '';
+            const total = front && back ? parseInt(front) + parseInt(back) : '';
+            const captainName = teamCaptains[i] ? ` (${teamCaptains[i]})` : '';
+            const isSubmitted = submittedTeams.includes(i);
+            
+            let statusHtml = '';
+            if (isSubmitted) {
+              statusHtml = `<span style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Score Submitted</span>`;
+            } else if (allScoresSubmitted) {
+              statusHtml = `<span style="background: #ff9800; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">All Submitted!</span>`;
+            } else {
+              statusHtml = `<span style="background: #999; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">⏳ Awaiting</span>`;
+            }
+            
+            const isWinner = winners.includes(i);
+            const winnerEmoji = isWinner ? ' 🏆' : '';
+            
+            html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+              <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName}${winnerEmoji} ${statusHtml}</div>`;
+            
+            // If team has submitted AND ALL teams have submitted → show scores
+            // Otherwise → just show status, hide scores
+            const showScores = allScoresSubmitted;
+            
+            if (showScores && isSubmitted && front && back) {
+              // Show submitted score (read-only)
+              html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Front</label>
+                  <input type="number" value="${front}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Back</label>
+                  <input type="number" value="${back}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px; font-weight: bold;">Total</label>
+                  <input type="number" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+                </div>
+              </div>`;
+            } else if (!isSubmitted) {
+              // Team hasn't submitted - show input fields
+              html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Front</label>
+                  <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Back</label>
+                  <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px; font-weight: bold;">Total</label>
+                  <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+                </div>
+              </div>`;
+              html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
+            } else {
+              // Team submitted but not all teams submitted - hide scores
+              html += `<div style="text-align: center; padding: 15px; color: #666; font-style: italic;">Scores hidden until all teams submit</div>`;
+            }
+            
+            html += `</div>`;
+          }
+        } else { // If not all scores submitted, show regular view
           html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Front</label>
-              <input type="number" value="${front}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+              <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
             </div>
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Back</label>
-              <input type="number" value="${back}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
-            </div>
-            <div style="flex: 1; min-width: 80px;">
-              <label style="font-size: 12px; font-weight: bold;">Total</label>
-              <input type="number" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
-            </div>
-          </div>`;
-        } else if (!isSubmitted) {
-          // Team hasn't submitted - show input fields
-          html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 80px;">
-              <label style="font-size: 12px;">Front</label>
-              <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
-            </div>
-            <div style="flex: 1; min-width: 80px;">
-              <label style="font-size: 12px;">Back</label>
-              <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
+              <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
             </div>
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px; font-weight: bold;">Total</label>
               <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
             </div>
           </div>`;
-          html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
-        } else {
-          // Team submitted but not all teams submitted - hide scores
-          html += `<div style="text-align: center; padding: 15px; color: #666; font-style: italic;">Scores hidden until all teams submit</div>`;
+          
+          if (!isSubmitted) {
+            html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
+          }
         }
         
         html += `</div>`;
