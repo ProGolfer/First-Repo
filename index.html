@@ -989,8 +989,27 @@
         const back = scores[`team${i}_back`] || '';
         const total = front && back ? parseInt(front) + parseInt(back) : '';
         
+        // Get team captains
+      let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+      let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
+      let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
+      
+      // Find captains for each team
+      let teamCaptains = {};
+      for (let t = 1; t <= numTeams; t++) {
+        teamCaptains[t] = '';
+        teamPlayers.filter(p => p.team === 'Team ' + t).forEach(p => {
+          if (captains[p.id] === true) {
+            teamCaptains[t] = p.name;
+          }
+        });
+      }
+      
+      for (let i = 1; i <= numTeams; i++) {
+        const captainName = teamCaptains[i] ? ` (${teamCaptains[i]})` : '';
+        
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-          <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}</div>
+          <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName}</div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Front</label>
