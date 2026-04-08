@@ -1121,22 +1121,41 @@
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
           <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName} ${statusHtml}</div>`;
         
-        // Find winning team(s)
-        let winningScore = -1;
-        let winners = [];
-        
+        // Calculate all team totals
+        let teamTotals = [];
         for (let i = 1; i <= numTeams; i++) {
-          if (allScoresSubmitted) {
-            const total = parseInt(scores[`team${i}_front`] || 0) + parseInt(scores[`team${i}_back`] || 0);
-            if (total > winningScore) {
-              winningScore = total;
-              winners = [i]; // New highest score, reset winners
-            } else if (total === winningScore && total !== 0) { // Check for ties, ignore if score is 0
-              winners.push(i); // Add to existing winners
-            }
-          }
+          const front = scores[`team${i}_front`] || '';
+          const back = scores[`team${i}_back`] || '';
+          const total = front && back ? parseInt(front) + parseInt(back) : 0; // Default to 0 if incomplete
+          teamTotals.push({ teamNum: i, total: total });
         }
         
+        // Sort teams by total score (descending)
+        teamTotals.sort((a, b) => b.total - a.total);
+        
+        // Determine ranks and emojis
+        let ranks = {};
+        let maxScore = -1;
+        let minScore = Infinity;
+        
+        teamTotals.forEach((item, index) => {
+          if (item.total > maxScore) maxScore = item.total;
+          if (item.total < minScore) minScore = item.total;
+        });
+
+        // Assign emojis based on rank
+        teamTotals.forEach((item, index) => {
+          const rank = index + 1;
+          if (item.total === maxScore && maxScore > 0) { // Ensure we don't rank 0 scores as winner
+            ranks[item.teamNum] = '🏆'; // First place
+          } else if (rank <= 3 && item.total === teamTotals[rank-1].total) { // Handle ties for 2nd/3rd
+            if (rank === 2) ranks[item.teamNum] = '🥈'; 
+            if (rank === 3) ranks[item.teamNum] = '🥉'; 
+          } else if (item.total === minScore && minScore < maxScore) { // Lowest score is last place
+             ranks[item.teamNum] = '💩';
+          }
+        });
+
         // Add emoji to winning team(s)
         if (allScoresSubmitted) {
           html = ''; // Rebuild HTML to include winner emoji
@@ -1156,11 +1175,10 @@
               statusHtml = `<span style="background: #999; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">⏳ Awaiting</span>`;
             }
             
-            const isWinner = winners.includes(i);
-            const winnerEmoji = isWinner ? ' 🏆' : '';
+            const emoji = ranks[i] || ''; // Get emoji based on rank
             
             html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-              <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName}${winnerEmoji} ${statusHtml}</div>`;
+              <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName}${emoji} ${statusHtml}</div>`;
             
             // If team has submitted AND ALL teams have submitted → show scores
             // Otherwise → just show status, hide scores
@@ -1179,7 +1197,7 @@
                 </div>
                 <div style="flex: 1; min-width: 80px;">
                   <label style="font-size: 12px; font-weight: bold;">Total</label>
-                  <input type="number" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+                  <input type="number" value="${total}" readonly style="width: 100%; padding: 3px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
                 </div>
               </div>`;
             } else if (!isSubmitted) {
