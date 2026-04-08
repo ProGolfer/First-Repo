@@ -1101,28 +1101,26 @@
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
           <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName} ${statusHtml}</div>`;
         
-        // Show/hide scores: teams that submitted can see each other, awaiting teams are hidden
-        const canSeeScores = isSubmitted && allScoresSubmitted;
+        // If team has submitted, show their score (read-only)
+        // If team hasn't submitted, show input fields to enter score
+        const showReadOnly = isSubmitted || allScoresSubmitted;
         
-        if (canSeeScores) {
+        if (showReadOnly && front && back) {
+          // Show submitted score (read-only)
           html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Front</label>
-              <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
+              <input type="number" value="${front}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
             </div>
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Back</label>
-              <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
+              <input type="number" value="${back}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
             </div>
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px; font-weight: bold;">Total</label>
-              <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+              <input type="number" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
             </div>
           </div>`;
-          
-          if (!isSubmitted) {
-            html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
-          }
         } else {
           // Show input fields for teams to enter their score
           html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
