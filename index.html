@@ -1050,6 +1050,14 @@
       loadTeamScores();
     }
     
+    function resetDailyScores() {
+      localStorage.removeItem('team_scores');
+      localStorage.removeItem('submitted_teams');
+      console.log('Daily scores reset!');
+      // Optionally, reload scores display if needed
+      // loadTeamScores(); 
+    }
+    
     function loadTeamScores() {
       // Get players and find how many teams are actually playing
       let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
@@ -1227,6 +1235,27 @@
     // Start the app
     init();
     loadPlayersList();
+    // Schedule daily score reset at 6 AM
+    // Calculate milliseconds until next 6 AM
+    const now = new Date();
+    const targetTime = new Date();
+    targetTime.setHours(6, 0, 0, 0); // 6 AM
+
+    if (now > targetTime) {
+      // If it's already past 6 AM today, schedule for tomorrow
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+    
+    const timeUntilTarget = targetTime.getTime() - now.getTime();
+    
+    setInterval(resetDailyScores, 24 * 60 * 60 * 1000); // Reset every 24 hours
+    
+    setTimeout(() => {
+      resetDailyScores();
+      // Set interval for every 24 hours after the first reset
+      setInterval(resetDailyScores, 24 * 60 * 60 * 1000);
+    }, timeUntilTarget);
+    
   </script>
 </body>
 </html>
