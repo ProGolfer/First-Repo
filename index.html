@@ -785,6 +785,7 @@
                 <div class="player-detail">${p.course}</div>
               </div>
               <span class="status-badge status-noteam">No Team</span>
+              <button class="btn btn-danger btn-small" onclick="deletePlayer(${p.id})">🗑️ Delete</button>
             </li>
           `;
         });
@@ -839,6 +840,7 @@
                 <div class="player-detail">${p.course}</div>
               </div>
               ${isClosed ? teamOptions : '<span class="status-badge status-closed">Registration Open</span>'}
+                <button class="btn btn-danger btn-small" onclick="deletePlayer(${p.id})">🗑️ Delete</button>
             </li>
           `;
         });
@@ -859,6 +861,16 @@
     
     function rejectPlayer(id) {
       if (confirm('Decline this player?')) {
+        players = players.filter(p => p.id !== id);
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+      }
+    }
+    
+    function deletePlayer(id) {
+      if (confirm('Delete this approved player? This cannot be undone.')) {
         players = players.filter(p => p.id !== id);
         localStorage.setItem('golf_players', JSON.stringify(players));
         loadAdminPlayers();
