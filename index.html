@@ -1101,11 +1101,11 @@
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
           <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName} ${statusHtml}</div>`;
         
-        // If team has submitted, show their score (read-only)
-        // If team hasn't submitted, show input fields to enter score
-        const showReadOnly = isSubmitted || allScoresSubmitted;
+        // If team has submitted AND ALL teams have submitted → show scores
+        // Otherwise → just show status, hide scores
+        const showScores = allScoresSubmitted;
         
-        if (showReadOnly && front && back) {
+        if (showScores && isSubmitted && front && back) {
           // Show submitted score (read-only)
           html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 80px;">
@@ -1121,8 +1121,8 @@
               <input type="number" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
             </div>
           </div>`;
-        } else {
-          // Show input fields for teams to enter their score
+        } else if (!isSubmitted) {
+          // Team hasn't submitted - show input fields
           html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 80px;">
               <label style="font-size: 12px;">Front</label>
@@ -1137,10 +1137,10 @@
               <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
             </div>
           </div>`;
-          
-          if (!isSubmitted) {
-            html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
-          }
+          html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
+        } else {
+          // Team submitted but not all teams submitted - hide scores
+          html += `<div style="text-align: center; padding: 15px; color: #666; font-style: italic;">Scores hidden until all teams submit</div>`;
         }
         
         html += `</div>`;
