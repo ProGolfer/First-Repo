@@ -983,13 +983,7 @@
       const numTeams = parseInt(localStorage.getItem('num_teams') || '4');
       const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
       
-      let html = '';
-      for (let i = 1; i <= numTeams; i++) {
-        const front = scores[`team${i}_front`] || '';
-        const back = scores[`team${i}_back`] || '';
-        const total = front && back ? parseInt(front) + parseInt(back) : '';
-        
-        // Get team captains
+      // Get team captains
       let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
       let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
       let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
@@ -1005,7 +999,11 @@
         });
       }
       
+      let html = '';
       for (let i = 1; i <= numTeams; i++) {
+        const front = scores[`team${i}_front`] || '';
+        const back = scores[`team${i}_back`] || '';
+        const total = front && back ? parseInt(front) + parseInt(back) : '';
         const captainName = teamCaptains[i] ? ` (${teamCaptains[i]})` : '';
         
         html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
