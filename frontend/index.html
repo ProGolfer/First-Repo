@@ -6,8 +6,7 @@
     async function fetchPlayers() {
       const { data, error } = await supabase
         .from('players')
-        .select('*')
-        .order('registered_at', { ascending: true });
+        .select('*'); // Removed .order() clause
 
       if (error) {
         console.error('Error fetching players:', error.message);
@@ -31,7 +30,7 @@
       if (approved.length === 0) {
         html = '<li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>';
       } else {
-        // approved.sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt)); // Already sorted by Supabase
+        // Sorting will be done client-side if needed, or handled by Supabase query later
         approved.forEach(p => {
           html += `
             <li class="player-item">
@@ -45,3 +44,24 @@
       }
       document.getElementById('player-list').innerHTML = html;
     }
+    
+    // ===== CUTOFF TIME =====
+    function updateCutoffDisplay() {
+      const openTime = localStorage.getItem('open_time') || '06:00';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      const openTime12 = formatTime12(openTime);
+      const cutoffTime12 = formatTime12(cutoffTime);
+      
+      document.getElementById('open-display').textContent = openTime12;
+      document.getElementById('cutoff-display').textContent = cutoffTime12;
+      document.getElementById('team-cutoff-time').textContent = cutoffTime12;
+    }
+    
+    function formatTime12(time24) {
+      const [hours, minutes] = time24.split(':');
+      const h = parseInt(hours);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+
+[735 more lines in file. Use offset=609 to continue.]
