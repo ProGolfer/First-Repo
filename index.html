@@ -1,67 +1,54 @@
-    function loadPlayersList() {
-      // Fetch players from Supabase
-      fetchPlayers();
-    }
-
-    async function fetchPlayers() {
-      const { data, error } = await supabase
-        .from('players')
-        .select('*'); // Removed .order() clause
-
-      if (error) {
-        console.error('Error fetching players:', error.message);
-        // Display error to user or handle gracefully
-        document.getElementById('player-list').innerHTML = '<li style="color: red; text-align: center; padding: 10px;">Could not load players.</li>';
-        return;
-      }
-
-      players = data; // Update the global players array
+    function approvePlayer(id) {
+      // Find player in localStorage and update status
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
       
-      const pending = players.filter(p => p.status === 'pending');
-      const approved = players.filter(p => p.status === 'approved');
-      
-      // Update pending count
-      document.getElementById('pending-count').textContent = pending.length;
-      
-      // Update approved count
-      document.getElementById('player-count').textContent = approved.length;
-      
-      let html = '';
-      if (approved.length === 0) {
-        html = '<li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>';
+      if (playerIndex > -1) {
+        players[playerIndex].status = 'approved';
+        players[playerIndex].approvedAt = new Date().toISOString();
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        
+        // Update UI
+        loadAdminPlayers(); // Reload admin lists
+        loadPlayersList(); // Reload the main player list
+        updatePendingBadge(); // Update the count of pending players
+        alert(`Player ${players[playerIndex].name} approved!`);
       } else {
-        // Sorting will be done client-side if needed, or handled by Supabase query later
-        approved.forEach(p => {
-          html += `
-            <li class="player-item">
-              <div class="player-info">
-                <div class="player-name">${p.name}</div>
-                <div class="player-detail">${p.course}</div>
-              </div>
-            </li>
-          `;
-        });
+        console.error("Player not found for approval:", id);
       }
-      document.getElementById('player-list').innerHTML = html;
     }
-    
-    // ===== CUTOFF TIME =====
-    function updateCutoffDisplay() {
-      const openTime = localStorage.getItem('open_time') || '06:00';
-      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
-      
-      const openTime12 = formatTime12(openTime);
-      const cutoffTime12 = formatTime12(cutoffTime);
-      
-      document.getElementById('open-display').textContent = openTime12;
-      document.getElementById('cutoff-display').textContent = cutoffTime12;
-      document.getElementById('team-cutoff-time').textContent = cutoffTime12;
-    }
-    
-    function formatTime12(time24) {
-      const [hours, minutes] = time24.split(':');
-      const h = parseInt(hours);
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      const h12 = h % 12 || 12;
 
-[735 more lines in file. Use offset=609 to continue.]
+    function rejectPlayer(id) {
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
+
+      if (playerIndex > -1) {
+        players.splice(playerIndex, 1); // Remove player
+        localStorage.setItem('golf_players', JSON.stringify(players));
+
+        // Update UI
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+        alert(`Player rejected and removed.`);
+      } else {
+        console.error("Player not found for rejection:", id);
+      }
+    }
+
+    function deletePlayer(id) {
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
+
+      if (playerIndex > -1) {
+        players.splice(playerIndex, 1); // Remove player
+        localStorage.setItem('golf_players', JSON.stringify(players));
+
+        // Update UI
+        loadAdminPlayers();
+        loadPlayersList();
+        alert(`Player deleted.`);
+      } else {
+        console.error("Player not found for deletion:", id);
+      }
+    }
