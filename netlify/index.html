@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyMDk0MiwiZXhwIjoyMDkxMjk2OTQyfQ. Po5A90LeU6bS2HLNpQbRpuFb5rJAbupMuECu8JwOGZQ';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let players = [];
+    async function loadPlayers() { const { data, error } = await supabase.from('players').select('*').order('created_at', { ascending: false }); if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } else { players = data || []; } return players; }
+    async function savePlayerToSupabase(player) { const { error } = await supabase.from('players').insert([player]); if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } return true; }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
@@ -134,22 +144,37 @@
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
 
-    function registerPlayer(){
-      const name=document.getElementById('reg-name').value.trim();
-      if(!name){ alert('Enter name'); return; }
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      players.push({name,team:1,status:'pending',registeredAt:Date.now()});
-      localStorage.setItem('golf_players',JSON.stringify(players));
-      document.getElementById('reg-name').value='';
-      loadPlayersList(); showView('view-confirm');
+   async function registerPlayer(){
+  const name=document.getElementById('reg-name').value.trim();
+  if(!name){ alert('Enter name'); return; }
+  
+  const newPlayer = {
+    id: 'player_' + Date.now(),
+    name: name,
+    team: 1,
+    status: 'pending',
+    registeredAt: Date.now()
+  };
+    // Try Supabase first, fallback to localStorage
+  const supabaseSuccess = await savePlayerToSupabase(newPlayer);
+  if (!supabaseSuccess) {
+    let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+    players.push(newPlayer);
+    localStorage.setItem('golf_players',JSON.stringify(players));
+  }
+  
+  document.getElementById('reg-name').value='';
+  loadPlayersList(); showView('view-confirm');
+}
     }
 
-    function loadPlayersList(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let approved=players.filter(p=>p.status==='approved');
-      document.getElementById('player-count').textContent=approved.length;
-      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-      document.getElementById('player-list').innerHTML=html;
+   async function loadPlayersList(){
+  await loadPlayers();
+  let approved=players.filter(p=>p.status==='approved');
+  document.getElementById('player-count').textContent=approved.length;
+  let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
+  document.getElementById('player-list').innerHTML=html;
+}
     }
 
     function switchGameTab(t){
