@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Golf Registration</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Your existing HTML UI here -->
+  
+  <script>
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyMDk0MiwiZXhwIjoyMDkxMjk2OTQyfQ. Po5A90LeU6bS2HLNpQbRpuFb5rJAbupMuECu8JwOGZQ';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ============================================
+    // Supabase-based Player Functions
+    // ============================================
+    
+    // Fetch all players from Supabase
+    async function loadPlayersFromSupabase() {
+      const { data, error } = await supabase.from('players').select('*');
+      if (error) {
+        console.error('Error loading players:', error);
+        return [];
+      }
+      return data || [];
+    }
+    
+    // Add a new player to Supabase
+    async function addPlayerSupabase(player) {
+      const { data, error } = await supabase.from('players').insert([player]);
+      if (error) {
+        console.error('Error adding player:', error);
+        return false;
+      }
+      return true;
+    }
+    
+    // Approve a player
+    async function approvePlayerSupabase(id) {
+      const { data: player, error: fetchError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError || !player) {
+        console.error('Player not found:', id);
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('players')
+        .update({ 
+          status: 'approved', 
+          approved_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error approving player:', error);
+        return;
+      }
+      
+      loadAdminPlayers();
+      loadPlayersList();
+      updatePendingBadge();
+      alert(`Player ${player.name} approved!`);
+    }
+    
+    // Reject (delete) a player
+    async function rejectPlayerSupabase(id) {
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error rejecting player:', error);
+        return;
+      }
+      
+      loadAdminPlayers();
+      loadPlayersList();
+      updatePendingBadge();
+      alert('Player rejected and removed.');
+    }
+    
+    // Delete a player
+    async function deletePlayerSupabase(id) {
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error deleting player:', error);
+        return;
+      }
+      
+      loadAdminPlayers();
+      loadPlayersList();
+      alert('Player deleted.');
+    }
+    
+    // Update a player
+    async function updatePlayerSupabase(id, updates) {
+      const { error } = await supabase
+        .from('players')
+        .update(updates)
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error updating player:', error);
+        return false;
+      }
+      return true;
+    }
+    
+    // ============================================
+    // Settings Functions (using Supabase)
+    // ============================================
+    
+    async function loadSettingsFromSupabase() {
+      const { data, error } = await supabase.from('settings').select('*');
+      if (error) {
+        console.error('Error loading settings:', error);
+        return {};
+      }
+      const settings = {};
+      data.forEach(s => settings[s.key] = s.value);
+      return settings;
+    }
+    
+    async function saveSettingSupabase(key, value) {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key, value, updated_at: new Date().toISOString() });
+      
+      if (error) {
+        console.error('Error saving setting:', error);
+        return false;
+      }
+      return true;
+    }
+    
+    // ============================================
+    // Real-time Subscriptions (optional)
+    // ============================================
+    
+    // Subscribe to real-time player updates
+    function subscribeToPlayers(callback) {
+      return supabase
+        .channel('players')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, callback)
+        .subscribe();
+    }
+  </script>
+</body>
+</html>
