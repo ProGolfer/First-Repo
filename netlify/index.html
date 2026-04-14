@@ -127,19 +127,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-    // Supabase Config - wait for library to load
-    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
-    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-    
-    // Supabase helpers - ADDED, don't touch existing code
-    async function supabaseSavePlayer(p) { if(!supabaseClient) return; try { await supabaseClient.from('players').insert([p]); } catch(e) { console.log('Supabase error', e); } }
-    async function supabaseLoadPlayers() { if(!supabaseClient) return []; try { const {data} = await supabaseClient.from('players').select('*'); return data || []; } catch(e) { return []; } }
-    async function supabaseUpdatePlayer(id, data) { if(!supabaseClient) return; try { await supabaseClient.from('players').update(data).eq('id', id); } catch(e) {} }
-    async function supabaseDeletePlayer(id) { if(!supabaseClient) return; try { await supabaseClient.from('players').delete().eq('id', id); } catch(e) {} }
-    
+  <script>
     let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
     let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
     let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
@@ -150,25 +138,15 @@
     function registerPlayer(){
       const name=document.getElementById('reg-name').value.trim();
       if(!name){ alert('Enter name'); return; }
-      const newPlayer = {name:name,team:1,status:'pending',registeredAt:Date.now()};
-      // Save to Supabase first
-      supabaseSavePlayer(newPlayer);
-      // Also save to localStorage as backup
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      players.push(newPlayer);
+      players.push({name,team:1,status:'pending',registeredAt:Date.now()});
       localStorage.setItem('golf_players',JSON.stringify(players));
       document.getElementById('reg-name').value='';
       loadPlayersList(); showView('view-confirm');
     }
 
-    async function loadPlayersList(){
-      // Try loading from Supabase first
-      let supabasePlayers = await supabaseLoadPlayers();
-      let localPlayers=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      // Merge - Supabase takes priority, add local-only players
-      let allIds = new Set(supabasePlayers.map(p => p.id));
-      let localOnly = localPlayers.filter(p => !allIds.has(p.id));
-      let players = [...supabasePlayers, ...localOnly];
+    function loadPlayersList(){
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let approved=players.filter(p=>p.status==='approved');
       document.getElementById('player-count').textContent=approved.length;
       let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
@@ -217,26 +195,14 @@
     function approve(id){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ 
-        players[idx].status='approved'; 
-        localStorage.setItem('golf_players',JSON.stringify(players)); 
-        // Also update Supabase if it has this player
-        supabaseUpdatePlayer(id, {status:'approved'});
-        loadAdminPlayers(); loadPlayersList(); 
-      }
+      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function deleteP(id){
       if(!confirm('Delete?')) return;
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ 
-        players.splice(idx,1); 
-        localStorage.setItem('golf_players',JSON.stringify(players)); 
-        // Also delete from Supabase
-        supabaseDeletePlayer(id);
-        loadAdminPlayers(); loadPlayersList(); 
-      }
+      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function loadAdminTeams(){
