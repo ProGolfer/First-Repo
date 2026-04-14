@@ -556,9 +556,18 @@
     }
     
     // ===== LOAD PLAYERS LIST (Home Page) =====
-    function loadPlayersList() {
-      // Use global players (refreshed from localStorage)
-      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+    async function loadPlayersList() {
+      // First try to load from Supabase
+      let supabasePlayers = [];
+      if(window.supabaseClient) {
+        try { const {data} = await window.supabaseClient.from('players').select('*'); supabasePlayers = data || []; } catch(e) { supabasePlayers = []; }
+      }
+      // Then get local players
+      let localPlayers = JSON.parse(localStorage.getItem('golf_players')) || [];
+      // Merge: Supabase + local (local takes priority)
+      let existingIds = new Set(localPlayers.map(p => p.registeredAt));
+      let supabaseOnly = supabasePlayers.filter(p => !existingIds.has(p.registeredAt));
+      players = [...localPlayers, ...supabaseOnly];
       
       const pending = players.filter(p => p.status === 'pending');
       const approved = players.filter(p => p.status === 'approved');
