@@ -4,239 +4,1347 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>var supabaseClient=null;try{if(window.supabase)supabaseClient=window.supabase.createClient('https://uwkmmrqnpnhlustrxees.supabase.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll- oFetHqht5E');}catch(e){}</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 100%; margin: 0 auto; }
+    .container { max-width: 500px; margin: 0 auto; }
     .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-    .header { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; padding: 25px; text-align: center; border-radius: 20px 20px 0 0; margin: -20px -20px 20px -20px; }
-    .header h1 { font-size: 26px; }
+    
+    /* Header */
+    .header { 
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); 
+      color: white; 
+      padding: 25px; 
+      text-align: center; 
+      border-radius: 20px 20px 0 0; 
+      margin: -20px -20px 20px -20px; 
+    }
+    .header h1 { font-size: 24px; margin-bottom: 10px; }
+    .logo-placeholder { 
+      width: 80px; 
+      height: 80px; 
+      background: rgba(255,255,255,0.2); 
+      border-radius: 50%; 
+      margin: 0 auto 10px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      font-size: 40px;
+    }
+    
+    /* Weather Box */
+    .weather-box { 
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 20px;
+    }
+    .weather-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      text-align: center; 
+    }
+    .weather-item span { display: block; font-size: 18px; font-weight: bold; color: #1a472a; }
+    .weather-item small { font-size: 12px; color: #666; }
+    
+    /* Form */
     .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
-    .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; }
-    .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px; background: #f5f5f5; border-radius: 8px; }
-    .btn { width: 100%; padding: 18px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; margin-bottom: 8px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+    .form-group input, .form-group select { 
+      width: 100%; 
+      padding: 14px; 
+      border: 2px solid #e0e0e0; 
+      border-radius: 12px; 
+      font-size: 16px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #2d5a27;
+    }
+    
+    /* Buttons */
+    .btn { 
+      width: 100%; 
+      padding: 16px 14px; 
+      min-height: 48px; 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      font-weight: 700; 
+      cursor: pointer; 
+      margin-bottom: 10px;
+    }
     .btn-primary { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; }
     .btn-secondary { background: #f5f5f5; color: #333; }
-    .btn-success { background: #4caf50; color: white; }
-    .btn-danger { background: #f44336; color: white; }
     .btn-warning { background: #ff9800; color: white; }
+    .btn-danger { background: #f44336; color: white; }
+    .btn-success { background: #4caf50; color: white; }
     .btn-small { padding: 8px 12px; font-size: 12px; width: auto; }
-    .btn-back { background: #757575; color: white; margin-top: 10px; }
-    .players-section { background: #f8f9fa; border-radius: 12px; padding: 15px; margin-top: 15px; }
-    .players-header { display: flex; justify-content: space-between; }
-    .players-count { background: #2d5a27; color: white; padding: 4px 12px; border-radius: 20px; }
+    .btn-group { display: flex; gap: 8px; }
+    .btn-group .btn { flex: 1; }
+    
+    /* Players Section */
+    .players-section { 
+      background: #f8f9fa; 
+      border-radius: 12px; 
+      padding: 15px; 
+      margin-top: 15px; 
+    }
+    .players-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 10px;
+    }
+    .players-header h3 { color: #333; }
+    .players-count { 
+      background: #2d5a27; 
+      color: white; 
+      padding: 4px 12px; 
+      border-radius: 20px; 
+      font-size: 14px;
+    }
     .player-list { list-style: none; }
-    .player-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .table-container { overflow-x: auto; max-width:100%;-webkit-overflow-scrolling:touch; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 5px; text-align: left; border-bottom: 1px solid #eee; }
-    .status-approved { color: #4caf50; font-weight: bold; }
-    .status-pending { color: #ff9800; font-weight: bold; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-    .tab-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; }
-    .tab-btn.active { background: #2d5a27; color: white; }
-    .admin-section { background: #f5f5f5; border-radius: 12px; padding: 15px; margin: 15px 0; }
+    .player-item { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      padding: 12px 0; 
+      border-bottom: 1px solid #eee; 
+    }
+    .player-item:last-child { border-bottom: none; }
+    .player-info { flex: 1; }
+    .player-name { font-weight: bold; }
+    .player-detail { font-size: 12px; color: #666; }
+    .player-actions { display: flex; gap: 8px; }
+    
+    /* Status badges */
+    .status-badge { 
+      font-size: 11px; 
+      padding: 4px 8px; 
+      border-radius: 4px; 
+      font-weight: bold;
+    }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-noteam { background: #e3f2fd; color: #1565c0; }
+    .status-team-assigned { background: #d4edda; color: #155724; }
+    .status-closed { background: #ffebee; color: #c62828; }
+    
+    /* Cutoff Time Box */
+    .cutoff-box {
+      background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+      border: 2px solid #ff9800;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .cutoff-box h4 { color: #e65100; margin-bottom: 5px; }
+    .cutoff-time { font-size: 24px; font-weight: bold; color: #333; }
+    
+    /* Info box */
+    .info-box {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .info-box.closed {
+      background: #ffebee;
+      border: 2px solid #f44336;
+    }
+    
+    /* Hidden */
     .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- HOME VIEW -->
     <div id="view-home" class="card">
-      <div class="header"><h1>⛳ Golf Money Game</h1></div>
-      <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span style="font-size:20px;font-weight:bold;">72°F</span><br><small>Temp</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">16</span><br><small>Wind</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">29%</span><br><small>Humidity</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">Clear</span><br><small>Sky</small></div>
+      <!-- Header with Logo -->
+      <div class="header">
+        <img src="https://dam.assets.ohio.gov/image/upload/ohio.org/uploads/0688y000000mslDAAQ.jpg" alt="Cliffside Golf Club" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 10px; border-radius: 50%;">
+        <h1>Money Game Registration</h1>
+      </div>
+      
+      <!-- Live Weather Display -->
+      <div class="weather-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: bold; color: #1a472a;">Live Weather</span>
+          <button onclick="loadWeather()" style="background: none; border: none; cursor: pointer; font-size: 16px;">🔄</button>
+        </div>
+        <div class="weather-grid">
+          <div class="weather-item">
+            <span id="weather-temp">--°F</span>
+            <small>Temp</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-wind">--</span>
+            <small>Wind</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-humidity">--%</span>
+            <small>Humidity</small>
+          </div>
+          <div class="weather-item">
+            <span id="weather-sky">--</span>
+            <small>Sky</small>
+          </div>
         </div>
       </div>
+      
+      <!-- Player Registration Form -->
       <div class="form-group">
         <label>Select Course</label>
-        <select id="reg-course"><option>Cliffside Golf Club</option><option>Pebble Beach</option></select>
+        <select id="reg-course">
+          <option value="Cliffside Golf Club" selected>Cliffside Golf Club</option>
+        </select>
       </div>
-      <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
-      <div class="form-group"><label>Phone (optional)</label><input type="tel" id="reg-phone" placeholder="(555) 123-4567"></div>
+      
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="reg-name" placeholder="Enter your name">
+      </div>
+      
+      <div class="form-group">
+        <label>Phone (optional)</label>
+        <input type="tel" id="reg-phone" placeholder="(555) 123-4567">
+      </div>
+      
       <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+      
+      <!-- Players Waiting for Approval -->
+      <div id="pending-approval-bar" style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 15px 0; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #856404; font-weight: 600;">⏳ Players Waiting for Approval</span>
+        <span id="pending-count" style="background: #856404; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold;">0</span>
+      </div>
+      
+      <!-- Registered Players (Approved Only) -->
       <div class="players-section">
-        <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
-        <ul id="player-list" class="player-list"></ul>
+        <div class="players-header">
+          <h3>Today's Registered Players</h3>
+          <span class="players-count" id="player-count">0</span>
+        </div>
+        <ul id="player-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>
+        </ul>
       </div>
-      <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      
+      <!-- Cutoff Time Display -->
+      <div class="cutoff-box">
+        <h4>⏰ Registration Hours</h4>
+        <div class="cutoff-time"><span id="open-display">6:00 AM</span> - <span id="cutoff-display">9:30 AM</span></div>
+      </div>
+      
+      <!-- View Leaderboard Button -->
+      <button class="btn btn-secondary" onclick="showView('view-leaderboard')">View Today's Leaderboard & Averages</button>
+      
+      <!-- Admin Link -->
+      <div class="admin-link">
+        <a href="#" onclick="showAdminLogin()">🔒 Admin Access</a>
+      </div>
+      
+      <!-- Teams Display (After Submit) -->
+      <div id="teams-display" class="players-section hidden" style="margin-top: 20px;">
+        <div class="players-header">
+          <h3>🏌️ Teams</h3>
+        </div>
+        <ul id="teams-list" class="player-list"></ul>
+        
+        <!-- Scores Section -->
+        <div id="scores-section" style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 12px;">
+          <h4 style="margin-bottom: 15px;">📝 Enter Scores (After Game Starts)</h4>
+          <div id="team-scores-input"></div>
+          <button class="btn btn-primary" style="margin-top: 15px;" onclick="saveScores()">Save Scores</button>
+        </div>
+      </div>
     </div>
 
+    <!-- CONFIRMATION VIEW -->
     <div id="view-confirm" class="card hidden">
-      <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px0;">
-        <h3 style="color:#2e7d32;">You're In!</h3>
-        <p>Your registration is pending approval.</p>
+      <div class="header">
+        <div class="logo-placeholder">✅</div>
+        <h1>Registration Complete!</h1>
       </div>
-      <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
+      <div style="background: #e8f5e9; padding: 20px; border-radius: 12px; margin: 15px 0; text-align: center;">
+        <h3 style="color: #2e7d32;">You're In!</h3>
+        <p style="margin-top: 10px;">Your registration is <strong>pending approval</strong>.</p>
+        <p style="margin-top: 10px; font-size: 14px; color: #666;">The admin will approve your registration before the cutoff time.</p>
+      </div>
+      <button class="btn btn-primary" onclick="showView('view-home'); loadPlayersList();">← Back to Home</button>
     </div>
 
-    <div id="view-game" class="card hidden">
-      <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchGameTab('myteam')">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams')">Other Teams</button>
+    <!-- LEADERBOARD VIEW -->
+    <div id="view-leaderboard" class="card hidden">
+      <div class="header">
+        <div class="logo-placeholder">🏆</div>
+        <h1>Leaderboard & Averages</h1>
       </div>
-      <div id="tab-myteam">
-        <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
-        <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
+      
+      <div class="players-section">
+        <div class="players-header">
+          <h3>🏆 Today's Winners</h3>
+        </div>
+        <ul id="leaderboard-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No scores submitted yet</li>
+        </ul>
       </div>
-      <div id="tab-otherteams" class="hidden"></div>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+      
+      <div class="players-section" style="margin-top: 15px;">
+        <div class="players-header">
+          <h3>📊 Player Averages</h3>
+        </div>
+        <ul id="averages-list" class="player-list">
+          <li style="color: #999; text-align: center; padding: 10px;">No averages data yet</li>
+        </ul>
+      </div>
+      
+      <button class="btn btn-primary" onclick="showView('view-home'); loadPlayersList();">← Back to Home</button>
     </div>
 
+    <!-- ADMIN LOGIN VIEW -->
     <div id="view-admin" class="card hidden">
-      <div class="header"><h1>🔐 Admin Access</h1></div>
-      <div class="form-group"><label>Password</label><input type="password" id="admin-password" placeholder="Enter password"></div>
+      <div class="header">
+        <div class="logo-placeholder">🔐</div>
+        <h1>Admin Access</h1>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div style="position: relative;">
+          <input type="password" id="admin-password" placeholder="Enter password" style="padding-right: 45px;">
+          <span onclick="togglePassword()" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px;">👁️</span>
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="adminLogin()">Login</button>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+      <button class="btn btn-secondary" onclick="showView('view-home'); loadPlayersList();">← Back</button>
     </div>
 
+    <!-- ADMIN DASHBOARD VIEW -->
     <div id="view-admin-dashboard" class="card hidden">
-      <div class="header"><h1>⚙️ Admin Dashboard</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchAdminTab('players')">Players</button>
-        <button class="tab-btn" onclick="switchAdminTab('teams')">Teams</button>
-        <button class="tab-btn" onclick="switchAdminTab('settings')">Settings</button>
+      <div class="header">
+        <div class="logo-placeholder">⚙️</div>
+        <h1>Admin Dashboard</h1>
       </div>
-      <div id="admin-players">
-        <div class="table-container"><table><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Status</th><th>✓</th><th>✗</th></tr></thead><tbody id="players-table-body"></tbody></table></div>
+      
+      <!-- Registration Status -->
+      <div id="registration-status" class="info-box">
+        <strong>Registration Status: <span id="reg-status-text">OPEN</span></strong>
+        <div id="reg-status-detail" style="font-size: 12px; margin-top: 5px;">Players can still register</div>
       </div>
+      
+      <!-- Tabs -->
+      <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('manage')">
+          Manage Players<span id="pending-badge" style="background: #f44336; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px; display: none;">0</span>
+        </button>
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('teams')">Select a Team</button>
+        <button class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 14px;" onclick="switchAdminTab('settings')">Settings</button>
+      </div>
+      
+      <!-- Manage Players Tab (Approve/Decline) -->
+      <div id="admin-manage">
+        <div class="info-box" style="background: #e8f5e9; border-color: #4caf50;">
+          <strong>✅ Approval Always Available</strong>
+          <div style="font-size: 12px; margin-top: 5px;">You can approve or decline players anytime, even while registration is open.</div>
+        </div>
+        
+        <h3 style="margin: 15px 0 15px;">⏳ Pending Players</h3>
+        <ul id="pending-list" class="player-list"></ul>
+        
+        <h3 style="margin: 20px 0 15px;">✅ Approved Players (No Team)</h3>
+        <ul id="approved-no-team-list" class="player-list"></ul>
+      </div>
+      
+      <!-- Select a Team Tab -->
       <div id="admin-teams" class="hidden">
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">START GAME</button><button class="btn btn-danger" onclick="endGame()">END GAME</button><div id="admin-settings" class="hidden"><div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div></div></div>
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">🚀 START GAME</button><button class="btn btn-danger" onclick="endGame()">🛑 END GAME</button></div>
-        <p id="game-status">Game not started</p>
-        <div class="admin-section">
-          <h3>Add Team</h3><input type="text" id="new-team-name" placeholder="Team name"><button class="btn btn-primary" onclick="addNewTeam()">Add</button>
+        <div class="info-box closed" id="team-selection-notice">
+          <strong>⏰ Team Selection Closed</strong>
+          <div style="font-size: 12px; margin-top: 5px;">Team selection will be available after registration closes at <span id="team-cutoff-time">9:30 AM</span></div>
         </div>
-        <div id="teams-container"></div>
-      </div>
-      <div id="admin-settings" class="hidden">
-          <div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" id="close-time"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        
+        <div id="team-selection-available" class="hidden">
+          <p style="text-align: center; margin-bottom: 15px; color: #4caf50;"><strong>Registration is now CLOSED</strong><br>You can now assign players to teams:</p>
+          
+          <!-- Number of Teams -->
+          <div class="form-group" style="margin-top: 20px;">
+            <label>🏌️ Number of Teams</label>
+            <select id="num-teams" onchange="updateNumTeams()" style="padding: 10px;">
+              <option value="1">1 Team</option>
+              <option value="2">2 Teams</option>
+              <option value="3">3 Teams</option>
+              <option value="4" selected>4 Teams</option>
+              <option value="5">5 Teams</option>
+              <option value="6">6 Teams</option>
+            </select>
+          </div>
         </div>
-      <div id="admin-settings" class="hidden">
-        <div class="admin-section"><h3>⏰ Registration Cutoff</h3><input type="time" id="cutoff-time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        
+        <h3 style="margin-bottom: 15px;">Select a Team for Approved Players</h3>
+        <ul id="team-assign-list" class="player-list"></ul>
+        
+        <button class="btn btn-primary" style="margin-top: 20px;" onclick="submitTeams()">Submit Teams</button>
       </div>
-      <button class="btn btn-back" onclick="logout()">← Log Out</button>
+      
+      <!-- Settings Tab -->
+      <div id="admin-settings" class="hidden">
+        <div class="form-group">
+          <label>⏰ Registration Opens At</label>
+          <input type="time" id="open-time" value="06:00">
+        </div>
+        <div class="form-group">
+          <label>⏰ Registration Closes At</label>
+          <input type="time" id="cutoff-time" value="09:30">
+        </div>
+        <button class="btn btn-primary" onclick="saveTimes()">Save Times</button>
+        
+        <button class="btn btn-warning" style="margin-top: 15px;" onclick="toggleRegistration()">
+          <span id="toggle-reg-btn">Close Registration Now</span>
+        </button>
+        
+        <!-- Clear Team Score -->
+        <div style="margin-top: 20px; padding: 15px; background: #ffebee; border-radius: 12px;">
+          <h4 style="margin-bottom: 10px;">🗑️ Clear Team Score</h4>
+          <div class="form-group">
+            <label>Select Team to Clear</label>
+            <select id="clear-team-select" style="padding: 10px;">
+              <option value="">-- Select Team --</option>
+            </select>
+          </div>
+          <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+          <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
+        </div>
+      </div>
+      
+      <button class="btn btn-secondary" style="margin-top: 20px;" onclick="logout()">← Log Out</button>
     </div>
   </div>
 
   <script>
-    let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
-    let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
-    let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
-
-    function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
-    function showAdminLogin(){ showView('view-admin'); }
-
-    function registerPlayer(){
-      const name=document.getElementById('reg-name').value.trim();
-      if(!name){ alert('Enter name'); return; }
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      players.push({name,team:1,status:'pending',registeredAt:Date.now()});
-      localStorage.setItem('golf_players',JSON.stringify(players));
-      document.getElementById('reg-name').value='';
-      loadPlayersList(); showView('view-confirm');
+    // ===== DATA =====
+    let players = JSON.parse(localStorage.getItem('golf_players')) || [];
+    let cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+    
+    // ===== INIT =====
+    function init() {
+      updateCutoffDisplay();
+      loadPlayersList();
+      loadWeather();
+      updateRegistrationStatus();
+      loadTeamsDisplay();
     }
-
-    function loadPlayersList(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let approved=players.filter(p=>p.status==='approved');
-      document.getElementById('player-count').textContent=approved.length;
-      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-      document.getElementById('player-list').innerHTML=html;
+    
+    // ===== NAVIGATION =====
+    function showView(viewId) {
+      document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
+      document.getElementById(viewId).classList.remove('hidden');
     }
-
-    function switchGameTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('tab-myteam').classList.add('hidden');
-      document.getElementById('tab-otherteams').classList.add('hidden');
-      document.getElementById('tab-'+t).classList.remove('hidden');
+    
+    // ===== WEATHER =====
+    async function loadWeather() {
+      try {
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.05&longitude=-84.03&current=temperature_2m,wind_speed_10m,relative_humidity_2m,weather_code');
+        if (!response.ok) throw new Error('API error');
+        const data = await response.json();
+        
+        const temp = Math.round(data.current.temperature_2m * 9/5 + 32);
+        const wind = Math.round(data.current.wind_speed_10m * 0.621371); // Convert km/h to mph
+        const humidity = data.current.relative_humidity_2m;
+        
+        document.getElementById('weather-temp').textContent = temp + '°F';
+        document.getElementById('weather-wind').textContent = wind + ' mph';
+        document.getElementById('weather-humidity').textContent = humidity + '%';
+        
+        // Weather code mapping
+        const code = data.current.weather_code;
+        let sky = 'Clear';
+        if (code === 0) sky = 'Clear';
+        else if (code <= 3) sky = 'Partly Cloudy';
+        else if (code <= 48) sky = 'Cloudy';
+        else if (code <= 67) sky = 'Rain';
+        else if (code <= 77) sky = 'Snow';
+        else sky = 'Storm';
+        document.getElementById('weather-sky').textContent = sky;
+      } catch (e) {
+        console.log('Weather error:', e);
+        document.getElementById('weather-temp').textContent = '--°F';
+        document.getElementById('weather-wind').textContent = '--';
+        document.getElementById('weather-humidity').textContent = '--%';
+        document.getElementById('weather-sky').textContent = '--';
+      }
     }
-
-    function submitTeamScore(){
-      const score=document.getElementById('team-total-score').value;
-      if(!score){ alert('Enter score'); return; }
-      teamScores[myTeam]={score:parseInt(score),submitted:true};
-      localStorage.setItem('team_scores',JSON.stringify(teamScores));
-      alert('Score submitted!');
+    
+    // ===== REGISTRATION =====
+    function registerPlayer() {
+      // Always read current state from localStorage
+      const isClosed = localStorage.getItem('registration_closed') === 'true';
+      const openTime = localStorage.getItem('open_time') || '06:00';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      // Check if registration is closed manually
+      if (isClosed) {
+        alert('Registration is CLOSED for today!');
+        return;
+      }
+      
+      // Check registration hours
+      const now = new Date();
+      const open = new Date();
+      const cutoff = new Date();
+      
+      const [openH, openM] = openTime.split(':');
+      const [closeH, closeM] = cutoffTime.split(':');
+      
+      open.setHours(parseInt(openH), parseInt(openM), 0, 0);
+      cutoff.setHours(parseInt(closeH), parseInt(closeM), 0, 0);
+      
+      if (now < open) {
+        alert('Registration opens at ' + formatTime12(openTime) + '. Please come back then!');
+        return;
+      }
+      
+      if (now > cutoff) {
+        alert('Registration is closed! The cutoff time was ' + formatTime12(cutoffTime) + '.');
+        return;
+      }
+      
+      const course = document.getElementById('reg-course').value;
+      const name = document.getElementById('reg-name').value.trim();
+      const phone = document.getElementById('reg-phone').value.trim();
+      
+      if (!course) {
+        alert('Please select a course');
+        return;
+      }
+      if (!name) {
+        alert('Please enter your name');
+        return;
+      }
+      
+      // Check if already registered
+      const existing = players.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        alert('You are already registered!');
+        return;
+      }
+      
+      // Add player
+      const player = {
+        id: Date.now(),
+        name: name,
+        phone: phone,
+        course: course,
+        status: 'pending',
+        team: null,
+        registeredAt: new Date().toISOString()
+      };
+      
+      players.push(player);
+      localStorage.setItem('golf_players', JSON.stringify(players));
+      
+      document.getElementById('reg-name').value = '';
+      document.getElementById('reg-phone').value = '';
+      document.getElementById('reg-course').value = 'Cliffside Golf Club';
+      
+      showView('view-confirm');
     }
-
-    function adminLogin(){
-      if(document.getElementById('admin-password').value==='golf123'){ showView('view-admin-dashboard'); loadAdminPlayers(); }
-      else alert('Invalid password');
+    
+    // ===== LOAD PLAYERS LIST (Home Page) =====
+    function loadPlayersList() {
+      // Use global players (refreshed from localStorage)
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      
+      const pending = players.filter(p => p.status === 'pending');
+      const approved = players.filter(p => p.status === 'approved');
+      
+      // Update pending count
+      document.getElementById('pending-count').textContent = pending.length;
+      
+      // Update approved count
+      document.getElementById('player-count').textContent = approved.length;
+      
+      let html = '';
+      if (approved.length === 0) {
+        html = '<li style="color: #999; text-align: center; padding: 10px;">No players registered yet</li>';
+      } else {
+        approved.sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt));
+        approved.forEach(p => {
+          html += `
+            <li class="player-item">
+              <div class="player-info">
+                <div class="player-name">${p.name}</div>
+                <div class="player-detail">${p.course}</div>
+              </div>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('player-list').innerHTML = html;
     }
-
-    function loadAdminPlayers(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-      document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
-        <td>${i+1}</td><td>${p.name}</td>
-        <td><select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:5px;">${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}</select></td>
-        <td class="${p.status==='approved'?'status-approved':'status-pending'}">${p.status}</td>
-        <td>${p.status!=='approved'?`<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓</button>`:'✓'}</td>
-        <td><button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button></td>
-      </tr>`).join('');
+    
+    // ===== CUTOFF TIME =====
+    function updateCutoffDisplay() {
+      const openTime = localStorage.getItem('open_time') || '06:00';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      const openTime12 = formatTime12(openTime);
+      const cutoffTime12 = formatTime12(cutoffTime);
+      
+      document.getElementById('open-display').textContent = openTime12;
+      document.getElementById('cutoff-display').textContent = cutoffTime12;
+      document.getElementById('team-cutoff-time').textContent = cutoffTime12;
     }
-
-    function changeTeam(id,teamId){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
+    
+    function formatTime12(time24) {
+      const [hours, minutes] = time24.split(':');
+      const h = parseInt(hours);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${minutes} ${ampm}`;
     }
-
-    function approve(id){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    
+    // ===== REGISTRATION STATUS =====
+    function updateRegistrationStatus() {
+      const statusEl = document.getElementById('reg-status-text');
+      const detailEl = document.getElementById('reg-status-detail');
+      
+      // Always read current values from localStorage
+      const isManualClosed = localStorage.getItem('registration_closed') === 'true';
+      const openTime = localStorage.getItem('open_time') || '06:00';
+      const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+      
+      // Check registration hours
+      const now = new Date();
+      const open = new Date();
+      const cutoff = new Date();
+      
+      const [openH, openM] = openTime.split(':');
+      const [closeH, closeM] = cutoffTime.split(':');
+      
+      open.setHours(parseInt(openH), parseInt(openM), 0, 0);
+      cutoff.setHours(parseInt(closeH), parseInt(closeM), 0, 0);
+      
+      const isClosed = isManualClosed || now > cutoff;
+      const isNotOpenYet = now < open;
+      
+      if (isNotOpenYet) {
+        statusEl.textContent = 'NOT OPEN YET';
+        statusEl.style.color = '#ff9800';
+        detailEl.textContent = 'Registration opens at ' + formatTime12(openTime);
+      } else if (isClosed) {
+        statusEl.textContent = 'CLOSED';
+        statusEl.style.color = '#c62828';
+        detailEl.textContent = 'Registration is closed. No new players can register.';
+      } else {
+        statusEl.textContent = 'OPEN';
+        statusEl.style.color = '#2e7d32';
+        detailEl.textContent = 'Registration is open until ' + formatTime12(cutoffTime);
+      }
+      
+      // Team selection notice
+      const teamNotice = document.getElementById('team-selection-notice');
+      const teamAvailable = document.getElementById('team-selection-available');
+      
+      if (isClosed) {
+        teamNotice.classList.add('hidden');
+        teamAvailable.classList.remove('hidden');
+      } else {
+        teamNotice.classList.remove('hidden');
+        teamNotice.innerHTML = `<strong>⏰ Registration Still Open</strong><div style="font-size: 12px; margin-top: 5px;">Team selection will be available after registration closes at <span id="team-cutoff-time">${formatTime12(cutoffTime)}</span></div>`;
+        teamAvailable.classList.add('hidden');
+      }
+      
+      // Update button text
+      document.getElementById('toggle-reg-btn').textContent = isClosed ? 'Reopen Registration' : 'Close Registration Now';
     }
-
-    function deleteP(id){
-      if(!confirm('Delete?')) return;
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    
+    function toggleRegistration() {
+      const isCurrentlyClosed = localStorage.getItem('registration_closed') === 'true';
+      const newState = !isCurrentlyClosed;
+      localStorage.setItem('registration_closed', newState);
+      updateRegistrationStatus();
+      loadAdminPlayers();
+      alert(newState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
     }
-
-    function loadAdminTeams(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      document.getElementById('teams-container').innerHTML=teams.map(t=>{
-        let tp=players.filter(p=>p.team===t.id);
-        return `<div class="admin-section"><h3>${t.name}</h3>${tp.map(p=>`<div>${p.name}</div>`).join('')||'No players'}</div>`;
-      }).join('');
+    
+    // ===== ADMIN =====
+    function adminLogin() {
+      const password = document.getElementById('admin-password').value;
+      
+      if (password === 'golf123') {
+        // Remember password for 2 hours after login
+        const expiry = Date.now() + (2 * 60 * 60 * 1000);
+        localStorage.setItem('admin_password_expiry', expiry);
+        
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
+      } else {
+        alert('Invalid password');
+      }
     }
-
-    function addNewTeam(){
-      let name=document.getElementById('new-team-name').value.trim();
-      if(!name) return;
-      teams.push({id:Date.now(),name});
-      localStorage.setItem('golf_teams',JSON.stringify(teams));
-      loadAdminTeams();
+    
+    function showAdminLogin() {
+      // Check if password is remembered for 2 hours
+      const expiry = localStorage.getItem('admin_password_expiry');
+      if (expiry && Date.now() < parseInt(expiry)) {
+        loadAdminPlayers();
+        updatePendingBadge();
+        showView('view-admin-dashboard');
+        return;
+      }
+      showView('view-admin');
     }
-
-    function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){
-    function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
-
-    function switchAdminTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('admin-players').classList.add('hidden');
+    
+    function togglePassword() {
+      const input = document.getElementById('admin-password');
+      if (input.type === 'password') {
+        input.type = 'text';
+      } else {
+        input.type = 'password';
+      }
+    }
+    
+    function updatePendingBadge() {
+      const pending = players.filter(p => p.status === 'pending');
+      const badge = document.getElementById('pending-badge');
+      if (pending.length > 0) {
+        badge.textContent = pending.length;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    
+    function loadAdminPlayers() {
+      // Populate clear team dropdown
+      const clearSelect = document.getElementById('clear-team-select');
+      if (clearSelect) {
+        let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
+        let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
+        let activeTeams = new Set();
+        teamPlayers.forEach(p => {
+          if (p.team && p.team.startsWith('Team ')) {
+            activeTeams.add(p.team.replace('Team ', ''));
+          }
+        });
+        let teamNums = Array.from(activeTeams).map(n => parseInt(n));
+        let numTeams = teamNums.length > 0 ? Math.max(...teamNums) : 0;
+        
+        let options = '<option value="">-- Select Team --</option>';
+        for (let i = 1; i <= numTeams; i++) {
+          options += `<option value="${i}">Team ${i}</option>`;
+        }
+        clearSelect.innerHTML = options;
+      }
+      
+      const pending = players.filter(p => p.status === 'pending');
+      const approvedNoTeam = players.filter(p => p.status === 'approved' && (!p.team || p.team === null));
+      const approvedWithTeam = players.filter(p => p.status === 'approved' && p.team);
+      
+      // Pending list
+      let pendingHtml = '';
+      if (pending.length === 0) {
+        pendingHtml = '<li style="color: #999; text-align: center; padding: 10px;">No pending players</li>';
+      } else {
+        pending.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+        pending.forEach(p => {
+          pendingHtml += `
+            <li class="player-item">
+              <div class="player-info">
+                <div class="player-name">${p.name}</div>
+                <div class="player-detail">${p.course} • ${p.phone || 'No phone'}</div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-success btn-small" onclick="approvePlayer(${p.id})">✓ Approve</button>
+                <button class="btn btn-danger btn-small" onclick="rejectPlayer(${p.id})">✗ Decline</button>
+              </div>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('pending-list').innerHTML = pendingHtml;
+      
+      // Approved with no team
+      let noTeamHtml = '';
+      if (approvedNoTeam.length === 0) {
+        noTeamHtml = '<li style="color: #999; text-align: center; padding: 10px;">No approved players without a team</li>';
+      } else {
+        approvedNoTeam.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+        approvedNoTeam.forEach(p => {
+          noTeamHtml += `
+            <li class="player-item">
+              <div class="player-info">
+                <div class="player-name">${p.name}</div>
+                <div class="player-detail">${p.course}</div>
+              </div>
+              <span class="status-badge status-noteam">No Team</span>
+              <button class="btn btn-danger btn-small" onclick="deletePlayer(${p.id})">🗑️ Delete</button>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('approved-no-team-list').innerHTML = noTeamHtml;
+      
+      // Team assignment list
+      let teamHtml = '';
+      if (approvedWithTeam.length === 0 && approvedNoTeam.length === 0) {
+        teamHtml = '<li style="color: #999; text-align: center; padding: 10px;">No approved players</li>';
+      } else {
+        const allApproved = [...approvedWithTeam, ...approvedNoTeam];
+        allApproved.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+        
+        // Check if registration is closed
+        const now = new Date();
+        const cutoff = new Date();
+        const cutoffTime = localStorage.getItem('cutoff_time') || '09:30';
+        const [h, m] = cutoffTime.split(':');
+        cutoff.setHours(parseInt(h), parseInt(m), 0, 0);
+        const isManualClosed = localStorage.getItem('registration_closed') === 'true';
+        const isClosed = isManualClosed || now > cutoff;
+        
+        allApproved.forEach(p => {
+          // Get number of teams from dropdown or default to 4
+          const numTeamsSelect = document.getElementById('num-teams');
+          const numTeams = numTeamsSelect ? parseInt(numTeamsSelect.value) : 4;
+          
+          // Build dynamic team options
+          let teamOptionsHtml = '<option value="">-- Select --</option>';
+          for (let i = 1; i <= numTeams; i++) {
+            teamOptionsHtml += `<option value="Team ${i}" ${p.team === 'Team ' + i ? 'selected' : ''}>Team ${i}</option>`;
+          }
+          
+          // Check if player is captain
+          const captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+          const isCaptain = captains[p.id] === true;
+          
+          const teamOptions = `
+            <select onchange="assignTeam(${p.id}, this.value)" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+              ${teamOptionsHtml}
+            </select>
+            <label style="margin-left: 10px; font-size: 12px;">
+              <input type="checkbox" ${isCaptain ? 'checked' : ''} onchange="toggleCaptain(${p.id}, this.checked)"> 👑 Captain
+            </label>
+          `;
+          
+          teamHtml += `
+            <li class="player-item">
+              <div class="player-info">
+                <div class="player-name">${p.name} ${isCaptain ? '👑' : ''}</div>
+                <div class="player-detail">${p.course}</div>
+              </div>
+              ${isClosed ? teamOptions : '<span class="status-badge status-closed">Registration Open</span>'}
+                <button class="btn btn-danger btn-small" onclick="deletePlayer(${p.id})">🗑️ Delete</button>
+            </li>
+          `;
+        });
+      }
+      document.getElementById('team-assign-list').innerHTML = teamHtml;
+    }
+    
+    function approvePlayer(id) {
+      const player = players.find(p => p.id === id);
+      if (player) {
+        player.status = 'approved';
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+      }
+    }
+    
+    function rejectPlayer(id) {
+      if (confirm('Decline this player?')) {
+        players = players.filter(p => p.id !== id);
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+      }
+    }
+    
+    function deletePlayer(id) {
+      if (confirm('Delete this approved player? This cannot be undone.')) {
+        players = players.filter(p => p.id !== id);
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+      }
+    }
+    
+    function assignTeam(id, teamName) {
+      if (!teamName) return;
+      
+      const player = players.find(p => p.id === id);
+      if (player) {
+        player.team = teamName;
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        alert(`${player.name} assigned to ${teamName}`);
+      }
+    }
+    
+    function updateNumTeams() {
+      const numTeams = document.getElementById('num-teams').value;
+      localStorage.setItem('num_teams', numTeams);
+      loadAdminPlayers();
+    }
+    
+    function toggleCaptain(playerId, isCaptain) {
+      let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+      if (isCaptain) {
+        captains[playerId] = true;
+      } else {
+        delete captains[playerId];
+      }
+      localStorage.setItem('team_captains', JSON.stringify(captains));
+      loadAdminPlayers();
+    }
+    
+    function saveTimes() {
+      const openTime = document.getElementById('open-time').value;
+      const cutoffTime = document.getElementById('cutoff-time').value;
+      
+      localStorage.setItem('open_time', openTime);
+      localStorage.setItem('cutoff_time', cutoffTime);
+      
+      updateCutoffDisplay();
+      updateRegistrationStatus();
+      alert('Registration times saved!');
+    }
+    
+    function saveAdminCode() {
+      const code = document.getElementById('admin-access-code').value.trim();
+      if (!code) {
+        alert('Please enter a code');
+        return;
+      }
+      localStorage.setItem('admin_access_code', code);
+      document.getElementById('current-admin-code').textContent = code;
+      alert('Access code saved! Only people with this code can access admin.');
+    }
+    
+    function clearAllPlayers() {
+      if (confirm('Are you sure you want to delete ALL players? This cannot be undone.')) {
+        players = [];
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        loadAdminPlayers();
+        loadPlayersList();
+        alert('All players cleared!');
+      }
+    }
+    
+    function clearSpecificTeamScore() {
+      const teamNum = document.getElementById('clear-team-select').value;
+      if (!teamNum) {
+        alert('Please select a team to clear');
+        return;
+      }
+      
+      if (confirm(`Are you sure you want to clear Team ${teamNum}'s score?`)) {
+        // Clear this team's score
+        const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
+        delete scores[`team${teamNum}_front`];
+        delete scores[`team${teamNum}_back`];
+        localStorage.setItem('team_scores', JSON.stringify(scores));
+        
+        // Remove from submitted teams
+        let submittedTeams = JSON.parse(localStorage.getItem('submitted_teams') || '[]');
+        submittedTeams = submittedTeams.filter(t => t !== parseInt(teamNum));
+        localStorage.setItem('submitted_teams', JSON.stringify(submittedTeams));
+        
+        alert(`Team ${teamNum} score cleared!`);
+        loadAdminPlayers();
+        loadTeamsDisplay();
+        loadTeamScores();
+      }
+    }
+    
+    // ===== STARTING POINT =====
+    
+    function switchAdminTab(tab) {
+      document.getElementById('admin-manage').classList.add('hidden');
       document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='teams') loadAdminTeams();
+      document.getElementById('admin-settings').classList.add('hidden');
+      document.getElementById('admin-' + tab).classList.remove('hidden');
+      
+      if (tab === 'manage' || tab === 'teams') {
+        loadAdminPlayers();
+      }
     }
+    
+    function logout() {
+      document.getElementById('admin-password').value = '';
+      showView('view-home');
+    }
+    
+    // ===== TEAMS =====
+    function loadTeamsDisplay() {
+      // Always read fresh from localStorage
+      let players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const teamsSubmitted = localStorage.getItem('teams_submitted') === 'true';
+      const teamsSection = document.getElementById('teams-display');
+      
+      if (!teamsSubmitted) {
+        teamsSection.classList.add('hidden');
+        return;
+      }
+      
+      teamsSection.classList.remove('hidden');
+      
+      // Get number of teams
+      const numTeams = parseInt(localStorage.getItem('num_teams') || '4');
+      
+      // Group players by team
+      const teamGroups = {};
+      for (let i = 1; i <= numTeams; i++) {
+        teamGroups[i] = [];
+      }
+      const approvedWithTeam = players.filter(p => p.status === 'approved' && p.team);
+      const captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+      
+      approvedWithTeam.forEach(p => {
+        const teamNum = p.team.replace('Team ', '');
+        if (teamGroups[teamNum]) {
+          teamGroups[teamNum].push(p);
+        }
+      });
+      
+      let html = '';
+      for (let i = 1; i <= numTeams; i++) {
+        if (teamGroups[i] && teamGroups[i].length > 0) {
+          // Sort: captains first
+          teamGroups[i].sort((a, b) => {
+            const aIsCaptain = captains[a.id] === true;
+            const bIsCaptain = captains[b.id] === true;
+            if (aIsCaptain && !bIsCaptain) return -1;
+            if (!aIsCaptain && bIsCaptain) return 1;
+            return 0;
+          });
+          
+          html += `<li style="background: #e8f5e9; margin: 8px 0; padding: 12px; border-radius: 8px;">
+            <div style="font-weight: bold; color: #1a472a; margin-bottom: 8px;">Team ${i}</div>
+            <ul style="list-style: none; padding-left: 10px;">`;
+          teamGroups[i].forEach(p => {
+            const isCaptain = captains[p.id] === true;
+            html += `<li style="padding: 4px 0; border-bottom: 1px solid #c8e6c9; ${isCaptain ? 'font-weight: bold; color: #1a472a;' : ''}">${p.name} ${isCaptain ? '👑 (Captain)' : ''}</li>`;
+          });
+          html += `</ul></li>`;
+        }
+      }
+      
+      if (!html) {
+        html = '<li style="color: #999; text-align: center; padding: 10px;">No teams yet</li>';
+      }
+      
+      document.getElementById('teams-list').innerHTML = html;
+      
+      // Load scores for each team
+      loadTeamScores();
+    }
+    
+    function resetDailyScores() {
+      localStorage.removeItem('team_scores');
+      localStorage.removeItem('submitted_teams');
+      console.log('Daily scores reset!');
+      // Optionally, reload scores display if needed
+      // loadTeamScores(); 
+    }
+    
+    function loadTeamScores() {
+      // Get players and find how many teams are actually playing
+      let players = JSON.parse(localStorage.getItem('golf_players') || '[]');
+      let teamPlayers = players.filter(p => p.status === 'approved' && p.team);
+      
+      // Find unique teams that have players
+      let activeTeams = new Set();
+      teamPlayers.forEach(p => {
+        if (p.team && p.team.startsWith('Team ')) {
+          activeTeams.add(p.team.replace('Team ', ''));
+        }
+      });
+      
+      // Convert to number and find max
+      let numTeams = 0;
+      if (activeTeams.size > 0) {
+        let teamNums = Array.from(activeTeams).map(n => parseInt(n));
+        numTeams = Math.max(...teamNums);
+      }
+      
+      if (numTeams === 0) {
+        document.getElementById('team-scores-input').innerHTML = '<p style="text-align: center; color: #999;">No teams yet - submit teams first</p>';
+        return;
+      }
+      
+      const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
+      const submittedTeams = JSON.parse(localStorage.getItem('submitted_teams') || '[]');
+      const allScoresSubmitted = submittedTeams.length >= numTeams && submittedTeams.length > 0;
+      
+      // Get team captains
+      let captains = JSON.parse(localStorage.getItem('team_captains') || '{}');
+      
+      // Find captains for each team
+      let teamCaptains = {};
+      for (let t = 1; t <= numTeams; t++) {
+        teamCaptains[t] = '';
+        teamPlayers.filter(p => p.team === 'Team ' + t).forEach(p => {
+          if (captains[p.id] === true) {
+            teamCaptains[t] = p.name;
+          }
+        });
+      }
+      
+      let html = '';
+      for (let i = 1; i <= numTeams; i++) {
+        const front = scores[`team${i}_front`] || '';
+        const back = scores[`team${i}_back`] || '';
+        const total = front && back ? parseInt(front) + parseInt(back) : '';
+        const captainName = teamCaptains[i] ? ` (${teamCaptains[i]})` : '';
+        const isSubmitted = submittedTeams.includes(i);
+        
+        let statusHtml = '';
+        if (isSubmitted) {
+          statusHtml = `<span style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Score Submitted</span>`;
+        } else if (allScoresSubmitted) {
+          statusHtml = `<span style="background: #ff9800; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">All Submitted!</span>`;
+        } else {
+          statusHtml = `<span style="background: #999; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">⏳ Awaiting</span>`;
+        }
+        
+        html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+          <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName} ${statusHtml}</div>`;
+        
+        // Calculate all team totals
+        let teamTotals = [];
+        for (let i = 1; i <= numTeams; i++) {
+          const front = scores[`team${i}_front`] || '';
+          const back = scores[`team${i}_back`] || '';
+          const total = front && back ? parseInt(front) + parseInt(back) : 0; // Default to 0 if incomplete
+          teamTotals.push({ teamNum: i, total: total });
+        }
+        
+        // Sort teams by total score (descending)
+        teamTotals.sort((a, b) => b.total - a.total);
+        
+        // Determine ranks and emojis
+        let ranks = {};
+        let maxScore = -1;
+        let minScore = Infinity;
+        
+        teamTotals.forEach((item, index) => {
+          if (item.total > maxScore) maxScore = item.total;
+          if (item.total < minScore) minScore = item.total;
+        });
 
-    function logout(){ showView('view-home'); }
+        // Assign emojis based on rank
+        teamTotals.forEach((item, index) => {
+          const rank = index + 1;
+          if (item.total === maxScore && maxScore > 0) { // Ensure we don't rank 0 scores as winner
+            ranks[item.teamNum] = '🏆'; // First place
+          } else if (rank <= 3 && item.total === teamTotals[rank-1].total) { // Handle ties for 2nd/3rd
+            if (rank === 2) ranks[item.teamNum] = '🥈'; 
+            if (rank === 3) ranks[item.teamNum] = '🥉'; 
+          } else if (item.total === minScore && minScore < maxScore) { // Lowest score is last place
+             ranks[item.teamNum] = '💩';
+          }
+        });
+
+        // Add emoji to winning team(s)
+        if (allScoresSubmitted) {
+          html = ''; // Rebuild HTML to include winner emoji
+          for (let i = 1; i <= numTeams; i++) {
+            const front = scores[`team${i}_front`] || '';
+            const back = scores[`team${i}_back`] || '';
+            const total = front && back ? parseInt(front) + parseInt(back) : '';
+            const captainName = teamCaptains[i] ? ` (${teamCaptains[i]})` : '';
+            const isSubmitted = submittedTeams.includes(i);
+            
+            let statusHtml = '';
+            if (isSubmitted) {
+              statusHtml = `<span style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Score Submitted</span>`;
+            } else if (allScoresSubmitted) {
+              statusHtml = `<span style="background: #ff9800; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">All Submitted!</span>`;
+            } else {
+              statusHtml = `<span style="background: #999; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">⏳ Awaiting</span>`;
+            }
+            
+            const emoji = ranks[i] || ''; // Get emoji based on rank
+            
+            html += `<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+              <div style="font-weight: bold; color: #1a472a; margin-bottom: 10px;">Team ${i}${captainName}${emoji} ${statusHtml}</div>`;
+            
+            // If team has submitted AND ALL teams have submitted → show scores
+            // Otherwise → just show status, hide scores
+            const showScores = allScoresSubmitted;
+            
+            if (showScores && isSubmitted && front && back) {
+              // Show submitted score (read-only)
+              html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Front</label>
+                  <input type="number" value="${front}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Back</label>
+                  <input type="number" value="${back}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px; font-weight: bold;">Total</label>
+                  <input type="number" value="${total}" readonly style="width: 100%; padding: 3px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+                </div>
+              </div>`;
+            } else if (!isSubmitted) {
+              // Team hasn't submitted - show input fields
+              html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Front</label>
+                  <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px;">Back</label>
+                  <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})">
+                </div>
+                <div style="flex: 1; min-width: 80px;">
+                  <label style="font-size: 12px; font-weight: bold;">Total</label>
+                  <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+                </div>
+              </div>`;
+              html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
+            } else {
+              // Team submitted but not all teams submitted - hide scores
+              html += `<div style="text-align: center; padding: 15px; color: #666; font-style: italic;">Scores hidden until all teams submit</div>`;
+            }
+            
+            html += `</div>`;
+          }
+        } else { // If not all scores submitted, show regular view
+          html += `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 80px;">
+              <label style="font-size: 12px;">Front</label>
+              <input type="number" id="team${i}_front" value="${front}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
+            </div>
+            <div style="flex: 1; min-width: 80px;">
+              <label style="font-size: 12px;">Back</label>
+              <input type="number" id="team${i}_back" value="${back}" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" oninput="calculateTotal(${i})" ${isSubmitted ? 'readonly style="background:#eee"' : ''}>
+            </div>
+            <div style="flex: 1; min-width: 80px;">
+              <label style="font-size: 12px; font-weight: bold;">Total</label>
+              <input type="number" id="team${i}_total" value="${total}" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-weight: bold; font-size: 16px;">
+            </div>
+          </div>`;
+          
+          if (!isSubmitted) {
+            html += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="submitTeamScore(${i})">Submit Team ${i} Score</button>`;
+          }
+        }
+        
+        html += `</div>`;
+      }
+      
+      document.getElementById('team-scores-input').innerHTML = html;
+    }
+    
+    function submitTeamScore(teamNum) {
+      const front = document.getElementById(`team${teamNum}_front`).value;
+      const back = document.getElementById(`team${teamNum}_back`).value;
+      
+      if (!front || !back) {
+        alert('Please enter both Front and Back scores');
+        return;
+      }
+      
+      // Save this team's score
+      const scores = JSON.parse(localStorage.getItem('team_scores') || '{}');
+      scores[`team${teamNum}_front`] = front;
+      scores[`team${teamNum}_back`] = back;
+      localStorage.setItem('team_scores', JSON.stringify(scores));
+      
+      // Mark this team as submitted
+      let submittedTeams = JSON.parse(localStorage.getItem('submitted_teams') || '[]');
+      if (!submittedTeams.includes(teamNum)) {
+        submittedTeams.push(teamNum);
+        localStorage.setItem('submitted_teams', JSON.stringify(submittedTeams));
+      }
+      
+      loadTeamScores();
+      alert(`Team ${teamNum} score submitted!`);
+    }
+    
+    function calculateTotal(teamNum) {
+      const front = document.getElementById(`team${teamNum}_front`).value || 0;
+      const back = document.getElementById(`team${teamNum}_back`).value || 0;
+      const total = parseInt(front) + parseInt(back);
+      document.getElementById(`team${teamNum}_total`).value = total;
+    }
+    
+    function saveScores() {
+      const numTeams = parseInt(localStorage.getItem('num_teams') || '4');
+      const scores = {};
+      let hasScores = false;
+      
+      for (let i = 1; i <= numTeams; i++) {
+        const front = document.getElementById(`team${i}_front`).value;
+        const back = document.getElementById(`team${i}_back`).value;
+        
+        if (front) scores[`team${i}_front`] = front;
+        if (back) scores[`team${i}_back`] = back;
+        if (front || back) hasScores = true;
+      }
+      
+      localStorage.setItem('team_scores', JSON.stringify(scores));
+      localStorage.setItem('scores_entered', 'true');
+      
+      loadTeamScores();
+      alert('Scores saved!');
+    }
+    
+    function submitTeams() {
+      if (confirm('Are you sure you want to submit the teams? This will lock in the team assignments.')) {
+        localStorage.setItem('teams_submitted', 'true');
+        alert('Teams submitted successfully!');
+        showView('view-home');
+        loadTeamsDisplay();
+      }
+    }
+    
+    // Start the app
+    init();
     loadPlayersList();
+    // Schedule daily score reset at 6 AM
+    // Calculate milliseconds until next 6 AM
+    const now = new Date();
+    const targetTime = new Date();
+    targetTime.setHours(6, 0, 0, 0); // 6 AM
+
+    if (now > targetTime) {
+      // If it's already past 6 AM today, schedule for tomorrow
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+    
+    const timeUntilTarget = targetTime.getTime() - now.getTime();
+    
+    setInterval(resetDailyScores, 24 * 60 * 60 * 1000); // Reset every 24 hours
+    
+    setTimeout(() => {
+      resetDailyScores();
+      // Set interval for every 24 hours after the first reset
+      setInterval(resetDailyScores, 24 * 60 * 60 * 1000);
+    }, timeUntilTarget);
+    
   </script>
 </body>
 </html>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+var supabaseClient=window.supabase.createClient("https://uwkmmrqnpnhlustrxees.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E");
+console.log("Supabase loaded:",supabaseClient);
+});
+</script>
