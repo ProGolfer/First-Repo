@@ -257,7 +257,7 @@ supabase.channel('players_changes')
     }
 
     function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){
+    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById("game-status").innerText="GAME ENDED"; alert("Game ended!"); }
     function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
 
     function switchAdminTab(t){
