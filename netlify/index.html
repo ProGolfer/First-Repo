@@ -72,13 +72,13 @@
   <script>
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let players = [];
-    async function loadPlayers() { const { data } = await supabase.from('players').select('*'); players = data || []; render(); }
+    async function loadPlayers() { const { data } = await supabaseClient.from('players').select('*'); players = data || []; render(); }
     function render() { const approved = players.filter(p => p.status === 'approved'); document.getElementById('count').textContent = approved.length; document.getElementById('list').innerHTML = approved.map(p => '<li>' + p.name + ' <span class="badge">Team ' + (p.team || '-') + '</span></li>').join('') || '<li>No players yet</li>'; document.getElementById('admin-list').innerHTML = players.map(p => '<li>' + p.name + ' (' + p.status + ') <button onclick="toggle(\'' + p.id + '\',\'' + p.status + '\')">' + (p.status==='approved'?'✗':'✓') + '</button></li>').join(''); }
-    async function doRegister() { var name = document.getElementById('name').value.trim(); if (!name) return alert('Enter your name!'); await supabase.from('players').insert([{ name: name, course: document.getElementById('course').value, status: 'pending' }]); document.getElementById('name').value = ''; alert('Registered!'); loadPlayers(); }
+    async function doRegister() { var name = document.getElementById('name').value.trim(); if (!name) return alert('Enter your name!'); await supabaseClient.from('players').insert([{ name: name, course: document.getElementById('course').value, status: 'pending' }]); document.getElementById('name').value = ''; alert('Registered!'); loadPlayers(); }
     function doLogin() { if (document.getElementById('pass').value === 'golf123') { loadPlayers(); document.getElementById('view-admin').classList.add('hidden'); document.getElementById('view-dash').classList.remove('hidden'); } else { alert('Wrong password'); } }
-    async function toggle(id, status) { await supabase.from('players').update({status: status==='approved'?'pending':'approved'}).eq('id', id); loadPlayers(); }
+    async function toggle(id, status) { await supabaseClient.from('players').update({status: status==='approved'?'pending':'approved'}).eq('id', id); loadPlayers(); }
     function showAdmin() { document.getElementById('view-home').classList.add('hidden'); document.getElementById('view-admin').classList.remove('hidden'); }
     function showHome() { document.getElementById('view-dash').classList.add('hidden'); document.getElementById('view-admin').classList.add('hidden'); document.getElementById('view-home').classList.remove('hidden'); }
     loadPlayers();
