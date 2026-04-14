@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">} catch(e) { alert("Error: " + e.message); }</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-try {alert("Supabase loaded: " + typeof window.supabase);} catch(e) { alert("Error: " + e.message); }</script>
+try {alert("Supabase loaded: " + typeof window.supabase);</script>
   <script>
 try {
     // Supabase Configuration
@@ -22,7 +22,7 @@ supabaseClient.channel('players_changes')
     let players = [];
     async function loadPlayers() { const { data, error } = await supabaseClient.from('players').select('*').order('created_at', { ascending: false }); if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } else { players = data || []; } return players; }
     async function savePlayerToSupabase(player) { const { error } = await supabaseClient.from('players').insert([player]); if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } return true; }
-  } catch(e) { alert("Error: " + e.message); }</script>
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
@@ -154,7 +154,7 @@ try {
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
 
-   async function registerPlayer() { try {
+   async function registerPlayer() {
   const name=document.getElementById('reg-name').value.trim();
   if(!name){ alert('Enter name'); return; }
   
@@ -174,9 +174,8 @@ try {
   }
   
   document.getElementById('reg-name').value='';
-  loadPlayersList(); showView('view-confirm'); } catch(e) { alert("Error: " + e.message); }
+  loadPlayersList(); showView('view-confirm'); 
 }
-    }
 
    async function loadPlayersList(){
   await loadPlayers();
@@ -270,6 +269,6 @@ try {
 
     function logout(){ showView('view-home'); }
     loadPlayersList();
-  } catch(e) { alert("Error: " + e.message); }</script>
+  </script>
 </body>
 </html>
