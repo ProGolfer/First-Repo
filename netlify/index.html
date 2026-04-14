@@ -546,7 +546,7 @@
       };
       
       players.push(player);
-      localStorage.setItem('golf_players', JSON.stringify(players));
+      localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
       
       document.getElementById('reg-name').value = '';
       document.getElementById('reg-phone').value = '';
@@ -852,7 +852,7 @@
       const player = players.find(p => p.id === id);
       if (player) {
         player.status = 'approved';
-        localStorage.setItem('golf_players', JSON.stringify(players));
+        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -862,7 +862,7 @@
     function rejectPlayer(id) {
       if (confirm('Decline this player?')) {
         players = players.filter(p => p.id !== id);
-        localStorage.setItem('golf_players', JSON.stringify(players));
+        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -872,7 +872,7 @@
     function deletePlayer(id) {
       if (confirm('Delete this approved player? This cannot be undone.')) {
         players = players.filter(p => p.id !== id);
-        localStorage.setItem('golf_players', JSON.stringify(players));
+        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -885,7 +885,7 @@
       const player = players.find(p => p.id === id);
       if (player) {
         player.team = teamName;
-        localStorage.setItem('golf_players', JSON.stringify(players));
+        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
         loadAdminPlayers();
         alert(`${player.name} assigned to ${teamName}`);
       }
@@ -934,7 +934,7 @@
     function clearAllPlayers() {
       if (confirm('Are you sure you want to delete ALL players? This cannot be undone.')) {
         players = [];
-        localStorage.setItem('golf_players', JSON.stringify(players));
+        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){window.supabaseClient.from("players").insert([{name:name,team:1,status:"pending"}]).catch(function(){}); }
         loadAdminPlayers();
         loadPlayersList();
         alert('All players cleared!');
