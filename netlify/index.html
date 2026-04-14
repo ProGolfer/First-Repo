@@ -171,7 +171,7 @@ supabase.channel('players_changes')
   
   document.getElementById('reg-name').value='';
   loadPlayersList(); showView('view-confirm');
- 
+}
     }
 
    async function loadPlayersList(){
@@ -180,7 +180,7 @@ supabase.channel('players_changes')
   document.getElementById('player-count').textContent=approved.length;
   let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
   document.getElementById('player-list').innerHTML=html;
- 
+}
     }
 
     function switchGameTab(t){
