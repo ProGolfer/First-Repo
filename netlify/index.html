@@ -77,13 +77,13 @@ supabaseClient.channel('players_changes')
       </div>
       <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
       <div class="form-group"><label>Phone (optional)</label><input type="tel" id="reg-phone" placeholder="(555) 123-4567"></div>
-      <button class="btn btn-primary" onclick="alert('Register clicked'); registerPlayer()">Register for Today's Game</button>
+      <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
       <div class="players-section">
         <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
       <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="alert('Admin clicked'); showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
     </div>
 
     <div id="view-confirm" class="card hidden">
@@ -154,7 +154,7 @@ try {
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
 
-   alert("registerPlayer function defined"); async function registerPlayer() { alert("registerPlayer running"); try {
+   async function registerPlayer() { try {
   const name=document.getElementById('reg-name').value.trim();
   if(!name){ alert('Enter name'); return; }
   
