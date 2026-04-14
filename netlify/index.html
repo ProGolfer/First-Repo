@@ -138,15 +138,26 @@
     function registerPlayer(){
       const name=document.getElementById('reg-name').value.trim();
       if(!name){ alert('Enter name'); return; }
+      let newPlayer = {name:name,team:1,status:'pending',registeredAt:Date.now()};
+      // Save to localStorage
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      players.push({name,team:1,status:'pending',registeredAt:Date.now()});
+      players.push(newPlayer);
       localStorage.setItem('golf_players',JSON.stringify(players));
+      // Also save to Supabase (won't break if fails)
+      supabaseSave(newPlayer);
       document.getElementById('reg-name').value='';
       loadPlayersList(); showView('view-confirm');
     }
 
-    function loadPlayersList(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+    async function loadPlayersList(){
+      // Try Supabase first
+      let supabasePlayers = await supabaseLoad();
+      // Get local players
+      let localPlayers = JSON.parse(localStorage.getItem('golf_players')||'[]');
+      // Merge: Supabase + local-only (local takes priority)
+      let existingIds = new Set(localPlayers.map(p => p.registeredAt));
+      let supabaseOnly = supabasePlayers.filter(p => !existingIds.has(p.registeredAt));
+      let players = [...localPlayers, ...supabaseOnly];
       let approved=players.filter(p=>p.status==='approved');
       document.getElementById('player-count').textContent=approved.length;
       let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
@@ -195,14 +206,14 @@
     function approve(id){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); supabaseUpdate(id,{status:'approved'}); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function deleteP(id){
       if(!confirm('Delete?')) return;
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); supabaseDelete(id); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function loadAdminTeams(){
@@ -236,6 +247,25 @@
 
     function logout(){ showView('view-home'); }
     loadPlayersList();
+  </script>
+<script>
+    // ===== SUPOBASE ADDITIONS - Added at end, won't break existing code =====
+    var supabaseClient = null;
+    // Wait for Supabase library to load
+    var supabaseInit = setInterval(function() {
+      if(window.supabase && !supabaseClient) {
+        try {
+          supabaseClient = window.supabase.createClient('https://uwkmmrqnpnhlustrxees.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E');
+          console.log('Supabase connected');
+        } catch(e) { console.log('Supabase error', e); }
+      }
+    }, 200);
+    
+    // Supabase helper functions
+    async function supabaseSave(p) { if(!supabaseClient) return; try { await supabaseClient.from('players').insert([p]); } catch(e) {} }
+    async function supabaseLoad() { if(!supabaseClient) return []; try { const {data} = await supabaseClient.from('players').select('*'); return data || []; } catch(e) { return []; } }
+    async function supabaseUpdate(id, d) { if(!supabaseClient) return; try { await supabaseClient.from('players').update(d).eq('id', id); } catch(e) {} }
+    async function supabaseDelete(id) { if(!supabaseClient) return; try { await supabaseClient.from('players').delete().eq('id', id); } catch(e) {} }
   </script>
 </body>
 </html>
