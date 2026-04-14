@@ -54,7 +54,7 @@ supabase.channel('players_changes')
     .tab-btn.active { background: #2d5a27; color: white; }
     .admin-section { background: #f5f5f5; border-radius: 12px; padding: 15px; margin: 15px 0; }
     .hidden { display: none; }
- 
+  </style>
 </head>
 <body>
   <div class="container">
@@ -153,7 +153,7 @@ supabase.channel('players_changes')
    async function registerPlayer(){
   const name=document.getElementById('reg-name').value.trim();
   if(!name){ alert('Enter name'); return; }
-  
+
   const newPlayer = {
     id: 'player_' + Date.now(),
     name: name,
@@ -168,7 +168,7 @@ supabase.channel('players_changes')
     players.push(newPlayer);
     localStorage.setItem('golf_players',JSON.stringify(players));
   }
-  
+
   document.getElementById('reg-name').value='';
   loadPlayersList(); showView('view-confirm');
 }
