@@ -151,7 +151,7 @@ supabaseClient.channel('players_changes')
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
 
-   async function registerPlayer(){
+   alert("registerPlayer function defined"); async function registerPlayer(){
   const name=document.getElementById('reg-name').value.trim();
   if(!name){ alert('Enter name'); return; }
   
