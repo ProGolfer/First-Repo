@@ -4,30 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // Supabase Configuration
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
+   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    supabase.channel('players_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-        loadPlayersList();
-      })
-      .subscribe();
-
+    // Enable realtime subscriptions for live updates
+supabase.channel('players_changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
+    loadPlayersList(); // Auto-refresh when data changes
+  })
+  .subscribe();
     let players = [];
-    async function loadPlayers() { 
-      const { data, error } = await supabase.from('players').select('*').order('created_at', { ascending: false }); 
-      if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } 
-      else { players = data || []; } 
-      return players; 
-    }
-    async function savePlayerToSupabase(player) { 
-      const { error } = await supabase.from('players').insert([player]); 
-      if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } 
-      return true; 
-    }
+    async function loadPlayers() { const { data, error } = await supabase.from('players').select('*').order('created_at', { ascending: false }); if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } else { players = data || []; } return players; }
+    async function savePlayerToSupabase(player) { const { error } = await supabase.from('players').insert([player]); if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } return true; }
   </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +30,8 @@
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
     .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; }
-    .btn { width: 100%; padding: 18px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px; background: #f5f5f5; border-radius: 8px; }
+    .btn { width: 100%; padding: 18px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; margin-bottom: 8px; }
     .btn-primary { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; }
     .btn-secondary { background: #f5f5f5; color: #333; }
     .btn-success { background: #4caf50; color: white; }
@@ -52,18 +44,16 @@
     .players-count { background: #2d5a27; color: white; padding: 4px 12px; border-radius: 20px; }
     .player-list { list-style: none; }
     .player-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .table-container { overflow-x: auto; max-width:100%; }
+    .table-container { overflow-x: auto; max-width:100%;-webkit-overflow-scrolling:touch; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 5px; text-align: left; border-bottom: 1px solid #eee; }
     .status-approved { color: #4caf50; font-weight: bold; }
     .status-pending { color: #ff9800; font-weight: bold; }
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-    .tab-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; }
+    .tab-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; }
     .tab-btn.active { background: #2d5a27; color: white; }
     .admin-section { background: #f5f5f5; border-radius: 12px; padding: 15px; margin: 15px 0; }
     .hidden { display: none; }
-    .btn-row { display: flex; gap: 10px; margin-bottom: 15px; }
-    .btn-row .btn { margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -95,7 +85,7 @@
 
     <div id="view-confirm" class="card hidden">
       <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
+      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px0;">
         <h3 style="color:#2e7d32;">You're In!</h3>
         <p>Your registration is pending approval.</p>
       </div>
@@ -134,16 +124,17 @@
         <div class="table-container"><table><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Status</th><th>✓</th><th>✗</th></tr></thead><tbody id="players-table-body"></tbody></table></div>
       </div>
       <div id="admin-teams" class="hidden">
-        <div class="btn-row">
-          <button class="btn btn-warning" onclick="startGame()">🚀 START GAME</button>
-          <button class="btn btn-danger" onclick="endGame()">🛑 END GAME</button>
-        </div>
+        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">START GAME</button><button class="btn btn-danger" onclick="endGame()">END GAME</button><div id="admin-settings" class="hidden"><div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div></div></div>
+        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">🚀 START GAME</button><button class="btn btn-danger" onclick="endGame()">🛑 END GAME</button></div>
         <p id="game-status">Game not started</p>
         <div class="admin-section">
           <h3>Add Team</h3><input type="text" id="new-team-name" placeholder="Team name"><button class="btn btn-primary" onclick="addNewTeam()">Add</button>
         </div>
         <div id="teams-container"></div>
       </div>
+      <div id="admin-settings" class="hidden">
+          <div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" id="close-time"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        </div>
       <div id="admin-settings" class="hidden">
         <div class="admin-section"><h3>⏰ Registration Cutoff</h3><input type="time" id="cutoff-time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
       </div>
@@ -159,26 +150,37 @@
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
 
-    async function registerPlayer(){
-      const name=document.getElementById('reg-name').value.trim();
-      if(!name){ alert('Enter name'); return; }
-      const newPlayer = { id: 'player_' + Date.now(), name: name, team: 1, status: 'pending', registeredAt: Date.now() };
-      const supabaseSuccess = await savePlayerToSupabase(newPlayer);
-      if (!supabaseSuccess) {
-        let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-        players.push(newPlayer);
-        localStorage.setItem('golf_players',JSON.stringify(players));
-      }
-      document.getElementById('reg-name').value='';
-      loadPlayersList(); showView('view-confirm');
+   async function registerPlayer(){
+  const name=document.getElementById('reg-name').value.trim();
+  if(!name){ alert('Enter name'); return; }
+
+  const newPlayer = {
+    id: 'player_' + Date.now(),
+    name: name,
+    team: 1,
+    status: 'pending',
+    registeredAt: Date.now()
+  };
+    // Try Supabase first, fallback to localStorage
+  const supabaseSuccess = await savePlayerToSupabase(newPlayer);
+  if (!supabaseSuccess) {
+    let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+    players.push(newPlayer);
+    localStorage.setItem('golf_players',JSON.stringify(players));
+  }
+
+  document.getElementById('reg-name').value='';
+  loadPlayersList(); showView('view-confirm');
+}
     }
 
-    async function loadPlayersList(){
-      await loadPlayers();
-      let approved=players.filter(p=>p.status==='approved');
-      document.getElementById('player-count').textContent=approved.length;
-      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-      document.getElementById('player-list').innerHTML=html;
+   async function loadPlayersList(){
+  await loadPlayers();
+  let approved=players.filter(p=>p.status==='approved');
+  document.getElementById('player-count').textContent=approved.length;
+  let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
+  document.getElementById('player-list').innerHTML=html;
+}
     }
 
     function switchGameTab(t){
@@ -204,6 +206,7 @@
 
     function loadAdminPlayers(){
       let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+      let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
       document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
         <td>${i+1}</td><td>${p.name}</td>
         <td><select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:5px;">${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}</select></td>
@@ -249,14 +252,14 @@
     }
 
     function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
+    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById("game-status").innerText="GAME ENDED"; alert("Game ended!"); }
+    function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
 
     function switchAdminTab(t){
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       event.target.classList.add('active');
       document.getElementById('admin-players').classList.add('hidden');
       document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-settings').classList.add('hidden');
       document.getElementById('admin-'+t).classList.remove('hidden');
       if(t==='teams') loadAdminTeams();
     }
