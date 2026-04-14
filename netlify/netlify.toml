@@ -3,6 +3,5 @@ publish = "netlify"
 
 [[redirects]]
 from = "/*"
-to = "/index.html"
+to = "/netlify/index.html"
 status = 200
-force = true
