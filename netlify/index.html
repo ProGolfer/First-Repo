@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>alert("Supabase loaded: " + typeof window.supabase);</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">} catch(e) { alert("Error: " + e.message); }</script>
   <script>
+try {alert("Supabase loaded: " + typeof window.supabase);} catch(e) { alert("Error: " + e.message); }</script>
+  <script>
+try {
     // Supabase Configuration
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
@@ -20,7 +22,7 @@ supabaseClient.channel('players_changes')
     let players = [];
     async function loadPlayers() { const { data, error } = await supabaseClient.from('players').select('*').order('created_at', { ascending: false }); if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } else { players = data || []; } return players; }
     async function savePlayerToSupabase(player) { const { error } = await supabaseClient.from('players').insert([player]); if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } return true; }
-  </script>
+  } catch(e) { alert("Error: " + e.message); }</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
@@ -144,6 +146,7 @@ supabaseClient.channel('players_changes')
   </div>
 
   <script>
+try {
     let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
     let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
     let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
@@ -267,6 +270,6 @@ supabaseClient.channel('players_changes')
 
     function logout(){ showView('view-home'); }
     loadPlayersList();
-  </script>
+  } catch(e) { alert("Error: " + e.message); }</script>
 </body>
 </html>
