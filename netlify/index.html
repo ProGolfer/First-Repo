@@ -153,7 +153,7 @@ supabase.channel('players_changes')
    async function registerPlayer(){
   const name=document.getElementById('reg-name').value.trim();
   if(!name){ alert('Enter name'); return; }
-
+  
   const newPlayer = {
     id: 'player_' + Date.now(),
     name: name,
@@ -168,10 +168,10 @@ supabase.channel('players_changes')
     players.push(newPlayer);
     localStorage.setItem('golf_players',JSON.stringify(players));
   }
-
+  
   document.getElementById('reg-name').value='';
   loadPlayersList(); showView('view-confirm');
-}
+ 
     }
 
    async function loadPlayersList(){
@@ -180,7 +180,7 @@ supabase.channel('players_changes')
   document.getElementById('player-count').textContent=approved.length;
   let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
   document.getElementById('player-list').innerHTML=html;
-}
+ 
     }
 
     function switchGameTab(t){
@@ -252,7 +252,7 @@ supabase.channel('players_changes')
     }
 
     function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById("game-status").innerText="GAME ENDED"; alert("Game ended!"); }
+    function endGame(){
     function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
 
     function switchAdminTab(t){
