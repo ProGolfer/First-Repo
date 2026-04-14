@@ -1,3 +1,7 @@
 [build]
-  publish = "."
-  command = "echo 'Static site'"
+publish = "netlify"
+
+[[redirects]]
+from = "/*"
+to = "/netlify/index.html"
+status = 200
