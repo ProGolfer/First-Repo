@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
@@ -131,7 +130,6 @@
     let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
     let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
     let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
-    let players = [];
 
     function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
     function showAdminLogin(){ showView('view-admin'); }
@@ -139,56 +137,21 @@
     function registerPlayer(){
       const name=document.getElementById('reg-name').value.trim();
       if(!name){ alert('Enter name'); return; }
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       players.push({name,team:1,status:'pending',registeredAt:Date.now()});
-      if (window.supabaseClient) {
-        await window.supabaseClient.from('players').insert([{name,team:1,status:'pending',registeredAt:Date.now()}]);
-      }
-      
+      localStorage.setItem('golf_players',JSON.stringify(players));
       document.getElementById('reg-name').value='';
       loadPlayersList(); showView('view-confirm');
     }
 
-async function loadPlayersList() {
-      if (!window.supabaseClient) return;
-
-      const { data, error } = await window.supabaseClient
-        .from('players')
-        .select('*')
-        .order('registeredAt', { ascending: true });
-
-      if (error) {
-        console.error('Load error:', error);
-        return;
-      }
-
-      players = data || [];
-
-      const pending = players.filter(p => p.status === 'pending');
-      const approved = players.filter(p => p.status === 'approved');
-
-      document.getElementById('pending-count').textContent = pending.length;
-      document.getElementById('player-count').textContent = approved.length;
-
-      let html = '';
-
-      if (approved.length === 0) {
-        html = '<li style="color:#999;text- align:center;">No players yet</li>';
-      } else {
-        approved.forEach(p => {
-          html += `
-          <li class="player-item">
-            <div class="player-info">
-              <div class="player-name">${p.name}</div>
-              <div class="player-detail">${p.course}</div>
-            </div>
-          </li>
-          `;
-        });
-      }
-
-      document.getElementById('player-list').innerHTML = html;
+    function loadPlayersList(){
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
+      let approved=players.filter(p=>p.status==='approved');
+      document.getElementById('player-count').textContent=approved.length;
+      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
+      document.getElementById('player-list').innerHTML=html;
     }
+
     function switchGameTab(t){
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       event.target.classList.add('active');
@@ -211,7 +174,7 @@ async function loadPlayersList() {
     }
 
     function loadAdminPlayers(){
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
       document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
         <td>${i+1}</td><td>${p.name}</td>
@@ -223,26 +186,26 @@ async function loadPlayersList() {
     }
 
     function changeTeam(id,teamId){
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].team=parseInt(teamId);  loadAdminPlayers(); }
+      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
     }
 
     function approve(id){
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved';  loadAdminPlayers(); loadPlayersList(); }
+      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function deleteP(id){
       if(!confirm('Delete?')) return;
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1);  loadAdminPlayers(); loadPlayersList(); }
+      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
     }
 
     function loadAdminTeams(){
-      let players=[];
+      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
       document.getElementById('teams-container').innerHTML=teams.map(t=>{
         let tp=players.filter(p=>p.team===t.id);
         return `<div class="admin-section"><h3>${t.name}</h3>${tp.map(p=>`<div>${p.name}</div>`).join('')||'No players'}</div>`;
