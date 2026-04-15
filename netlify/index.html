@@ -275,3 +275,35 @@ async function loadPlayersList() {
   </script>
 </body>
 </html>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<script>
+window.supabaseClient = supabase.createClient(
+  "https://uwkmmrqnpnhlustrxees.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+);
+
+console.log("✅ Supabase READY");
+
+// WAIT until page + functions are loaded
+window.addEventListener("load", () => {
+
+  window.supabaseClient
+    .channel('players-live')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'players' },
+      (payload) => {
+        console.log('🔥 CHANGE DETECTED:', payload);
+
+        if (typeof loadPlayersList === "function") {
+          loadPlayersList();
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log("Realtime status:", status);
+    });
+
+});
+</script>
