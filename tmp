@@ -1,0 +1,54 @@
+    function approvePlayer(id) {
+      // Find player in localStorage and update status
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
+      
+      if (playerIndex > -1) {
+        players[playerIndex].status = 'approved';
+        players[playerIndex].approvedAt = new Date().toISOString();
+        localStorage.setItem('golf_players', JSON.stringify(players));
+        
+        // Update UI
+        loadAdminPlayers(); // Reload admin lists
+        loadPlayersList(); // Reload the main player list
+        updatePendingBadge(); // Update the count of pending players
+        alert(`Player ${players[playerIndex].name} approved!`);
+      } else {
+        console.error("Player not found for approval:", id);
+      }
+    }
+
+    function rejectPlayer(id) {
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
+
+      if (playerIndex > -1) {
+        players.splice(playerIndex, 1); // Remove player
+        localStorage.setItem('golf_players', JSON.stringify(players));
+
+        // Update UI
+        loadAdminPlayers();
+        loadPlayersList();
+        updatePendingBadge();
+        alert(`Player rejected and removed.`);
+      } else {
+        console.error("Player not found for rejection:", id);
+      }
+    }
+
+    function deletePlayer(id) {
+      players = JSON.parse(localStorage.getItem('golf_players')) || [];
+      const playerIndex = players.findIndex(p => p.id === id);
+
+      if (playerIndex > -1) {
+        players.splice(playerIndex, 1); // Remove player
+        localStorage.setItem('golf_players', JSON.stringify(players));
+
+        // Update UI
+        loadAdminPlayers();
+        loadPlayersList();
+        alert(`Player deleted.`);
+      } else {
+        console.error("Player not found for deletion:", id);
+      }
+    }

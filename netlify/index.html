@@ -146,14 +146,46 @@
       loadPlayersList(); showView('view-confirm');
     }
 
-    function loadPlayersList(){
-      let players=[];
-      let approved=players.filter(p=>p.status==='approved');
-      document.getElementById('player-count').textContent=approved.length;
-      let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-      document.getElementById('player-list').innerHTML=html;
-    }
+async function loadPlayersList() {
+      if (!window.supabaseClient) return;
 
+      const { data, error } = await window.supabaseClient
+        .from('players')
+        .select('*')
+        .order('registeredAt', { ascending: true });
+
+      if (error) {
+        console.error('Load error:', error);
+        return;
+      }
+
+      players = data || [];
+
+      const pending = players.filter(p => p.status === 'pending');
+      const approved = players.filter(p => p.status === 'approved');
+
+      document.getElementById('pending-count').textContent = pending.length;
+      document.getElementById('player-count').textContent = approved.length;
+
+      let html = '';
+
+      if (approved.length === 0) {
+        html = '<li style="color:#999;text- align:center;">No players yet</li>';
+      } else {
+        approved.forEach(p => {
+          html += `
+          <li class="player-item">
+            <div class="player-info">
+              <div class="player-name">${p.name}</div>
+              <div class="player-detail">${p.course}</div>
+            </div>
+          </li>
+          `;
+        });
+      }
+
+      document.getElementById('player-list').innerHTML = html;
+    }
     function switchGameTab(t){
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       event.target.classList.add('active');
