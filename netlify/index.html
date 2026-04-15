@@ -426,6 +426,14 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+window.supabaseClient = supabase.createClient(
+  "https://uwkmmrqnpnhlustrxees.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E"
+);
+console.log("✅ Supabase READY");
+  </script>
   <script>
     // ===== DATA =====
     let players = JSON.parse(localStorage.getItem('golf_players')) || [];
@@ -546,7 +554,18 @@
       };
       
       players.push(player);
-      localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){if (window.supabaseClient) {   window.supabaseClient.from("players").insert([{     name: player.name,     phone: player.phone,     course: player.course,     status: player.status,     team: player.team,     registeredAt: player.registeredAt   }]); }.catch(function(){}); }
+      localStorage.setItem("golf_players",JSON.stringify(players));
+      if (window.supabaseClient) {
+        window.supabaseClient.from("players").insert([{
+          id: player.id,
+          name: player.name,
+          phone: player.phone,
+          course: player.course,
+          status: player.status,
+          team: player.team,
+          registeredAt: player.registeredAt
+        }]);
+      }
       
       document.getElementById('reg-name').value = '';
       document.getElementById('reg-phone').value = '';
@@ -861,7 +880,10 @@
       const player = players.find(p => p.id === id);
       if (player) {
         player.status = 'approved';
-        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){if (window.supabaseClient) {   window.supabaseClient.from("players").insert([{     name: player.name,     phone: player.phone,     course: player.course,     status: player.status,     team: player.team,     registeredAt: player.registeredAt   }]); }.catch(function(){}); }
+        localStorage.setItem("golf_players",JSON.stringify(players));
+        if (window.supabaseClient) {
+          window.supabaseClient.from("players").update({ status: "approved" }).eq("id", player.id);
+        }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -871,7 +893,10 @@
     function rejectPlayer(id) {
       if (confirm('Decline this player?')) {
         players = players.filter(p => p.id !== id);
-        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){if (window.supabaseClient) {   window.supabaseClient.from("players").insert([{     name: player.name,     phone: player.phone,     course: player.course,     status: player.status,     team: player.team,     registeredAt: player.registeredAt   }]); }.catch(function(){}); }
+        localStorage.setItem("golf_players",JSON.stringify(players));
+        if (window.supabaseClient) {
+          window.supabaseClient.from("players").delete().eq("id", id);
+        }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -881,7 +906,10 @@
     function deletePlayer(id) {
       if (confirm('Delete this approved player? This cannot be undone.')) {
         players = players.filter(p => p.id !== id);
-        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){if (window.supabaseClient) {   window.supabaseClient.from("players").insert([{     name: player.name,     phone: player.phone,     course: player.course,     status: player.status,     team: player.team,     registeredAt: player.registeredAt   }]); }.catch(function(){}); }
+        localStorage.setItem("golf_players",JSON.stringify(players));
+        if (window.supabaseClient) {
+          window.supabaseClient.from("players").delete().eq("id", id);
+        }
         loadAdminPlayers();
         loadPlayersList();
         updatePendingBadge();
@@ -894,7 +922,10 @@
       const player = players.find(p => p.id === id);
       if (player) {
         player.team = teamName;
-        localStorage.setItem("golf_players",JSON.stringify(players)); if(window.supabaseClient){if (window.supabaseClient) {   window.supabaseClient.from("players").insert([{     name: player.name,     phone: player.phone,     course: player.course,     status: player.status,     team: player.team,     registeredAt: player.registeredAt   }]); }.catch(function(){}); }
+        localStorage.setItem("golf_players",JSON.stringify(players));
+        if (window.supabaseClient) {
+          window.supabaseClient.from("players").update({ team: teamName }).eq("id", player.id);
+        }
         loadAdminPlayers();
         alert(`${player.name} assigned to ${teamName}`);
       }
