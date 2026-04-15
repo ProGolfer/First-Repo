@@ -141,6 +141,9 @@
       if(!name){ alert('Enter name'); return; }
       let players=[];
       players.push({name,team:1,status:'pending',registeredAt:Date.now()});
+      if (window.supabaseClient) {
+        await window.supabaseClient.from('players').insert([{name,team:1,status:'pending',registeredAt:Date.now()}]);
+      }
       
       document.getElementById('reg-name').value='';
       loadPlayersList(); showView('view-confirm');
