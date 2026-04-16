@@ -4,60 +4,74 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Supabase Configuration
-    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
-   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    // Enable realtime subscriptions for live updates
-supabase.channel('players_changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-    loadPlayersList(); // Auto-refresh when data changes
-  })
-  .subscribe();
-    let players = [];
-    async function loadPlayers() { const { data, error } = await supabase.from('players').select('*').order('created_at', { ascending: false }); if (error) { players = JSON.parse(localStorage.getItem('golf_players')) || []; } else { players = data || []; } return players; }
-    async function savePlayerToSupabase(player) { const { error } = await supabase.from('players').insert([player]); if (error) { players.push(player); localStorage.setItem('golf_players', JSON.stringify(players)); return false; } return true; }
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 100%; margin: 0 auto; }
-    .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-    .header { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; padding: 25px; text-align: center; border-radius: 20px 20px 0 0; margin: -20px -20px 20px -20px; }
+    .container { max-width: 560px; margin: 0 auto; width: 100%; }
+    .card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); width: 100%; overflow: hidden; }
+    .header { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; padding: 25px; text-align: center; border-radius: 20px 20px 0 0; margin: -18px -18px 18px -18px; }
     .header h1 { font-size: 26px; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
     .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; }
-    .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px; background: #f5f5f5; border-radius: 8px; }
-    .btn { width: 100%; padding: 18px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; margin-bottom: 8px; }
+    .btn { width: 100%; padding: 16px 14px; min-height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; margin-bottom: 8px; }
     .btn-primary { background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%); color: white; }
     .btn-secondary { background: #f5f5f5; color: #333; }
     .btn-success { background: #4caf50; color: white; }
     .btn-danger { background: #f44336; color: white; }
     .btn-warning { background: #ff9800; color: white; }
-    .btn-small { padding: 8px 12px; font-size: 12px; width: auto; }
+    .btn-small { padding: 8px 12px; font-size: 12px; width: auto; min-height: auto; margin-bottom: 0; }
     .btn-back { background: #757575; color: white; margin-top: 10px; }
     .players-section { background: #f8f9fa; border-radius: 12px; padding: 15px; margin-top: 15px; }
-    .players-header { display: flex; justify-content: space-between; }
+    .players-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
     .players-count { background: #2d5a27; color: white; padding: 4px 12px; border-radius: 20px; }
     .player-list { list-style: none; }
-    .player-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .table-container { overflow-x: auto; max-width:100%;-webkit-overflow-scrolling:touch; }
+    .player-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+    .table-container { overflow-x: auto; max-width:100%; -webkit-overflow-scrolling:touch; border-radius: 12px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 5px; text-align: left; border-bottom: 1px solid #eee; }
+    th, td { padding: 6px; text-align: left; border-bottom: 1px solid #eee; }
     .status-approved { color: #4caf50; font-weight: bold; }
     .status-pending { color: #ff9800; font-weight: bold; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-    .tab-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+    .tab-btn { width: 100%; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color:transparent; }
     .tab-btn.active { background: #2d5a27; color: white; }
     .admin-section { background: #f5f5f5; border-radius: 12px; padding: 15px; margin: 15px 0; }
+    .admin-top-status { background:#eef5fb; border:2px solid #2f93ff; border-radius:16px; padding:16px; text-align:center; margin-bottom:18px; }
+    .admin-top-status strong { font-size: 16px; }
+    .admin-top-status .closed { color:#d63b30; font-weight:800; }
+    .admin-top-status .open { color:#1b8f3a; font-weight:800; }
+    .admin-pill-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
+    .admin-pill-btn { background:#efefef; border:none; border-radius:14px; padding:14px 12px; font-weight:700; cursor:pointer; }
+    .admin-pill-btn.active { background:#e3efe4; color:#1a472a; }
+    .approval-note { background:#eef7ee; border:2px solid #4caf50; border-radius:16px; padding:16px; text-align:center; margin-bottom:18px; }
+    .approval-note .title { font-size:16px; font-weight:800; margin-bottom:6px; }
+    .section-title { font-size:18px; font-weight:800; margin:18px 0 10px; }
+    .empty-state { color:#a0a0a0; text-align:center; padding:18px 0; }
+    .logout-soft { background:#efefef; color:#333; }
     .hidden { display: none; }
+    .status-line { background:#e8f5e9; color:#1a472a; border-radius:10px; padding:10px 12px; margin-bottom:15px; font-weight:600; width: 100%; }
+    .muted { color:#666; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-row .btn { margin-bottom:0; }
+        select { max-width: 100%; }
+    td select { min-width: 110px; width: 100%; }
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      .container { max-width: 100%; }
+      .header { padding: 18px; margin: -18px -18px 16px -18px; }
+      .header h1 { font-size: 22px; }
+      .tabs { grid-template-columns: 1fr; }
+      .player-item { align-items: flex-start; }
+      .btn-row { flex-direction: column; }
+      th, td { font-size: 13px; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="status-line" id="live-status">Connecting...</div>
+
     <div id="view-home" class="card">
       <div class="header"><h1>⛳ Golf Money Game</h1></div>
       <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
@@ -75,17 +89,27 @@ supabase.channel('players_changes')
       <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
       <div class="form-group"><label>Phone (optional)</label><input type="tel" id="reg-phone" placeholder="(555) 123-4567"></div>
       <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+      <div id="pending-approval-bar" style="background:#efe3b7;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
+        <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
+      </div>
       <div class="players-section">
         <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
-      <button class="btn btn-secondary" onclick="showView('view-game')">My Team Scores</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin()" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
+        <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
+        <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
+      </div>
+      <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
+      <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
+      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a></div>
+      
     </div>
 
     <div id="view-confirm" class="card hidden">
       <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px0;">
+      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
         <h3 style="color:#2e7d32;">You're In!</h3>
         <p>Your registration is pending approval.</p>
       </div>
@@ -94,15 +118,24 @@ supabase.channel('players_changes')
 
     <div id="view-game" class="card hidden">
       <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchGameTab('myteam')">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams')">Other Teams</button>
+      <div class="tabs" style="grid-template-columns: 1fr 1fr;">
+        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
+        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
       </div>
       <div id="tab-myteam">
+        <p class="muted" id="my-team-label">Your team: -</p>
         <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
         <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
       </div>
       <div id="tab-otherteams" class="hidden"></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+    <div id="view-leaderboard" class="card hidden">
+      <div class="header"><h1>🏅 Leaderboard</h1></div>
+      <div class="players-section">
+        <ul id="leaderboard-list" class="player-list"></ul>
+      </div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
@@ -114,158 +147,863 @@ supabase.channel('players_changes')
     </div>
 
     <div id="view-admin-dashboard" class="card hidden">
-      <div class="header"><h1>⚙️ Admin Dashboard</h1></div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchAdminTab('players')">Players</button>
-        <button class="tab-btn" onclick="switchAdminTab('teams')">Teams</button>
-        <button class="tab-btn" onclick="switchAdminTab('settings')">Settings</button>
+      <div class="header"><div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:38px;">⚙️</div><h1>Admin Dashboard</h1></div>
+
+      <div class="admin-top-status" id="admin-status-card">
+        <strong>Registration Status: <span id="admin-reg-status" class="closed">CLOSED</span></strong>
+        <div style="margin-top:8px;">Registration is closed. No new players can register.</div>
       </div>
+
+      <div class="admin-pill-tabs">
+        <button class="admin-pill-btn active" onclick="switchAdminTab('players', event)">Manage Players</button>
+        <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
+        <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
+      </div>
+
       <div id="admin-players">
-        <div class="table-container"><table><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Status</th><th>✓</th><th>✗</th></tr></thead><tbody id="players-table-body"></tbody></table></div>
-      </div>
-      <div id="admin-teams" class="hidden">
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">START GAME</button><button class="btn btn-danger" onclick="endGame()">END GAME</button><div id="admin-settings" class="hidden"><div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div></div></div>
-        <div class="btn-row"><button class="btn btn-warning" onclick="startGame()">🚀 START GAME</button><button class="btn btn-danger" onclick="endGame()">🛑 END GAME</button></div>
-        <p id="game-status">Game not started</p>
-        <div class="admin-section">
-          <h3>Add Team</h3><input type="text" id="new-team-name" placeholder="Team name"><button class="btn btn-primary" onclick="addNewTeam()">Add</button>
+        <div class="approval-note">
+          <div class="title">✅ Approval Always Available</div>
+          <div>You can approve or decline players anytime, even while registration is open.</div>
         </div>
+
+        <div class="section-title">⏳ Pending Players</div>
+        <div id="pending-players-list"></div>
+
+        <div class="section-title">✅ Approved Players (No Team)</div>
+        <div id="approved-no-team-list"></div>
+      </div>
+
+      <div id="admin-teams" class="hidden">
+        <div class="approval-note" style="background:#eef7ee;border-color:#4caf50;">
+          <div class="title">✅ Registration is now CLOSED</div>
+          <div>You can now assign players to teams:</div>
+        </div>
+
+        <div class="admin-section">
+          <div class="form-group" style="margin-bottom:0;">
+            <label>🏌️ Number of Teams</label>
+            <select id="num-teams" onchange="updateNumTeams()" style="padding:12px;border-radius:12px;border:2px solid #2d5a27;">
+              <option value="1">1 Team</option>
+              <option value="2">2 Teams</option>
+              <option value="3">3 Teams</option>
+              <option value="4" selected>4 Teams</option>
+              <option value="5">5 Teams</option>
+              <option value="6">6 Teams</option>
+              <option value="7">7 Teams</option>
+              <option value="8">8 Teams</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="submitNumTeams()">Submit Number of Teams</button>
+        </div>
+
+        <div class="section-title">Players Waiting for Team</div>
+        <div id="team-assignment-list"></div>
+
+        <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
+
+        <div class="section-title">Teams</div>
         <div id="teams-container"></div>
       </div>
+
       <div id="admin-settings" class="hidden">
-          <div class="admin-section"><h3>⏰ Cutoff Time</h3><input type="time" id="close-time"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+        <div class="admin-section">
+          <div class="form-group">
+            <label>⏰ Registration Opens At</label>
+            <input type="time" id="open-time" value="06:00">
+          </div>
+          <div class="form-group">
+            <label>⏰ Registration Closes At</label>
+            <input type="time" id="cutoff-time" value="09:30">
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save Times</button>
+          <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
         </div>
-      <div id="admin-settings" class="hidden">
-        <div class="admin-section"><h3>⏰ Registration Cutoff</h3><input type="time" id="cutoff-time" value="09:30"><button class="btn btn-primary" onclick="alert('Saved!')">Save</button></div>
+
+        <div class="admin-section" style="background:#f3e1e5;">
+          <h3 style="margin-bottom:10px;">🗑️ Clear Team Score</h3>
+          <div class="form-group">
+            <label>Select Team to Clear</label>
+            <select id="clear-team-select">
+              <option value="">-- Select Team --</option>
+            </select>
+          </div>
+          <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
+        </div>
+
+        <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
       </div>
-      <button class="btn btn-back" onclick="logout()">← Log Out</button>
+
+      <button class="btn logout-soft" onclick="logout()">← Log Out</button>
     </div>
   </div>
 
   <script>
-    let gameStarted = false, gameEnded = false, myTeam = 1, teamSubmitted = false;
-    let teams = JSON.parse(localStorage.getItem('golf_teams'))||[{id:1,name:'Team 1'},{id:2,name:'Team 2'},{id:3,name:'Team 3'},{id:4,name:'Team 4'},{id:5,name:'Team 5'}];
-    let teamScores = JSON.parse(localStorage.getItem('team_scores'))||{};
+    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
+    const ADMIN_PASSWORD = 'golf123';
+    const SETTINGS_KEY = 'app';
+    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
-    function showView(v){ document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden')); document.getElementById(v).classList.remove('hidden'); }
+    window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let appState = {
+      players: [],
+      teams: [],
+      settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
+      myTeam: null,
+      myPlayerName: '',
+      settingsLiveEnabled: false,
+      numTeams: 4,
+      selectedNumTeams: 4,
+      teamsSubmitted: false
+    };
+
+    function formatError(err) {
+      if (!err) return 'Unknown error';
+      if (typeof err === 'string') return err;
+      if (err.message) return err.message;
+      if (err.error_description) return err.error_description;
+      try { return JSON.stringify(err, null, 2); } catch (_) { return String(err); }
+    }
+
+    function setStatus(text) {
+      document.getElementById('live-status').textContent = text;
+    }
+
+    function showView(v){
+      document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
+      document.getElementById(v).classList.remove('hidden');
+    }
+
     function showAdminLogin(){ showView('view-admin'); }
 
-   async function registerPlayer(){
-  const name=document.getElementById('reg-name').value.trim();
-  if(!name){ alert('Enter name'); return; }
-
-  const newPlayer = {
-    id: 'player_' + Date.now(),
-    name: name,
-    team: 1,
-    status: 'pending',
-    registeredAt: Date.now()
-  };
-    // Try Supabase first, fallback to localStorage
-  const supabaseSuccess = await savePlayerToSupabase(newPlayer);
-  if (!supabaseSuccess) {
-    let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-    players.push(newPlayer);
-    localStorage.setItem('golf_players',JSON.stringify(players));
-  }
-
-  document.getElementById('reg-name').value='';
-  loadPlayersList(); showView('view-confirm');
-}
+    async function db(promise, label) {
+      try {
+        const result = await promise;
+        if (result?.error) {
+          const msg = formatError(result.error);
+          throw new Error(msg);
+        }
+        return result;
+      } catch (err) {
+        const msg = formatError(err);
+        throw new Error(msg);
+      }
     }
 
-   async function loadPlayersList(){
-  await loadPlayers();
-  let approved=players.filter(p=>p.status==='approved');
-  document.getElementById('player-count').textContent=approved.length;
-  let html=approved.map(p=>`<li class="player-item"><span>${p.name}</span><span>${teams.find(t=>t.id===p.team)?.name||p.team}</span></li>`).join('')||'<li style="color:#999;">No approved players</li>';
-  document.getElementById('player-list').innerHTML=html;
-}
+    async function ensureBaseData() {
+      const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
+      if (!teamsResult.data || teamsResult.data.length === 0) {
+        try {
+          await db(window.supabaseClient.from('teams').insert([
+            { team_number: 1, team_name: 'Team 1' },
+            { team_number: 2, team_name: 'Team 2' },
+            { team_number: 3, team_name: 'Team 3' },
+            { team_number: 4, team_name: 'Team 4' },
+            { team_number: 5, team_name: 'Team 5' }
+          ]), 'Seed teams');
+        } catch (err) {
+        }
+      }
+
+      const settingsResult = await db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings');
+      const settingsRow = settingsResult.data?.[0] || null;
+      if (!settingsRow) {
+        try {
+          await db(window.supabaseClient.from('settings').insert([DEFAULT_SETTINGS]), 'Seed settings');
+          appState.settingsLiveEnabled = true;
+          appState.settings = { ...appState.settings, ...DEFAULT_SETTINGS };
+        } catch (err) {
+          appState.settingsLiveEnabled = false;
+        }
+      } else {
+        appState.settingsLiveEnabled = Object.prototype.hasOwnProperty.call(settingsRow, 'game_started');
+        if (appState.settingsLiveEnabled) {
+          appState.settings = {
+            ...appState.settings,
+            game_started: !!settingsRow.game_started,
+            cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
+            open_time: settingsRow.open_time || appState.settings.open_time,
+            registration_closed: !!settingsRow.registration_closed
+          };
+        }
+      }
     }
 
-    function switchGameTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
+    async function loadAllData() {
+      const [playersResult, teamsResult, settingsResult] = await Promise.all([
+        db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
+        db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
+        db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings')
+      ]);
+
+      appState.players = playersResult.data || [];
+      appState.teams = teamsResult.data || [];
+
+      const settingsRow = settingsResult.data?.[0] || null;
+      if (settingsRow && Object.prototype.hasOwnProperty.call(settingsRow, 'game_started')) {
+        appState.settingsLiveEnabled = true;
+        appState.settings = {
+          ...appState.settings,
+          game_started: !!settingsRow.game_started,
+          cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
+          open_time: settingsRow.open_time || appState.settings.open_time
+        };
+      } else if (!settingsRow) {
+        appState.settingsLiveEnabled = true;
+      } else {
+        appState.settingsLiveEnabled = false;
+      }
+
+      renderHome();
+      renderAdminPlayers();
+      renderAdminTeams();
+      renderLeaderboard();
+      loadGameView();
+      updateSettingsView();
+    }
+
+    function getTeamName(teamId) {
+      const team = appState.teams.find(t => String(t.id) === String(teamId));
+      return team ? (team.team_name || team.name || `Team ${team.id}`) : '-';
+    }
+
+    async function registerPlayer(){
+      try {
+        const name = document.getElementById('reg-name').value.trim();
+        const phone = document.getElementById('reg-phone').value.trim();
+        const course = document.getElementById('reg-course').value;
+        if(!name){ alert('Enter name'); return; }
+
+        const now = new Date();
+        const openTime = appState.settings.open_time || '06:00';
+        const cutoffTime = appState.settings.cutoff_time || '09:30';
+        const openDate = new Date();
+        const cutoffDate = new Date();
+        const [openH, openM] = openTime.split(':').map(Number);
+        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+        openDate.setHours(openH, openM, 0, 0);
+        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
+        if (appState.settings.registration_closed) {
+          alert('Registration is manually closed.');
+          return;
+        }
+
+        if (now < openDate) {
+          alert(`Registration opens at ${formatTime12(openTime)}.`);
+          return;
+        }
+
+        if (now > cutoffDate) {
+          alert(`Registration is closed. Cutoff time was ${formatTime12(cutoffTime)}.`);
+          return;
+        }
+
+        const exists = appState.players.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
+        if (exists) { alert('Player already registered'); return; }
+        if (!appState.teams.length) { alert('No teams available yet'); return; }
+
+        await db(window.supabaseClient.from('players').insert([{
+          name: name,
+          phone: phone || null,
+          course: course || 'Cliffside Golf Club',
+          status: 'pending',
+          team: null,
+          registered_at: new Date().toISOString(),
+          is_captain: false,
+          device_token: null
+        }]), 'Register player');
+
+        appState.myPlayerName = name;
+        document.getElementById('reg-name').value = '';
+        document.getElementById('reg-phone').value = '';
+        showView('view-confirm');
+        await loadAllData();
+      } catch (err) {
+        alert(`Could not register player: ${formatError(err)}`);
+      }
+    }
+
+    function formatTime12(time24) {
+      if (!time24 || !time24.includes(':')) return time24 || '';
+      const [hours, minutes] = time24.split(':');
+      const h = parseInt(hours, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${minutes} ${ampm}`;
+    }
+
+    function renderHome() {
+      const approved = appState.players.filter(p => p.status === 'approved');
+      const pending = appState.players.filter(p => p.status === 'pending');
+      const playerCount = document.getElementById('player-count');
+      if (playerCount) playerCount.textContent = approved.length;
+      const pendingCount = document.getElementById('pending-count');
+      if (pendingCount) pendingCount.textContent = pending.length;
+      const playerList = document.getElementById('player-list');
+      if (playerList) {
+        playerList.innerHTML = approved.map(p => {
+          const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
+          return `
+            <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+              <div style="font-weight:800;font-size:16px;color:#111;">${p.name}</div>
+              <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
+            </li>
+          `;
+        }).join('') || '<li style="color:#999;">No approved players</li>';
+      }
+
+      const openTime = appState.settings.open_time || '06:00';
+      const cutoffTime = appState.settings.cutoff_time || '09:30';
+      const hoursDisplay = document.getElementById('registration-hours-display');
+      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
+
+      const now = new Date();
+      const openDate = new Date();
+      const cutoffDate = new Date();
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+      openDate.setHours(openH, openM, 0, 0);
+      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
+      const registerBtn = document.querySelector('#view-home .btn.btn-primary');
+      if (registerBtn) {
+        if (appState.settings.registration_closed) {
+          registerBtn.disabled = true;
+          registerBtn.textContent = 'Registration Closed';
+          registerBtn.style.opacity = '0.7';
+        } else if (now < openDate) {
+          registerBtn.disabled = true;
+          registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
+          registerBtn.style.opacity = '0.7';
+        } else if (now > cutoffDate) {
+          registerBtn.disabled = true;
+          registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
+          registerBtn.style.opacity = '0.7';
+        } else {
+          registerBtn.disabled = false;
+          registerBtn.textContent = `Register for Today's Game`;
+          registerBtn.style.opacity = '1';
+        }
+      }
+    }
+
+    function switchGameTab(t, ev){
+      document.querySelectorAll('#view-game .tab-btn').forEach(b=>b.classList.remove('active'));
+      if (ev?.target) ev.target.classList.add('active');
       document.getElementById('tab-myteam').classList.add('hidden');
       document.getElementById('tab-otherteams').classList.add('hidden');
       document.getElementById('tab-'+t).classList.remove('hidden');
     }
 
-    function submitTeamScore(){
-      const score=document.getElementById('team-total-score').value;
-      if(!score){ alert('Enter score'); return; }
-      teamScores[myTeam]={score:parseInt(score),submitted:true};
-      localStorage.setItem('team_scores',JSON.stringify(teamScores));
-      alert('Score submitted!');
+    function loadGameView() {
+      const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === (appState.myPlayerName || '').toLowerCase());
+      const fallbackTeam = appState.teams[0]?.id ?? null;
+      appState.myTeam = myPlayer?.team ?? fallbackTeam;
+      document.getElementById('my-team-label').textContent = `Your team: ${appState.myTeam ? getTeamName(appState.myTeam) : '-'}`;
+
+      const others = appState.teams.map(team => {
+        const players = appState.players.filter(p => String((p.team ?? fallbackTeam)) === String(team.id) && p.status === 'approved');
+        const scores = players.map(p => p.score).filter(v => v !== null && v !== undefined);
+        const bestScore = scores.length ? Math.min(...scores) : '-';
+        return `<div class="admin-section"><strong>${getTeamName(team.id)}</strong><div>${players.map(p => p.name).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
+      }).join('');
+      document.getElementById('tab-otherteams').innerHTML = others || '<div class="muted">No teams yet</div>';
+    }
+
+    async function submitTeamScore(){
+      try {
+        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
+        const score = document.getElementById('team-total-score').value;
+        if(!score){ alert('Enter score'); return; }
+
+        const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === appState.myPlayerName.toLowerCase());
+        if (!myPlayer) { alert('Player not found yet'); return; }
+
+        await db(window.supabaseClient.from('players').update({ score: parseInt(score, 10) }).eq('id', myPlayer.id), 'Submit score');
+        alert('Score submitted!');
+      } catch (err) {
+        alert(`Could not save score: ${formatError(err)}`);
+      }
+    }
+
+    function renderLeaderboard() {
+      const ranked = appState.players
+        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
+        .sort((a,b) => a.score - b.score);
+
+      document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
+        <li class="player-item"><span>${idx + 1}. ${p.name}</span><span>${p.score}</span></li>
+      `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
+    }
+
+    function showLeaderboard() {
+      renderLeaderboard();
+      showView('view-leaderboard');
     }
 
     function adminLogin(){
-      if(document.getElementById('admin-password').value==='golf123'){ showView('view-admin-dashboard'); loadAdminPlayers(); }
-      else alert('Invalid password');
+      if(document.getElementById('admin-password').value === ADMIN_PASSWORD){
+        showView('view-admin-dashboard');
+        renderAdminPlayers();
+      } else alert('Invalid password');
     }
 
-    function loadAdminPlayers(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let options=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-      document.getElementById('players-table-body').innerHTML=players.map((p,i)=>`<tr>
-        <td>${i+1}</td><td>${p.name}</td>
-        <td><select onchange="changeTeam('${p.registeredAt}',this.value)" style="padding:5px;">${teams.map(t=>`<option value="${t.id}" ${p.team==t.id?'selected':''}>${t.name}</option>`).join('')}</select></td>
-        <td class="${p.status==='approved'?'status-approved':'status-pending'}">${p.status}</td>
-        <td>${p.status!=='approved'?`<button class="btn btn-success btn-small" onclick="approve('${p.registeredAt}')">✓</button>`:'✓'}</td>
-        <td><button class="btn btn-danger btn-small" onclick="deleteP('${p.registeredAt}')">✗</button></td>
-      </tr>`).join('');
+    function renderAdminPlayers(){
+      const pending = appState.players.filter(p => p.status === 'pending');
+      const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
+
+      const pendingList = document.getElementById('pending-players-list');
+      if (pendingList) {
+        pendingList.innerHTML = pending.length ? pending.map(p => `
+          <div class="player-item">
+            <div>
+              <div style="font-weight:700;">${p.name}</div>
+              <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-success btn-small" onclick="approve('${p.id}')">✓ Approve</button>
+              <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">✗ Decline</button>
+            </div>
+          </div>
+        `).join('') : '<div class="empty-state">No pending players</div>';
+      }
+
+      const approvedNoTeamList = document.getElementById('approved-no-team-list');
+      if (approvedNoTeamList) {
+        approvedNoTeamList.innerHTML = approvedNoTeam.length ? approvedNoTeam.map(p => `
+          <div class="player-item">
+            <div>
+              <div style="font-weight:700;">${p.name}</div>
+              <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span style="background:#e8f2ff;color:#1565c0;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;">No Team</span>
+              <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">🗑️ Delete</button>
+            </div>
+          </div>
+        `).join('') : '<div class="empty-state">No approved players without a team</div>';
+      }
+
+      const now = new Date();
+      const openTime = appState.settings.open_time || '06:00';
+      const cutoffTime = appState.settings.cutoff_time || '09:30';
+      const openDate = new Date();
+      const cutoffDate = new Date();
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+      openDate.setHours(openH, openM, 0, 0);
+      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+      const isOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+      const statusEl = document.getElementById('admin-reg-status');
+      const cardEl = document.getElementById('admin-status-card');
+      if (statusEl && cardEl) {
+        statusEl.textContent = isOpen ? 'OPEN' : 'CLOSED';
+        statusEl.className = isOpen ? 'open' : 'closed';
+        cardEl.querySelector('div').textContent = isOpen
+          ? `Registration is open until ${formatTime12(cutoffTime)}.`
+          : 'Registration is closed. No new players can register.';
+      }
     }
 
-    function changeTeam(id,teamId){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].team=parseInt(teamId); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); }
+    async function changeTeam(id, teamId){
+      try {
+        const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
+        await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', id), 'Change team');
+        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, team: nextTeam } : p);
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not change team: ${formatError(err)}`);
+      }
     }
 
-    function approve(id){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players[idx].status='approved'; localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+    async function approve(id){
+      try {
+        await db(window.supabaseClient.from('players').update({ status: 'approved' }).eq('id', id), 'Approve player');
+        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, status: 'approved' } : p);
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not approve player: ${formatError(err)}`);
+      }
     }
 
-    function deleteP(id){
+    async function deleteP(id){
       if(!confirm('Delete?')) return;
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      let idx=players.findIndex(p=>p.registeredAt==id);
-      if(idx>-1){ players.splice(idx,1); localStorage.setItem('golf_players',JSON.stringify(players)); loadAdminPlayers(); loadPlayersList(); }
+      try {
+        await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
+        appState.players = appState.players.filter(p => String(p.id) !== String(id));
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not delete player: ${formatError(err)}`);
+      }
     }
 
-    function loadAdminTeams(){
-      let players=JSON.parse(localStorage.getItem('golf_players')||'[]');
-      document.getElementById('teams-container').innerHTML=teams.map(t=>{
-        let tp=players.filter(p=>p.team===t.id);
-        return `<div class="admin-section"><h3>${t.name}</h3>${tp.map(p=>`<div>${p.name}</div>`).join('')||'No players'}</div>`;
-      }).join('');
+    function renderAdminTeams(){
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+      const availableTeams = appState.teams
+        .slice()
+        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+        .slice(0, appState.numTeams || 4);
+
+      const numTeamsSelect = document.getElementById('num-teams');
+      if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
+
+      const teamAssignmentList = document.getElementById('team-assignment-list');
+      if (teamAssignmentList) {
+        teamAssignmentList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
+          const playerTeam = p.team ?? '';
+          const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
+          const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
+          return `
+            <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
+              <div style="min-width:110px;">
+                <div style="font-weight:700;">${p.name}</div>
+                <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
+              </div>
+              <div style="flex:1;min-width:140px;">
+                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
+                  <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
+                  ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
+                </select>
+              </div>
+              <div style="flex:1;min-width:160px;">
+                <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;" ${!playerTeam ? 'disabled' : ''}>
+                  <option value="">-- Captain? --</option>
+                  <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
+                  <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
+                </select>
+              </div>
+            </div>
+          `;
+        }).join('') : '<div class="empty-state">No approved players</div>';
+      }
+
+      const teamsContainer = document.getElementById('teams-container');
+      if (teamsContainer) {
+        teamsContainer.innerHTML = availableTeams.map(t => {
+          const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
+          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
+          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
+          return `
+            <div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px;">
+              <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
+              <div style="padding:4px 8px;">
+                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const gameStatus = document.getElementById('game-status');
+      if (gameStatus) {
+        gameStatus.innerText = appState.settings.game_started ? 'GAME IN PROGRESS' : 'Game not started';
+      }
     }
 
-    function addNewTeam(){
-      let name=document.getElementById('new-team-name').value.trim();
-      if(!name) return;
-      teams.push({id:Date.now(),name});
-      localStorage.setItem('golf_teams',JSON.stringify(teams));
-      loadAdminTeams();
+    function updateNumTeams() {
+      const select = document.getElementById('num-teams');
+      appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
     }
 
-    function startGame(){ gameStarted=true; document.getElementById('game-status').innerText='GAME IN PROGRESS'; alert('Game started!'); }
-    function endGame(){ gameEnded=true; gameStarted=false; document.getElementById("game-status").innerText="GAME ENDED"; alert("Game ended!"); }
-    function saveTimes(){ gameEnded=true; gameStarted=false; document.getElementById('game-status').innerText='GAME ENDED'; alert('Game ended!'); }
+    function submitNumTeams() {
+      appState.numTeams = appState.selectedNumTeams || 4;
+      const allowedTeamIds = new Set(
+        appState.teams
+          .slice()
+          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+          .slice(0, appState.numTeams)
+          .map(t => String(t.id))
+      );
+      appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
+      appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
+      renderAdminTeams();
+    }
 
-    function switchAdminTab(t){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      event.target.classList.add('active');
+    function submitTeams() {
+      appState.teamsSubmitted = true;
+      renderHome();
+      renderAdminTeams();
+      alert('Teams submitted successfully!');
+    }
+
+    async function setCaptainFromPlayerRow(playerId, value) {
+      try {
+        const player = appState.players.find(p => String(p.id) === String(playerId));
+        if (!player || !player.team) return;
+        const teamId = player.team;
+        if (value === 'yes') {
+          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
+          appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
+        } else {
+          const team = appState.teams.find(t => String(t.id) === String(teamId));
+          if (team && String(team.captain_id) === String(playerId)) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
+            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
+          }
+        }
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+      } catch (err) {
+        alert(`Could not update captain: ${formatError(err)}`);
+      }
+    }
+
+    async function assignPlayerToTeam(playerId, teamId) {
+      if (!playerId) return;
+      try {
+        await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
+        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not assign player: ${formatError(err)}`);
+      }
+    }
+
+    async function unassignPlayer(playerId) {
+      try {
+        const team = appState.teams.find(t => String(t.captain_id) === String(playerId));
+        if (team) {
+          await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', team.id), 'Clear captain');
+          appState.teams = appState.teams.map(t => String(t.id) === String(team.id) ? { ...t, captain_id: null } : t);
+        }
+        await db(window.supabaseClient.from('players').update({ team: null }).eq('id', playerId), 'Unassign player');
+        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: null } : p);
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not remove player: ${formatError(err)}`);
+      }
+    }
+
+    async function setCaptain(teamId, playerId) {
+      try {
+        const captainId = playerId === '' ? null : playerId;
+        await db(window.supabaseClient.from('teams').update({ captain_id: captainId }).eq('id', teamId), 'Set captain');
+        appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: captainId } : t);
+        renderAdminTeams();
+      } catch (err) {
+        alert(`Could not set captain: ${formatError(err)}`);
+      }
+    }
+
+    async function startGame(){
+      try {
+        if (!appState.settingsLiveEnabled) {
+          appState.settings.game_started = true;
+          renderAdminTeams();
+          alert('Game started locally. Add the settings columns in Supabase to make this live on all devices.');
+          return;
+        }
+        await db(window.supabaseClient.from('settings').update({ game_started: true }).eq('key', SETTINGS_KEY), 'Start game');
+        alert('Game started!');
+      } catch (err) {
+        alert(`Could not start game: ${formatError(err)}`);
+      }
+    }
+
+    async function endGame(){
+      try {
+        if (!appState.settingsLiveEnabled) {
+          appState.settings.game_started = false;
+          renderAdminTeams();
+          alert('Game ended locally. Add the settings columns in Supabase to make this live on all devices.');
+          return;
+        }
+        await db(window.supabaseClient.from('settings').update({ game_started: false }).eq('key', SETTINGS_KEY), 'End game');
+        alert('Game ended!');
+      } catch (err) {
+        alert(`Could not end game: ${formatError(err)}`);
+      }
+    }
+
+    async function saveSettings(){
+      try {
+        const openTime = document.getElementById('open-time').value;
+        const cutoffTime = document.getElementById('cutoff-time').value;
+        appState.settings.open_time = openTime;
+        appState.settings.cutoff_time = cutoffTime;
+
+        if (!appState.settingsLiveEnabled) {
+          renderHome();
+          updateSettingsView();
+          alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
+          return;
+        }
+
+        const updateResult = await db(
+          window.supabaseClient
+            .from('settings')
+            .update({ open_time: openTime, cutoff_time: cutoffTime })
+            .eq('key', SETTINGS_KEY)
+            .select(),
+          'Save settings'
+        );
+
+        const savedRow = updateResult.data?.[0];
+        if (savedRow) {
+          appState.settings = {
+            ...appState.settings,
+            open_time: savedRow.open_time || openTime,
+            cutoff_time: savedRow.cutoff_time || cutoffTime,
+            game_started: !!savedRow.game_started,
+            registration_closed: !!savedRow.registration_closed
+          };
+        }
+
+        renderHome();
+        updateSettingsView();
+        alert('Saved!');
+      } catch (err) {
+        alert(`Could not save settings: ${formatError(err)}`);
+      }
+    }
+
+    function updateSettingsView() {
+      const openInput = document.getElementById('open-time');
+      const cutoffInput = document.getElementById('cutoff-time');
+      const toggleBtn = document.getElementById('toggle-registration-btn');
+      const clearTeamSelect = document.getElementById('clear-team-select');
+
+      if (openInput) openInput.value = appState.settings.open_time || '06:00';
+      if (cutoffInput) cutoffInput.value = appState.settings.cutoff_time || '09:30';
+      if (toggleBtn) toggleBtn.textContent = appState.settings.registration_closed ? 'Reopen Registration' : 'Close Registration Now';
+
+      if (clearTeamSelect) {
+        const availableTeams = appState.teams
+          .slice()
+          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+          .slice(0, appState.numTeams || 4);
+        clearTeamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
+          availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
+      }
+    }
+
+    async function toggleRegistration() {
+      try {
+        const nextState = !appState.settings.registration_closed;
+        const result = await db(
+          window.supabaseClient
+            .from('settings')
+            .update({ registration_closed: nextState })
+            .eq('key', SETTINGS_KEY)
+            .select(),
+          'Toggle registration'
+        );
+        appState.settings.registration_closed = nextState;
+        if (result.data?.[0]) {
+          appState.settings = { ...appState.settings, ...result.data[0] };
+        }
+        renderHome();
+        renderAdminPlayers();
+        updateSettingsView();
+        alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
+      } catch (err) {
+        alert(`Could not toggle registration: ${formatError(err)}`);
+      }
+    }
+
+    async function clearSpecificTeamScore() {
+      const teamId = document.getElementById('clear-team-select')?.value;
+      if (!teamId) {
+        alert('Please select a team to clear');
+        return;
+      }
+      if (!confirm('Clear this team score?')) return;
+      try {
+        await db(
+          window.supabaseClient.from('players').update({ score: null }).eq('team', parseInt(teamId, 10)),
+          'Clear team score'
+        );
+        appState.players = appState.players.map(p => String(p.team) === String(teamId) ? { ...p, score: null } : p);
+        renderAdminTeams();
+        renderLeaderboard();
+        alert('Selected team score cleared');
+      } catch (err) {
+        alert(`Could not clear team score: ${formatError(err)}`);
+      }
+    }
+
+    async function clearAllPlayers() {
+      if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
+      try {
+        await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
+        appState.players = [];
+        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null }));
+        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear all captains');
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+        alert('All players cleared');
+      } catch (err) {
+        alert(`Could not clear all players: ${formatError(err)}`);
+      }
+    }
+
+    function switchAdminTab(t, ev){
+      document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
+      if (ev?.target) ev.target.classList.add('active');
       document.getElementById('admin-players').classList.add('hidden');
       document.getElementById('admin-teams').classList.add('hidden');
+      document.getElementById('admin-settings').classList.add('hidden');
       document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='teams') loadAdminTeams();
+      if(t==='players') renderAdminPlayers();
+      if(t==='teams') renderAdminTeams();
+      if(t==='settings') updateSettingsView();
     }
 
     function logout(){ showView('view-home'); }
-    loadPlayersList();
+
+    async function initApp() {
+      try {
+        setStatus('Connecting...');
+        await ensureBaseData();
+        await loadAllData();
+        setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
+
+        window.supabaseClient
+          .channel('players-live')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
+            setStatus('Live: players updated');
+            await loadAllData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+            setStatus('Live: teams updated');
+            await loadAllData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+            setStatus('Live: settings updated');
+            await loadAllData();
+          })
+          .subscribe((status) => {
+            setStatus('Status: ' + status);
+          });
+      } catch (err) {
+        const msg = formatError(err);
+        setStatus('Startup error');
+        alert(`Startup failed: ${msg}`);
+      }
+    }
+
+    window.addEventListener('load', initApp);
   </script>
 </body>
 </html>
