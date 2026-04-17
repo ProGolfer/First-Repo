@@ -106,6 +106,42 @@
     .captain-row { font-weight:800; font-size:16px; color:#143b2f; padding:8px 0; border-bottom:1px solid #c6dec6; }
     .team-player-row { padding:8px 0; border-bottom:1px solid #c6dec6; }
     .team-player-row:last-child { border-bottom:none; }
+    .captain-select-wrap {
+      background:linear-gradient(135deg,#fff6db 0%,#ffe9a8 100%);
+      border:2px solid #f0b429;
+      border-radius:12px;
+      padding:8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .captain-select-wrap label {
+      display:block;
+      font-size:11px;
+      font-weight:900;
+      color:#8a5a00;
+      letter-spacing:.4px;
+      margin-bottom:6px;
+      text-transform:uppercase;
+    }
+    .captain-select {
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:2px solid #e0b24d;
+      background:#fffaf0;
+      color:#5a3d00;
+      font-weight:800;
+    }
+    .place-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:#f4f4f4;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:13px;
+      font-weight:800;
+      color:#333;
+    }
     select { max-width: 100%; }
     td select { min-width: 110px; width: 100%; }
     @media (max-width: 640px) {
@@ -856,18 +892,45 @@
       if (!allSubmitted) {
         otherTeamsContainer.innerHTML = '<div class="admin-section"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
       } else {
-        const others = teamsToShow.map(team => {
+        const rankedTeams = teamsToShow
+          .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
+          .sort((a, b) => a.score - b.score);
+
+        function getPlaceMeta(index, total) {
+          if (index === 0) return '🥇 1st Place';
+          if (index === 1) return '🥈 2nd Place';
+          if (index === 2) return '🥉 3rd Place';
+          if (index === total - 1) return '💩 Last Place';
+          return `#${index + 1}`;
+        }
+
+        const others = rankedTeams.map((entry, index) => {
+          const team = entry.team;
           const players = getApprovedPlayersForTeam(team.id);
           const captain = getCaptainForTeam(team.id);
           const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
           const teamScore = getTeamScoreValue(team);
+          const placeLabel = getPlaceMeta(index, rankedTeams.length);
           return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
             <div class="team-card-title">
               <h4>${getTeamName(team.id)}</h4>
-              ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
+              <span class="place-badge">${placeLabel}</span>
             </div>
             <div class="muted" style="margin-bottom:10px;">Captain: ${captain ? `${captain.name}${isCurrentPlayer(captain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-            <div style="font-size:28px;font-weight:800;color:#143b2f;margin-bottom:10px;">${teamScore ?? '-'}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
+                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Front</div>
+                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamFrontScore(team) ?? '-'}</div>
+              </div>
+              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
+                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Back</div>
+                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamBackScore(team) ?? '-'}</div>
+              </div>
+              <div style="background:#eef7ee;border-radius:10px;padding:10px;border:2px solid #cfe3d0;">
+                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Total</div>
+                <div style="font-size:24px;font-weight:900;color:#143b2f;">${teamScore ?? '-'}</div>
+              </div>
+            </div>
             <div>${players.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div>
           </div>`;
         }).join('');
@@ -1057,12 +1120,15 @@
                   ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
                 </select>
               </div>
-              <div style="flex:1;min-width:160px;">
-                <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;" ${!playerTeam ? 'disabled' : ''}>
-                  <option value="">-- Captain? --</option>
-                  <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
-                  <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
-                </select>
+              <div style="flex:1;min-width:180px;">
+                <div class="captain-select-wrap">
+                  <label>👑 Captain Control</label>
+                  <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)" ${!playerTeam ? 'disabled' : ''}>
+                    <option value="">-- Choose Role --</option>
+                    <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>👑 Make Captain</option>
+                    <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Player Only</option>
+                  </select>
+                </div>
               </div>
             </div>
           `;
