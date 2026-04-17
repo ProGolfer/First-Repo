@@ -487,6 +487,33 @@
       return team.team_score ?? null;
     }
 
+    function getTeamFrontScore(team) {
+      if (!team) return null;
+      return team.front_score ?? null;
+    }
+
+    function getTeamBackScore(team) {
+      if (!team) return null;
+      return team.back_score ?? null;
+    }
+
+    function calculateTeamTotal(front, back) {
+      const frontNum = parseInt(front, 10);
+      const backNum = parseInt(back, 10);
+      const safeFront = Number.isNaN(frontNum) ? 0 : frontNum;
+      const safeBack = Number.isNaN(backNum) ? 0 : backNum;
+      return safeFront + safeBack;
+    }
+
+    function updateTeamTotalInput() {
+      const frontInput = document.getElementById('team-front-score');
+      const backInput = document.getElementById('team-back-score');
+      const totalInput = document.getElementById('team-total-score');
+      if (!frontInput || !backInput || !totalInput) return;
+      const hasAnyValue = String(frontInput.value).trim() !== '' || String(backInput.value).trim() !== '';
+      totalInput.value = hasAnyValue ? String(calculateTeamTotal(frontInput.value, backInput.value)) : '';
+    }
+
     function hasTeamSubmittedToday(team) {
       return getTeamScoreValue(team) !== null && isTodayDateString(team.score_submitted_at);
     }
@@ -519,7 +546,7 @@
         await db(
           window.supabaseClient
             .from('teams')
-            .update({ team_score: null, score_submitted_at: null })
+            .update({ front_score: null, back_score: null, team_score: null, score_submitted_at: null })
             .eq('id', team.id),
           'Clear expired team score'
         );
@@ -677,6 +704,8 @@
       const myCaptain = myTeam ? getCaptainForTeam(myTeam.id) : null;
       const iAmCaptain = myTeam ? isCurrentCaptainForTeam(myTeam.id) : false;
       const myTeamScore = myTeam ? getTeamScoreValue(myTeam) : null;
+      const myFrontScore = myTeam ? getTeamFrontScore(myTeam) : null;
+      const myBackScore = myTeam ? getTeamBackScore(myTeam) : null;
       const myTeamSubmitted = myTeam ? hasTeamSubmittedToday(myTeam) : false;
       const allSubmitted = allScoringTeamsSubmittedToday();
       const myTeamPlayers = myTeam ? getApprovedPlayersForTeam(myTeam.id) : [];
@@ -687,6 +716,8 @@
           myTeamPanel.innerHTML = '<div class="empty-state">Register and get assigned to a team to use score keeping.</div>';
         } else {
           const currentButtonText = myTeamSubmitted ? 'Update Team Score' : 'Submit Team Score';
+          const frontInputValue = myFrontScore !== null && myFrontScore !== undefined ? String(myFrontScore) : '';
+          const backInputValue = myBackScore !== null && myBackScore !== undefined ? String(myBackScore) : '';
           const scoreInputValue = myTeamScore !== null && myTeamScore !== undefined ? String(myTeamScore) : '';
           const playerNames = myTeamPlayers.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ');
 
@@ -703,10 +734,29 @@
                 <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
                 <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
                 <div style="background:#fff;border-radius:14px;padding:14px;">
-                  <label style="display:block;font-weight:800;margin-bottom:8px;">Team Total Score</label>
-                  <input type="number" id="team-total-score" placeholder="Enter final score" value="${scoreInputValue}" style="width:100%;padding:14px;border:2px solid #dfe6df;border-radius:12px;margin-bottom:12px;">
-                  <button class="btn btn-success" onclick="submitTeamScore()">${currentButtonText}</button>
-                  <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
+                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#efe3b7;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Enter Scores (After Game Starts)</div>
+                  <div style="background:#f4f4f4;border-radius:14px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+                      <div style="font-size:18px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}${myCaptain ? ` (${myCaptain.name})` : ''}</div>
+                      ${myTeamSubmitted ? '<span style="background:#4caf50;color:#fff;font-size:13px;font-weight:800;padding:6px 10px;border-radius:8px;">✓ Score Submitted</span>' : ''}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                      <div>
+                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
+                        <input type="number" id="team-front-score" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                      </div>
+                      <div>
+                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Back</label>
+                        <input type="number" id="team-back-score" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                      </div>
+                      <div>
+                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Total</label>
+                        <input type="number" id="team-total-score" placeholder="Total" value="${scoreInputValue}" readonly style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;background:#f0f0f0;">
+                      </div>
+                    </div>
+                    <button class="btn btn-success" onclick="submitTeamScore()" style="margin-top:14px;">${currentButtonText}</button>
+                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
+                  </div>
                 </div>
               </div>`;
           } else {
@@ -754,13 +804,17 @@
           return;
         }
 
-        const scoreValue = document.getElementById('team-total-score')?.value;
-        if(!scoreValue && scoreValue !== '0'){ alert('Enter score'); return; }
+        const frontValue = document.getElementById('team-front-score')?.value;
+        const backValue = document.getElementById('team-back-score')?.value;
+        if((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')){ alert('Enter both front and back scores'); return; }
+
+        const totalScore = calculateTeamTotal(frontValue, backValue);
+        const nowIso = new Date().toISOString();
 
         await db(
           window.supabaseClient
             .from('teams')
-            .update({ team_score: parseInt(scoreValue, 10), score_submitted_at: new Date().toISOString() })
+            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
             .eq('id', appState.myTeam),
           'Submit team score'
         );
@@ -1223,9 +1277,9 @@
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
         appState.players = [];
-        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, team_score: null, score_submitted_at: null }));
+        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
         persistTeamsSubmitted(false);
-        await db(window.supabaseClient.from('teams').update({ captain_id: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
+        await db(window.supabaseClient.from('teams').update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
