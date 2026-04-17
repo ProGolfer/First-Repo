@@ -257,6 +257,7 @@
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
     const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
+    const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
@@ -268,6 +269,7 @@
       settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
       myTeam: null,
       myPlayerName: '',
+      myDeviceId: '',
       settingsLiveEnabled: false,
       numTeams: 4,
       selectedNumTeams: 4,
@@ -299,9 +301,25 @@
       else localStorage.removeItem(DEVICE_PLAYER_KEY);
     }
 
+    function generateDeviceId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'device_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    function ensureDeviceId() {
+      let id = localStorage.getItem(DEVICE_ID_KEY);
+      if (!id) {
+        id = generateDeviceId();
+        localStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      appState.myDeviceId = id;
+      return id;
+    }
+
     function loadDeviceState() {
       appState.myPlayerName = localStorage.getItem(DEVICE_PLAYER_KEY) || '';
       appState.teamsSubmitted = localStorage.getItem(TEAMS_SUBMITTED_KEY) === 'true';
+      ensureDeviceId();
     }
 
     function persistTeamsSubmitted(value) {
@@ -309,8 +327,15 @@
       localStorage.setItem(TEAMS_SUBMITTED_KEY, String(!!value));
     }
 
+    function isCurrentPlayer(player) {
+      if (!player) return false;
+      if (appState.myDeviceId && player.device_token && String(player.device_token) === String(appState.myDeviceId)) return true;
+      if (!player.device_token && player.name && appState.myPlayerName && player.name.trim().toLowerCase() === appState.myPlayerName.trim().toLowerCase()) return true;
+      return false;
+    }
+
     function isCurrentPlayerName(name) {
-      return !!name && !!appState.myPlayerName && name.trim().toLowerCase() === appState.myPlayerName.trim().toLowerCase();
+      return appState.players.some(p => (p.name || '') === name && isCurrentPlayer(p));
     }
 
     function getYouBadge(name) {
@@ -467,7 +492,7 @@
           team: null,
           registered_at: new Date().toISOString(),
           is_captain: false,
-          device_token: null
+          device_token: ensureDeviceId()
         }]), 'Register player');
 
         persistDevicePlayerName(name);
@@ -512,7 +537,7 @@
           .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
           .slice(0, appState.numTeams || 4);
 
-        const myPlayer = approved.find(p => isCurrentPlayerName(p.name));
+        const myPlayer = approved.find(p => isCurrentPlayer(p));
         const myTeamId = myPlayer?.team ?? null;
 
         homeTeamsList.innerHTML = availableTeams.map(t => {
@@ -577,7 +602,7 @@
     }
 
     function loadGameView() {
-      const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === (appState.myPlayerName || '').toLowerCase());
+      const myPlayer = appState.players.find(p => isCurrentPlayer(p));
       const fallbackTeam = appState.teams[0]?.id ?? null;
       appState.myTeam = myPlayer?.team ?? fallbackTeam;
       document.getElementById('my-team-label').textContent = `Your team: ${appState.myTeam ? getTeamName(appState.myTeam) : '-'}`;
@@ -598,7 +623,7 @@
         const score = document.getElementById('team-total-score').value;
         if(!score){ alert('Enter score'); return; }
 
-        const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === appState.myPlayerName.toLowerCase());
+        const myPlayer = appState.players.find(p => isCurrentPlayer(p));
         if (!myPlayer) { alert('Player not found yet'); return; }
 
         await db(window.supabaseClient.from('players').update({ score: parseInt(score, 10) }).eq('id', myPlayer.id), 'Submit score');
