@@ -345,18 +345,15 @@
       appState.teams = teamsResult.data || [];
 
       const settingsRow = settingsResult.data?.[0] || null;
-      if (settingsRow && Object.prototype.hasOwnProperty.call(settingsRow, 'game_started')) {
+      if (settingsRow) {
         appState.settingsLiveEnabled = true;
         appState.settings = {
           ...appState.settings,
           game_started: !!settingsRow.game_started,
-          cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
-          open_time: settingsRow.open_time || appState.settings.open_time
+          cutoff_time: settingsRow.cutoff_time || '09:30',
+          open_time: settingsRow.open_time || '06:00',
+          registration_closed: !!settingsRow.registration_closed
         };
-      } else if (!settingsRow) {
-        appState.settingsLiveEnabled = true;
-      } else {
-        appState.settingsLiveEnabled = false;
       }
 
       renderHome();
@@ -382,8 +379,8 @@
         const now = new Date();
         const openTime = appState.settings.open_time || '06:00';
         const cutoffTime = appState.settings.cutoff_time || '09:30';
-        const openDate = new Date();
-        const cutoffDate = new Date();
+        const openDate = new Date(now);
+        const cutoffDate = new Date(now);
         const [openH, openM] = openTime.split(':').map(Number);
         const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
         openDate.setHours(openH, openM, 0, 0);
@@ -393,12 +390,10 @@
           alert('Registration is manually closed.');
           return;
         }
-
         if (now < openDate) {
           alert(`Registration opens at ${formatTime12(openTime)}.`);
           return;
         }
-
         if (now > cutoffDate) {
           alert(`Registration is closed. Cutoff time was ${formatTime12(cutoffTime)}.`);
           return;
@@ -449,15 +444,12 @@
       const playerList = document.getElementById('player-list');
       const homeTeamsDisplay = document.getElementById('home-teams-display');
       const homeTeamsList = document.getElementById('home-teams-list');
-
       const homePlayersDisplay = document.getElementById('home-players-display');
 
       if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
         if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
-        if (playerList) {
-          playerList.innerHTML = '';
-        }
+        if (playerList) playerList.innerHTML = '';
 
         const availableTeams = appState.teams
           .slice()
@@ -481,12 +473,10 @@
         if (homePlayersDisplay) homePlayersDisplay.classList.remove('hidden');
         if (playerList) {
           playerList.innerHTML = approved.map(p => {
-            const team = appState.teams.find(t => String(t.id) === String(p.team));
-            const isCaptain = team && String(team.captain_id) === String(p.id);
             const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
             return `
               <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div style="font-weight:800;font-size:16px;color:#111;">${p.name}${isCaptain ? ' 👑 (Captain)' : ''}</div>
+                <div style="font-weight:800;font-size:16px;color:#111;">${p.name}</div>
                 <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
               </li>
             `;
@@ -500,31 +490,26 @@
       if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
 
       const now = new Date();
-      const openDate = new Date();
-      const cutoffDate = new Date();
+      const openDate = new Date(now);
+      const cutoffDate = new Date(now);
       const [openH, openM] = openTime.split(':').map(Number);
       const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
       openDate.setHours(openH, openM, 0, 0);
       cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
 
+      const registrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
       if (registerBtn) {
+        registerBtn.disabled = !registrationOpen;
+        registerBtn.style.opacity = registrationOpen ? '1' : '0.7';
         if (appState.settings.registration_closed) {
-          registerBtn.disabled = true;
           registerBtn.textContent = 'Registration Closed';
-          registerBtn.style.opacity = '0.7';
         } else if (now < openDate) {
-          registerBtn.disabled = true;
           registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
-          registerBtn.style.opacity = '0.7';
         } else if (now > cutoffDate) {
-          registerBtn.disabled = true;
           registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
-          registerBtn.style.opacity = '0.7';
         } else {
-          registerBtn.disabled = false;
           registerBtn.textContent = `Register for Today's Game`;
-          registerBtn.style.opacity = '1';
         }
       }
     }
@@ -909,6 +894,7 @@
         }
 
         renderHome();
+        renderAdminPlayers();
         updateSettingsView();
         alert('Saved!');
       } catch (err) {
