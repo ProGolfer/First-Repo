@@ -42,7 +42,49 @@
     .admin-top-status .closed { color:#d63b30; font-weight:800; }
     .admin-top-status .open { color:#1b8f3a; font-weight:800; }
     .admin-pill-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
-    .admin-pill-btn { background:#efefef; border:none; border-radius:14px; padding:14px 12px; font-weight:700; cursor:pointer; }
+    .admin-pill-btn {
+      background:#e9e9e9;
+      border:none;
+      border-radius:16px;
+      padding:16px 14px;
+      font-weight:800;
+      font-size:16px;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      transition: all .15s ease;
+    }
+    .admin-pill-btn:hover { background:#e0e0e0; }
+    .admin-pill-btn.active { background:#dcdcdc; }
+    .pill-line { display:block; line-height:1.1; }
+    .pill-line-bottom { display:flex; align-items:center; gap:6px; }
+    .admin-pill-btn:hover {
+      background:#e0e0e0;
+    }
+    .admin-pill-btn.active {
+      background:#dcdcdc;
+    }
+    .admin-pill-btn.has-badge { display:flex; align-items:center; justify-content:center; gap:6px; }
+    .admin-pill-badge {
+      min-width:20px;
+      height:20px;
+      padding:0 6px;
+      border-radius:999px;
+      background:#ff3b30;
+      color:#fff;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:900;
+      line-height:1;
+      margin-left:4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
     .admin-pill-btn.active { background:#e3efe4; color:#1a472a; }
     .approval-note { background:#eef7ee; border:2px solid #4caf50; border-radius:16px; padding:16px; text-align:center; margin-bottom:18px; }
     .approval-note .title { font-size:16px; font-weight:800; margin-bottom:6px; }
@@ -167,7 +209,13 @@
       </div>
 
       <div class="admin-pill-tabs">
-        <button class="admin-pill-btn active" onclick="switchAdminTab('players', event)">Manage Players</button>
+        <button class="admin-pill-btn active has-badge" id="manage-players-tab-btn" onclick="switchAdminTab('players', event)">
+          <span class="pill-line">Manage</span>
+          <span class="pill-line pill-line-bottom">
+            <span>Players</span>
+            <span class="admin-pill-badge hidden" id="manage-players-badge">0</span>
+          </span>
+        </button>
         <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
         <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
       </div>
@@ -271,7 +319,8 @@
       settingsLiveEnabled: false,
       numTeams: 4,
       selectedNumTeams: 4,
-      teamsSubmitted: false
+      teamsSubmitted: false,
+      autoRefreshIntervalId: null
     };
 
     function formatError(err) {
@@ -284,6 +333,37 @@
 
     function setStatus(text) {
       document.getElementById('live-status').textContent = text;
+    }
+
+    function shouldAutoRefresh() {
+      const registrationState = getRegistrationState();
+      if (registrationState.isOpen) return true;
+      if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
+      return false;
+    }
+
+    function stopAutoRefresh() {
+      if (appState.autoRefreshIntervalId) {
+        clearInterval(appState.autoRefreshIntervalId);
+        appState.autoRefreshIntervalId = null;
+      }
+    }
+
+    function updateAutoRefreshMode() {
+      const needsAutoRefresh = shouldAutoRefresh();
+      if (needsAutoRefresh && !appState.autoRefreshIntervalId) {
+        appState.autoRefreshIntervalId = setInterval(async () => {
+          try {
+            await loadAllData();
+            setStatus('Auto refreshed');
+          } catch (err) {
+            setStatus('Auto refresh error');
+          }
+        }, 15000);
+      } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
+        stopAutoRefresh();
+        setStatus('Manual refresh mode');
+      }
     }
 
     function showView(v){
@@ -849,7 +929,13 @@
 
     function renderAdminPlayers(){
       const pending = appState.players.filter(p => p.status === 'pending');
+      const managePlayersBadge = document.getElementById('manage-players-badge');
+      if (managePlayersBadge) {
+        managePlayersBadge.textContent = String(pending.length);
+        managePlayersBadge.classList.toggle('hidden', pending.length === 0);
+      }
       const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
+
 
       const pendingList = document.getElementById('pending-players-list');
       if (pendingList) {
@@ -1061,6 +1147,7 @@
       persistTeamsSubmitted(true);
       renderHome();
       renderAdminTeams();
+      updateAutoRefreshMode();
       alert('Teams submitted successfully!');
     }
 
@@ -1200,6 +1287,7 @@
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
+        updateAutoRefreshMode();
         alert('Saved!');
       } catch (err) {
         alert(`Could not save settings: ${formatError(err)}`);
@@ -1245,6 +1333,7 @@
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
+        updateAutoRefreshMode();
         alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
       } catch (err) {
         alert(`Could not toggle registration: ${formatError(err)}`);
@@ -1279,6 +1368,7 @@
         appState.players = [];
         appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
         persistTeamsSubmitted(false);
+        updateAutoRefreshMode();
         await db(window.supabaseClient.from('teams').update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
         renderHome();
         renderAdminPlayers();
@@ -1312,6 +1402,7 @@
         await loadAllData();
         await clearExpiredTeamScoresIfNeeded();
         await loadAllData();
+        updateAutoRefreshMode();
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
         window.supabaseClient
@@ -1330,6 +1421,7 @@
           })
           .subscribe((status) => {
             setStatus('Status: ' + status);
+            updateAutoRefreshMode();
           });
       } catch (err) {
         const msg = formatError(err);
