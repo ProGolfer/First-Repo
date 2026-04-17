@@ -197,10 +197,10 @@
       <div class="header"><div class="hero-brand"><img src="cliffside-logo.png" alt="Cliffside Golf Club Logo"><h1>Golf Money Game</h1></div></div>
       <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
         <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span style="font-size:20px;font-weight:bold;">72°F</span><br><small>Temp</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">16</span><br><small>Wind</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">29%</span><br><small>Humidity</small></div>
-          <div><span style="font-size:20px;font-weight:bold;">Clear</span><br><small>Sky</small></div>
+          <div><span id="weather-temp" style="font-size:20px;font-weight:bold;">--°F</span><br><small>Temp</small></div>
+          <div><span id="weather-wind" style="font-size:20px;font-weight:bold;">--</span><br><small>Wind mph</small></div>
+          <div><span id="weather-humidity" style="font-size:20px;font-weight:bold;">--%</span><br><small>Humidity</small></div>
+          <div><span id="weather-condition" style="font-size:20px;font-weight:bold;">--</span><br><small>Sky</small></div>
         </div>
       </div>
       <div class="form-group">
@@ -431,6 +431,55 @@
       } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
         stopAutoRefresh();
         setStatus('Manual refresh mode');
+      }
+    }
+
+    function weatherCodeToText(code) {
+      const map = {
+        0: 'Clear',
+        1: 'Mostly Clear',
+        2: 'Partly Cloudy',
+        3: 'Cloudy',
+        45: 'Fog',
+        48: 'Fog',
+        51: 'Drizzle',
+        53: 'Drizzle',
+        55: 'Drizzle',
+        61: 'Rain',
+        63: 'Rain',
+        65: 'Heavy Rain',
+        71: 'Snow',
+        73: 'Snow',
+        75: 'Snow',
+        80: 'Rain Showers',
+        81: 'Rain Showers',
+        82: 'Heavy Showers',
+        95: 'Thunderstorm'
+      };
+      return map[code] || 'Weather';
+    }
+
+    async function loadWeather() {
+      try {
+        const lat = 39.2667;
+        const lon = -81.5615;
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const current = data?.current;
+        if (!current) return;
+
+        const tempEl = document.getElementById('weather-temp');
+        const windEl = document.getElementById('weather-wind');
+        const humidityEl = document.getElementById('weather-humidity');
+        const conditionEl = document.getElementById('weather-condition');
+
+        if (tempEl) tempEl.textContent = `${Math.round(current.temperature_2m)}°F`;
+        if (windEl) windEl.textContent = `${Math.round(current.wind_speed_10m)}`;
+        if (humidityEl) humidityEl.textContent = `${Math.round(current.relative_humidity_2m)}%`;
+        if (conditionEl) conditionEl.textContent = weatherCodeToText(current.weather_code);
+      } catch (err) {
+        console.log('Weather failed safely', err);
       }
     }
 
@@ -1500,6 +1549,8 @@
         await loadAllData();
         await clearExpiredTeamScoresIfNeeded();
         await loadAllData();
+        await loadWeather();
+        setInterval(loadWeather, 600000);
         updateAutoRefreshMode();
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
