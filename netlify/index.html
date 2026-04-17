@@ -137,9 +137,7 @@
         <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
       </div>
       <div id="tab-myteam">
-        <p class="muted" id="my-team-label">Your team: -</p>
-        <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
-        <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
+        <div id="myteam-score-panel" class="admin-section"></div>
       </div>
       <div id="tab-otherteams" class="hidden"></div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
@@ -459,6 +457,75 @@
       return team ? (team.team_name || team.name || `Team ${team.id}`) : '-';
     }
 
+    function getActiveTeams() {
+      return appState.teams
+        .slice()
+        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+        .slice(0, appState.numTeams || 4);
+    }
+
+    function getApprovedPlayersForTeam(teamId) {
+      return appState.players.filter(p => p.status === 'approved' && String(p.team) === String(teamId));
+    }
+
+    function getCaptainForTeam(teamId) {
+      const team = appState.teams.find(t => String(t.id) === String(teamId));
+      if (!team?.captain_id) return null;
+      return appState.players.find(p => String(p.id) === String(team.captain_id)) || null;
+    }
+
+    function isTodayDateString(value) {
+      if (!value) return false;
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return false;
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    }
+
+    function getTeamScoreValue(team) {
+      if (!team) return null;
+      return team.team_score ?? null;
+    }
+
+    function hasTeamSubmittedToday(team) {
+      return getTeamScoreValue(team) !== null && isTodayDateString(team.score_submitted_at);
+    }
+
+    function getScoringTeams() {
+      return getActiveTeams().filter(team => getApprovedPlayersForTeam(team.id).length > 0);
+    }
+
+    function allScoringTeamsSubmittedToday() {
+      const scoringTeams = getScoringTeams();
+      if (!scoringTeams.length) return false;
+      return scoringTeams.every(team => hasTeamSubmittedToday(team));
+    }
+
+    function isCurrentCaptainForTeam(teamId) {
+      const captain = getCaptainForTeam(teamId);
+      return !!captain && isCurrentPlayer(captain);
+    }
+
+    async function clearExpiredTeamScoresIfNeeded() {
+      const expiredTeams = appState.teams.filter(team => {
+        const hasAnySavedScore = team.team_score !== null && team.team_score !== undefined;
+        const hasStaleDate = team.score_submitted_at && !isTodayDateString(team.score_submitted_at);
+        return hasAnySavedScore && hasStaleDate;
+      });
+
+      if (!expiredTeams.length) return;
+
+      for (const team of expiredTeams) {
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({ team_score: null, score_submitted_at: null })
+            .eq('id', team.id),
+          'Clear expired team score'
+        );
+      }
+    }
+
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
@@ -605,31 +672,102 @@
       const myPlayer = appState.players.find(p => isCurrentPlayer(p));
       const fallbackTeam = appState.teams[0]?.id ?? null;
       appState.myTeam = myPlayer?.team ?? fallbackTeam;
-      document.getElementById('my-team-label').textContent = `Your team: ${appState.myTeam ? getTeamName(appState.myTeam) : '-'}`;
 
-      const others = appState.teams.map(team => {
-        const players = appState.players.filter(p => String((p.team ?? fallbackTeam)) === String(team.id) && p.status === 'approved');
-        const scores = players.map(p => p.score).filter(v => v !== null && v !== undefined);
-        const bestScore = scores.length ? Math.min(...scores) : '-';
-        const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
-        return `<div class="admin-section ${isMyTeam ? 'current-player-card' : ''}"><strong>${getTeamName(team.id)} ${isMyTeam ? '• Your Team' : ''}</strong><div>${players.map(p => `${p.name}${isCurrentPlayerName(p.name) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
-      }).join('');
-      document.getElementById('tab-otherteams').innerHTML = others || '<div class="muted">No teams yet</div>';
+      const myTeam = appState.teams.find(t => String(t.id) === String(appState.myTeam)) || null;
+      const myCaptain = myTeam ? getCaptainForTeam(myTeam.id) : null;
+      const iAmCaptain = myTeam ? isCurrentCaptainForTeam(myTeam.id) : false;
+      const myTeamScore = myTeam ? getTeamScoreValue(myTeam) : null;
+      const myTeamSubmitted = myTeam ? hasTeamSubmittedToday(myTeam) : false;
+      const allSubmitted = allScoringTeamsSubmittedToday();
+      const myTeamPlayers = myTeam ? getApprovedPlayersForTeam(myTeam.id) : [];
+      const myTeamPanel = document.getElementById('myteam-score-panel');
+
+      if (myTeamPanel) {
+        if (!myPlayer || !myTeam) {
+          myTeamPanel.innerHTML = '<div class="empty-state">Register and get assigned to a team to use score keeping.</div>';
+        } else {
+          const currentButtonText = myTeamSubmitted ? 'Update Team Score' : 'Submit Team Score';
+          const scoreInputValue = myTeamScore !== null && myTeamScore !== undefined ? String(myTeamScore) : '';
+          const playerNames = myTeamPlayers.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ');
+
+          if (iAmCaptain) {
+            myTeamPanel.innerHTML = `
+              <div style="background:#eef7ee;border:2px solid #2d5a27;border-radius:16px;padding:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+                  <div>
+                    <div style="font-size:12px;font-weight:800;color:#2d5a27;letter-spacing:.4px;">OFFICIAL SCORE KEEPER</div>
+                    <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}</div>
+                  </div>
+                  <span class="you-badge">CAPTAIN</span>
+                </div>
+                <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
+                <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
+                <div style="background:#fff;border-radius:14px;padding:14px;">
+                  <label style="display:block;font-weight:800;margin-bottom:8px;">Team Total Score</label>
+                  <input type="number" id="team-total-score" placeholder="Enter final score" value="${scoreInputValue}" style="width:100%;padding:14px;border:2px solid #dfe6df;border-radius:12px;margin-bottom:12px;">
+                  <button class="btn btn-success" onclick="submitTeamScore()">${currentButtonText}</button>
+                  <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
+                </div>
+              </div>`;
+          } else {
+            myTeamPanel.innerHTML = `
+              <div style="background:#f7f7f7;border:2px solid #e0e0e0;border-radius:16px;padding:16px;">
+                <div style="font-size:22px;font-weight:800;color:#143b2f;margin-bottom:8px;">${getTeamName(myTeam.id)}</div>
+                <div class="muted" style="margin-bottom:10px;">Captain: ${myCaptain ? `${myCaptain.name}${isCurrentPlayer(myCaptain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
+                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the captain with YOU beside their name can submit or edit this team score.</div>
+                ${myTeamSubmitted ? `<div style="margin-top:12px;background:#eef7ee;border-radius:12px;padding:12px;font-weight:700;color:#1a472a;">Your team has submitted a score.${allSubmitted ? ` Final score: ${myTeamScore}` : ' Scores will appear when all teams submit.'}</div>` : ''}
+              </div>`;
+          }
+        }
+      }
+
+      const otherTeamsContainer = document.getElementById('tab-otherteams');
+      const teamsToShow = getScoringTeams();
+      if (!allSubmitted) {
+        otherTeamsContainer.innerHTML = '<div class="admin-section"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
+      } else {
+        const others = teamsToShow.map(team => {
+          const players = getApprovedPlayersForTeam(team.id);
+          const captain = getCaptainForTeam(team.id);
+          const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
+          const teamScore = getTeamScoreValue(team);
+          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
+            <div class="team-card-title">
+              <h4>${getTeamName(team.id)}</h4>
+              ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
+            </div>
+            <div class="muted" style="margin-bottom:10px;">Captain: ${captain ? `${captain.name}${isCurrentPlayer(captain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
+            <div style="font-size:28px;font-weight:800;color:#143b2f;margin-bottom:10px;">${teamScore ?? '-'}</div>
+            <div>${players.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div>
+          </div>`;
+        }).join('');
+        otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
+      }
     }
 
     async function submitTeamScore(){
       try {
         if (!appState.myPlayerName) { alert('Register first on this device'); return; }
-        const score = document.getElementById('team-total-score').value;
-        if(!score){ alert('Enter score'); return; }
+        if (!appState.myTeam) { alert('You are not assigned to a team yet'); return; }
+        if (!isCurrentCaptainForTeam(appState.myTeam)) {
+          alert('Only the captain with YOU beside their name can submit or edit this team score.');
+          return;
+        }
 
-        const myPlayer = appState.players.find(p => isCurrentPlayer(p));
-        if (!myPlayer) { alert('Player not found yet'); return; }
+        const scoreValue = document.getElementById('team-total-score')?.value;
+        if(!scoreValue && scoreValue !== '0'){ alert('Enter score'); return; }
 
-        await db(window.supabaseClient.from('players').update({ score: parseInt(score, 10) }).eq('id', myPlayer.id), 'Submit score');
-        alert('Score submitted!');
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({ team_score: parseInt(scoreValue, 10), score_submitted_at: new Date().toISOString() })
+            .eq('id', appState.myTeam),
+          'Submit team score'
+        );
+        alert('Team score saved!');
+        await loadAllData();
       } catch (err) {
-        alert(`Could not save score: ${formatError(err)}`);
+        alert(`Could not save team score: ${formatError(err)}`);
       }
     }
 
@@ -1085,9 +1223,9 @@
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
         appState.players = [];
-        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null }));
+        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, team_score: null, score_submitted_at: null }));
         persistTeamsSubmitted(false);
-        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear all captains');
+        await db(window.supabaseClient.from('teams').update({ captain_id: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -1117,6 +1255,8 @@
         loadDeviceState();
         setStatus('Connecting...');
         await ensureBaseData();
+        await loadAllData();
+        await clearExpiredTeamScoresIfNeeded();
         await loadAllData();
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
