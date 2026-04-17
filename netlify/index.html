@@ -84,10 +84,10 @@
       </div>
       <div class="form-group">
         <label>Select Course</label>
-        <select id="reg-course"><option>Cliffside Golf Club</option><option>Pebble Beach</option></select>
+        <select id="reg-course"><option value="Cliffside Golf Club" selected>Cliffside Golf Club</option></select>
       </div>
       <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
-      <div class="form-group"><label>Phone (optional)</label><input type="tel" id="reg-phone" placeholder="(555) 123-4567"></div>
+      <div class="form-group"><label>Email (optional)</label><input type="email" id="reg-phone" placeholder="name@example.com"></div>
       <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
       <div id="pending-approval-bar" style="background:#efe3b7;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
@@ -178,9 +178,9 @@
       </div>
 
       <div id="admin-teams" class="hidden">
-        <div class="approval-note" style="background:#eef7ee;border-color:#4caf50;">
-          <div class="title">✅ Registration is now CLOSED</div>
-          <div>You can now assign players to teams:</div>
+        <div class="approval-note" id="team-selection-notice" style="background:#eef7ee;border-color:#4caf50;">
+          <div class="title" id="team-selection-title">✅ Registration is now CLOSED</div>
+          <div id="team-selection-subtitle">You can now assign players to teams:</div>
         </div>
 
         <div class="admin-section">
@@ -734,6 +734,34 @@
       const gameStatus = document.getElementById('game-status');
       if (gameStatus) {
         gameStatus.innerText = appState.settings.game_started ? 'GAME IN PROGRESS' : 'Game not started';
+      }
+
+      const notice = document.getElementById('team-selection-notice');
+      const noticeTitle = document.getElementById('team-selection-title');
+      const noticeSubtitle = document.getElementById('team-selection-subtitle');
+      if (notice && noticeTitle && noticeSubtitle) {
+        const now = new Date();
+        const openTime = appState.settings.open_time || '06:00';
+        const cutoffTime = appState.settings.cutoff_time || '09:30';
+        const openDate = new Date(now);
+        const cutoffDate = new Date(now);
+        const [openH, openM] = openTime.split(':').map(Number);
+        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+        openDate.setHours(openH, openM, 0, 0);
+        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+        const isClosed = appState.settings.registration_closed || now > cutoffDate;
+
+        if (isClosed) {
+          notice.style.background = '#eef7ee';
+          notice.style.borderColor = '#4caf50';
+          noticeTitle.textContent = '✅ Registration is now CLOSED';
+          noticeSubtitle.textContent = 'You can now assign players to teams:';
+        } else {
+          notice.style.background = '#fff7ea';
+          notice.style.borderColor = '#f0a020';
+          noticeTitle.textContent = '⏰ Registration is still OPEN';
+          noticeSubtitle.textContent = `Team selection will fully lock in after ${formatTime12(cutoffTime)}.`;
+        }
       }
     }
 
