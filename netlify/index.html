@@ -93,12 +93,12 @@
         <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
         <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
       </div>
-      <div class="players-section">
-        <div class="players-header"><h3>Registered Players</h3><span class="players-count" id="player-count">0</span></div>
+      <div id="home-players-display" class="players-section">
+        <div class="players-header"><h3>Today's Registered Players</h3><span class="players-count" id="player-count">0</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
       <div id="home-teams-display" class="players-section hidden">
-        <div class="players-header"><h3>🏌️ Teams</h3></div>
+        <div class="players-header"><h3>Teams</h3></div>
         <div id="home-teams-list"></div>
       </div>
       <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
@@ -450,8 +450,11 @@
       const homeTeamsDisplay = document.getElementById('home-teams-display');
       const homeTeamsList = document.getElementById('home-teams-list');
 
+      const homePlayersDisplay = document.getElementById('home-players-display');
+
       if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
+        if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
         if (playerList) {
           playerList.innerHTML = '';
         }
@@ -465,16 +468,17 @@
           const teamPlayers = approved.filter(p => String(p.team) === String(t.id));
           const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
           const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
-          return `<div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px; margin-bottom:10px;">
-            <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
-            <div style="padding:4px 8px;">
-              ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-              ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
+          return `<div class="admin-section" style="background:#eaf4ea;border-radius:16px;padding:14px;margin-bottom:16px;box-shadow:none;">
+            <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:12px;">${getTeamName(t.id)}</div>
+            <div style="padding:2px 8px;">
+              ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:8px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:8px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+              ${others.map(p => `<div style="padding:8px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:8px 0;color:#777;">No other players</div>'}
             </div>
           </div>`;
         }).join('') || '<div class="empty-state">No teams yet</div>';
       } else {
         if (homeTeamsDisplay) homeTeamsDisplay.classList.add('hidden');
+        if (homePlayersDisplay) homePlayersDisplay.classList.remove('hidden');
         if (playerList) {
           playerList.innerHTML = approved.map(p => {
             const team = appState.teams.find(t => String(t.id) === String(p.team));
