@@ -54,7 +54,17 @@
     .muted { color:#666; }
     .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
     .btn-row .btn { margin-bottom:0; }
-        select { max-width: 100%; }
+    .name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .you-badge { background:#1a472a; color:#fff; font-size:11px; font-weight:800; padding:4px 8px; border-radius:999px; letter-spacing:0.3px; }
+    .current-player-card { background:#eef7ee !important; border-radius:14px; padding:12px !important; border:2px solid #2d5a27 !important; }
+    .team-card { background:#eaf4ea; border-radius:16px; padding:14px; margin-bottom:16px; box-shadow:none; }
+    .team-card.current-team { background:#eef7ee; border:2px solid #2d5a27; }
+    .team-card-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+    .team-card-title h4 { font-size:18px; font-weight:800; color:#1a472a; }
+    .captain-row { font-weight:800; font-size:16px; color:#143b2f; padding:8px 0; border-bottom:1px solid #c6dec6; }
+    .team-player-row { padding:8px 0; border-bottom:1px solid #c6dec6; }
+    .team-player-row:last-child { border-bottom:none; }
+    select { max-width: 100%; }
     td select { min-width: 110px; width: 100%; }
     @media (max-width: 640px) {
       body { padding: 12px; }
@@ -65,6 +75,7 @@
       .player-item { align-items: flex-start; }
       .btn-row { flex-direction: column; }
       th, td { font-size: 13px; }
+      .team-card-title { align-items:flex-start; flex-direction:column; }
     }
   </style>
 </head>
@@ -108,7 +119,6 @@
       <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
       <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
       <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a></div>
-      
     </div>
 
     <div id="view-confirm" class="card hidden">
@@ -246,6 +256,8 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
+    const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
+    const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -280,6 +292,59 @@
     }
 
     function showAdminLogin(){ showView('view-admin'); }
+
+    function persistDevicePlayerName(name) {
+      appState.myPlayerName = name || '';
+      if (name) localStorage.setItem(DEVICE_PLAYER_KEY, name);
+      else localStorage.removeItem(DEVICE_PLAYER_KEY);
+    }
+
+    function loadDeviceState() {
+      appState.myPlayerName = localStorage.getItem(DEVICE_PLAYER_KEY) || '';
+      appState.teamsSubmitted = localStorage.getItem(TEAMS_SUBMITTED_KEY) === 'true';
+    }
+
+    function persistTeamsSubmitted(value) {
+      appState.teamsSubmitted = !!value;
+      localStorage.setItem(TEAMS_SUBMITTED_KEY, String(!!value));
+    }
+
+    function isCurrentPlayerName(name) {
+      return !!name && !!appState.myPlayerName && name.trim().toLowerCase() === appState.myPlayerName.trim().toLowerCase();
+    }
+
+    function getYouBadge(name) {
+      return isCurrentPlayerName(name) ? '<span class="you-badge">YOU</span>' : '';
+    }
+
+    function getRegistrationState() {
+      const now = new Date();
+      const openTime = appState.settings.open_time || '06:00';
+      const cutoffTime = appState.settings.cutoff_time || '09:30';
+      const openDate = new Date(now);
+      const cutoffDate = new Date(now);
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+      openDate.setHours(openH, openM, 0, 0);
+      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
+      const manuallyClosed = !!appState.settings.registration_closed;
+      const beforeOpen = now < openDate;
+      const afterCutoff = now > cutoffDate;
+      const isOpen = !manuallyClosed && !beforeOpen && !afterCutoff;
+
+      return {
+        isOpen,
+        manuallyClosed,
+        beforeOpen,
+        afterCutoff,
+        openTime,
+        cutoffTime,
+        openDate,
+        cutoffDate,
+        now
+      };
+    }
 
     async function db(promise, label) {
       try {
@@ -376,26 +441,17 @@
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
 
-        const now = new Date();
-        const openTime = appState.settings.open_time || '06:00';
-        const cutoffTime = appState.settings.cutoff_time || '09:30';
-        const openDate = new Date(now);
-        const cutoffDate = new Date(now);
-        const [openH, openM] = openTime.split(':').map(Number);
-        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-        openDate.setHours(openH, openM, 0, 0);
-        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-
-        if (appState.settings.registration_closed) {
+        const registrationState = getRegistrationState();
+        if (registrationState.manuallyClosed) {
           alert('Registration is manually closed.');
           return;
         }
-        if (now < openDate) {
-          alert(`Registration opens at ${formatTime12(openTime)}.`);
+        if (registrationState.beforeOpen) {
+          alert(`Registration opens at ${formatTime12(registrationState.openTime)}.`);
           return;
         }
-        if (now > cutoffDate) {
-          alert(`Registration is closed. Cutoff time was ${formatTime12(cutoffTime)}.`);
+        if (registrationState.afterCutoff) {
+          alert(`Registration is closed. Cutoff time was ${formatTime12(registrationState.cutoffTime)}.`);
           return;
         }
 
@@ -414,7 +470,7 @@
           device_token: null
         }]), 'Register player');
 
-        appState.myPlayerName = name;
+        persistDevicePlayerName(name);
         document.getElementById('reg-name').value = '';
         document.getElementById('reg-phone').value = '';
         showView('view-confirm');
@@ -456,15 +512,23 @@
           .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
           .slice(0, appState.numTeams || 4);
 
+        const myPlayer = approved.find(p => isCurrentPlayerName(p.name));
+        const myTeamId = myPlayer?.team ?? null;
+
         homeTeamsList.innerHTML = availableTeams.map(t => {
           const teamPlayers = approved.filter(p => String(p.team) === String(t.id));
           const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
           const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
-          return `<div class="admin-section" style="background:#eaf4ea;border-radius:16px;padding:14px;margin-bottom:16px;box-shadow:none;">
-            <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:12px;">${getTeamName(t.id)}</div>
+          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
+
+          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
+            <div class="team-card-title">
+              <h4>${getTeamName(t.id)}</h4>
+              ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
+            </div>
             <div style="padding:2px 8px;">
-              ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:8px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:8px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-              ${others.map(p => `<div style="padding:8px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:8px 0;color:#777;">No other players</div>'}
+              ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:8px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+              ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:8px 0;color:#777;">No other players</div>'}
             </div>
           </div>`;
         }).join('') || '<div class="empty-state">No teams yet</div>';
@@ -475,8 +539,8 @@
           playerList.innerHTML = approved.map(p => {
             const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
             return `
-              <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div style="font-weight:800;font-size:16px;color:#111;">${p.name}</div>
+              <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="flex-direction:column;align-items:flex-start;gap:4px;">
+                <div class="name-row" style="font-weight:800;font-size:16px;color:#111;">${p.name}${getYouBadge(p.name)}</div>
                 <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
               </li>
             `;
@@ -484,30 +548,20 @@
         }
       }
 
-      const openTime = appState.settings.open_time || '06:00';
-      const cutoffTime = appState.settings.cutoff_time || '09:30';
       const hoursDisplay = document.getElementById('registration-hours-display');
-      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
+      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
 
-      const now = new Date();
-      const openDate = new Date(now);
-      const cutoffDate = new Date(now);
-      const [openH, openM] = openTime.split(':').map(Number);
-      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-      openDate.setHours(openH, openM, 0, 0);
-      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-
-      const registrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+      const registrationState = getRegistrationState();
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
       if (registerBtn) {
-        registerBtn.disabled = !registrationOpen;
-        registerBtn.style.opacity = registrationOpen ? '1' : '0.7';
-        if (appState.settings.registration_closed) {
+        registerBtn.disabled = !registrationState.isOpen;
+        registerBtn.style.opacity = registrationState.isOpen ? '1' : '0.7';
+        if (registrationState.manuallyClosed) {
           registerBtn.textContent = 'Registration Closed';
-        } else if (now < openDate) {
-          registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
-        } else if (now > cutoffDate) {
-          registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
+        } else if (registrationState.beforeOpen) {
+          registerBtn.textContent = `Registration Opens at ${formatTime12(registrationState.openTime)}`;
+        } else if (registrationState.afterCutoff) {
+          registerBtn.textContent = `Registration Closed at ${formatTime12(registrationState.cutoffTime)}`;
         } else {
           registerBtn.textContent = `Register for Today's Game`;
         }
@@ -532,7 +586,8 @@
         const players = appState.players.filter(p => String((p.team ?? fallbackTeam)) === String(team.id) && p.status === 'approved');
         const scores = players.map(p => p.score).filter(v => v !== null && v !== undefined);
         const bestScore = scores.length ? Math.min(...scores) : '-';
-        return `<div class="admin-section"><strong>${getTeamName(team.id)}</strong><div>${players.map(p => p.name).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
+        const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
+        return `<div class="admin-section ${isMyTeam ? 'current-player-card' : ''}"><strong>${getTeamName(team.id)} ${isMyTeam ? '• Your Team' : ''}</strong><div>${players.map(p => `${p.name}${isCurrentPlayerName(p.name) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
       }).join('');
       document.getElementById('tab-otherteams').innerHTML = others || '<div class="muted">No teams yet</div>';
     }
@@ -559,7 +614,7 @@
         .sort((a,b) => a.score - b.score);
 
       document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
-        <li class="player-item"><span>${idx + 1}. ${p.name}</span><span>${p.score}</span></li>
+        <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><span>${idx + 1}. ${p.name} ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}</span><span>${p.score}</span></li>
       `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
     }
 
@@ -582,9 +637,9 @@
       const pendingList = document.getElementById('pending-players-list');
       if (pendingList) {
         pendingList.innerHTML = pending.length ? pending.map(p => `
-          <div class="player-item">
+          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
             <div>
-              <div style="font-weight:700;">${p.name}</div>
+              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
               <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -598,9 +653,9 @@
       const approvedNoTeamList = document.getElementById('approved-no-team-list');
       if (approvedNoTeamList) {
         approvedNoTeamList.innerHTML = approvedNoTeam.length ? approvedNoTeam.map(p => `
-          <div class="player-item">
+          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
             <div>
-              <div style="font-weight:700;">${p.name}</div>
+              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
               <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -611,24 +666,22 @@
         `).join('') : '<div class="empty-state">No approved players without a team</div>';
       }
 
-      const now = new Date();
-      const openTime = appState.settings.open_time || '06:00';
-      const cutoffTime = appState.settings.cutoff_time || '09:30';
-      const openDate = new Date();
-      const cutoffDate = new Date();
-      const [openH, openM] = openTime.split(':').map(Number);
-      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-      openDate.setHours(openH, openM, 0, 0);
-      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-      const isOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+      const registrationState = getRegistrationState();
       const statusEl = document.getElementById('admin-reg-status');
       const cardEl = document.getElementById('admin-status-card');
       if (statusEl && cardEl) {
-        statusEl.textContent = isOpen ? 'OPEN' : 'CLOSED';
-        statusEl.className = isOpen ? 'open' : 'closed';
-        cardEl.querySelector('div').textContent = isOpen
-          ? `Registration is open until ${formatTime12(cutoffTime)}.`
-          : 'Registration is closed. No new players can register.';
+        statusEl.textContent = registrationState.isOpen ? 'OPEN' : 'CLOSED';
+        statusEl.className = registrationState.isOpen ? 'open' : 'closed';
+
+        if (registrationState.isOpen) {
+          cardEl.querySelector('div').textContent = `Registration is open until ${formatTime12(registrationState.cutoffTime)}.`;
+        } else if (registrationState.beforeOpen) {
+          cardEl.querySelector('div').textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
+        } else if (registrationState.manuallyClosed) {
+          cardEl.querySelector('div').textContent = 'Registration is manually closed.';
+        } else {
+          cardEl.querySelector('div').textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
+        }
       }
     }
 
@@ -690,9 +743,9 @@
           const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
           const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
           return `
-            <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
+            <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
               <div style="min-width:110px;">
-                <div style="font-weight:700;">${p.name}</div>
+                <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
                 <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
               </div>
               <div style="flex:1;min-width:140px;">
@@ -715,52 +768,55 @@
 
       const teamsContainer = document.getElementById('teams-container');
       if (teamsContainer) {
+        const myPlayer = approvedPlayers.find(p => isCurrentPlayerName(p.name));
+        const myTeamId = myPlayer?.team ?? null;
+
         teamsContainer.innerHTML = availableTeams.map(t => {
           const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
           const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
           const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
+          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
           return `
-            <div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px;">
-              <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
+            <div class="team-card ${isMyTeam ? 'current-team' : ''}">
+              <div class="team-card-title">
+                <h4>${getTeamName(t.id)}</h4>
+                ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
+              </div>
               <div style="padding:4px 8px;">
-                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
+                ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+                ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:6px 0;color:#777;">No other players</div>'}
               </div>
             </div>
           `;
         }).join('');
       }
 
-      const gameStatus = document.getElementById('game-status');
-      if (gameStatus) {
-        gameStatus.innerText = appState.settings.game_started ? 'GAME IN PROGRESS' : 'Game not started';
-      }
-
       const notice = document.getElementById('team-selection-notice');
       const noticeTitle = document.getElementById('team-selection-title');
       const noticeSubtitle = document.getElementById('team-selection-subtitle');
       if (notice && noticeTitle && noticeSubtitle) {
-        const now = new Date();
-        const openTime = appState.settings.open_time || '06:00';
-        const cutoffTime = appState.settings.cutoff_time || '09:30';
-        const openDate = new Date(now);
-        const cutoffDate = new Date(now);
-        const [openH, openM] = openTime.split(':').map(Number);
-        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-        openDate.setHours(openH, openM, 0, 0);
-        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-        const isClosed = appState.settings.registration_closed || now > cutoffDate;
+        const registrationState = getRegistrationState();
 
-        if (isClosed) {
+        if (registrationState.isOpen) {
+          notice.style.background = '#fff7ea';
+          notice.style.borderColor = '#f0a020';
+          noticeTitle.textContent = '⏰ Registration is still OPEN';
+          noticeSubtitle.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
+        } else if (registrationState.beforeOpen) {
+          notice.style.background = '#eef5fb';
+          notice.style.borderColor = '#2f93ff';
+          noticeTitle.textContent = '🕓 Registration has not opened yet';
+          noticeSubtitle.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
+        } else if (registrationState.manuallyClosed) {
+          notice.style.background = '#eef7ee';
+          notice.style.borderColor = '#4caf50';
+          noticeTitle.textContent = '✅ Registration was manually CLOSED';
+          noticeSubtitle.textContent = 'You can now assign players to teams:';
+        } else {
           notice.style.background = '#eef7ee';
           notice.style.borderColor = '#4caf50';
           noticeTitle.textContent = '✅ Registration is now CLOSED';
           noticeSubtitle.textContent = 'You can now assign players to teams:';
-        } else {
-          notice.style.background = '#fff7ea';
-          notice.style.borderColor = '#f0a020';
-          noticeTitle.textContent = '⏰ Registration is still OPEN';
-          noticeSubtitle.textContent = `Team selection will fully lock in after ${formatTime12(cutoffTime)}.`;
         }
       }
     }
@@ -785,7 +841,7 @@
     }
 
     function submitTeams() {
-      appState.teamsSubmitted = true;
+      persistTeamsSubmitted(true);
       renderHome();
       renderAdminTeams();
       alert('Teams submitted successfully!');
@@ -896,6 +952,8 @@
 
         if (!appState.settingsLiveEnabled) {
           renderHome();
+          renderAdminPlayers();
+          renderAdminTeams();
           updateSettingsView();
           alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
           return;
@@ -923,6 +981,7 @@
 
         renderHome();
         renderAdminPlayers();
+        renderAdminTeams();
         updateSettingsView();
         alert('Saved!');
       } catch (err) {
@@ -967,6 +1026,7 @@
         }
         renderHome();
         renderAdminPlayers();
+        renderAdminTeams();
         updateSettingsView();
         alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
       } catch (err) {
@@ -1001,6 +1061,7 @@
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
         appState.players = [];
         appState.teams = appState.teams.map(t => ({ ...t, captain_id: null }));
+        persistTeamsSubmitted(false);
         await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear all captains');
         renderHome();
         renderAdminPlayers();
@@ -1028,6 +1089,7 @@
 
     async function initApp() {
       try {
+        loadDeviceState();
         setStatus('Connecting...');
         await ensureBaseData();
         await loadAllData();
