@@ -752,14 +752,20 @@
      * CONFIG
      * Keep your current Supabase URL/key and table names here.
      **********************************************************************/
-    const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY";
+    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const supabase = window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       : null;
 
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
-    const ADMIN_PASSWORD = "1234"; // replace with your current admin password
+    const ADMIN_PASSWORD = 'golf123';
+
+    const SETTINGS_KEY = 'app';
+    const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
+    const DEVICE_ID_KEY = 'golf_money_game_device_id';
+    const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
+    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
     const state = {
       players: [],
@@ -770,7 +776,7 @@
         registration_closed: false
       },
       activeScreen: 'home-screen',
-      myPlayerName: localStorage.getItem('gmg_player_name') || '',
+      myPlayerName: localStorage.getItem(DEVICE_PLAYER_KEY) || '',
       myTeamId: localStorage.getItem('gmg_team_id') || '',
       adminAuthed: false,
       leaderboardOrder: []
@@ -984,7 +990,7 @@
         state.players.push({ id: Date.now(), name, email, status: 'pending', score: 0 });
       }
 
-      localStorage.setItem('gmg_player_name', name);
+      localStorage.setItem(DEVICE_PLAYER_KEY, name);
       state.myPlayerName = name;
       $('player-name').value = '';
       $('player-email').value = '';
