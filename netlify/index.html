@@ -352,91 +352,116 @@
 </head>
 <body>
   <div class="container">
-    <div class="status-line" id="live-status">Connecting...</div>
+   <div class="status-line" id="live-status">Connecting...</div>
 
-    <div id="view-home" class="card">
-      <div class="header"><div class="hero-brand"><img src="cliffside-logo.png" alt="Cliffside Golf Club Logo"><h1>Golf Money Game</h1></div></div>
-      <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span id="weather-temp" style="font-size:20px;font-weight:bold;">--°F</span><br><small>Temp</small></div>
-          <div><span id="weather-wind" style="font-size:20px;font-weight:bold;">--</span><br><small>Wind mph</small></div>
-          <div><span id="weather-humidity" style="font-size:20px;font-weight:bold;">--%</span><br><small>Humidity</small></div>
-          <div><span id="weather-condition" style="font-size:20px;font-weight:bold;">--</span><br><small>Sky</small></div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Select Course</label>
-        <select id="reg-course"><option value="Cliffside Golf Club" selected>Cliffside Golf Club</option></select>
-      </div>
-      <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
-      <div class="form-group"><label>Email (optional)</label><input type="email" id="reg-phone" placeholder="name@example.com"></div>
-      <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
-      <div id="pending-approval-bar" style="background:#efe3b7;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
-        <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
-      </div>
-      <div id="home-players-display" class="players-section">
-        <div class="players-header"><h3>Today's Registered Players</h3><span class="players-count" id="player-count">0</span></div>
-        <ul id="player-list" class="player-list"></ul>
-      </div>
-      <div id="home-teams-display" class="players-section hidden">
-        <div class="players-header"><h3>Teams</h3></div>
-        <div id="home-teams-list"></div>
-      </div>
-     <div style="background:#e2e8f0;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
-  
-  <div style="color:#b45309;font-weight:900;margin-bottom:6px;">
-    ⏰ Registration Hours
+<div id="view-home" class="card">
+  <div class="header">
+    <div class="hero-brand">
+      <img src="cliffside-logo.png" alt="Cliffside Golf Club Logo">
+      <h1>Golf Money Game</h1>
+    </div>
   </div>
 
-  <div id="registration-hours-display" style="font-size:22px;font-weight:900;color:#0f172a;">
-    6:00 AM - 9:30 AM
+  <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
+      <div><span id="weather-temp" style="font-size:20px;font-weight:bold;">--°F</span><br><small>Temp</small></div>
+      <div><span id="weather-wind" style="font-size:20px;font-weight:bold;">--</span><br><small>Wind mph</small></div>
+      <div><span id="weather-humidity" style="font-size:20px;font-weight:bold;">--%</span><br><small>Humidity</small></div>
+      <div><span id="weather-condition" style="font-size:20px;font-weight:bold;">--</span><br><small>Sky</small></div>
+    </div>
   </div>
 
- <div style="margin-top:10px;color:#000000;font-weight:900;font-size:22px;line-height:1.2;">
-  ⏰ Registration is still OPEN
-</div>
-
-<div style="color:#000000;margin-top:8px;font-size:16px;font-weight:700;line-height:1.35;">
-  Team selection is available now and registration closes at 9:30 PM.
-</div>
+  <div class="form-group">
+    <label>Select Course</label>
+    <select id="reg-course">
+      <option value="Cliffside Golf Club" selected>Cliffside Golf Club</option>
+    </select>
   </div>
 
-  <div style="margin-top:14px;">
-    <details id="playerAveragesBox">
-      <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:12px;border-radius:10px;font-weight:900;">
-        📊 Player Averages
-      </summary>
-
-      <div id="player-history" style="margin-top:10px;padding:10px;background:#f8fafc;border-radius:10px;"></div>
-    </details>
+  <div class="form-group">
+    <label>Your Name</label>
+    <input type="text" id="reg-name" placeholder="Enter your name">
   </div>
 
-</div>
-      <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
-      <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a></div>
+  <div class="form-group">
+    <label>Email (optional)</label>
+    <input type="email" id="reg-phone" placeholder="name@example.com">
+  </div>
+
+  <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+
+  <div id="pending-approval-bar" style="background:#efe3b7;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
+    <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
+  </div>
+
+  <div id="home-players-display" class="players-section">
+    <div class="players-header">
+      <h3>Today's Registered Players</h3>
+      <span class="players-count" id="player-count">0</span>
+    </div>
+    <ul id="player-list" class="player-list"></ul>
+  </div>
+
+  <div id="home-teams-display" class="players-section hidden">
+    <div class="players-header"><h3>Teams</h3></div>
+    <div id="home-teams-list"></div>
+  </div>
+
+  <div style="background:#e2e8f0;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
+    <div style="color:#b45309;font-weight:900;margin-bottom:6px;">
+      ⏰ Registration Hours
     </div>
 
-    <div id="view-confirm" class="card hidden">
-      <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
-        <h3 style="color:#2e7d32;">You're In!</h3>
-        <p>Your registration is pending approval.</p>
-      </div>
-      <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
+    <div id="registration-hours-display" style="font-size:20px;font-weight:800;color:#0f172a;">
+      6:00 AM - 9:30 AM
     </div>
 
-    <div id="view-game" class="card hidden">
-      <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs" style="grid-template-columns: 1fr 1fr;">
-        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
-      </div>
-      <div id="tab-myteam">
-        <div id="myteam-score-panel" class="admin-section"></div>
-      </div>
-      <div id="tab-otherteams" class="hidden"></div>
+    <div style="margin-top:8px;color:#1f2937;font-weight:800;font-size:16px;">
+      ⏰ Registration is OPEN
+    </div>
+
+    <div style="color:#475569;margin-top:4px;font-size:14px;font-weight:600;">
+      Team selection is available now and closes at 9:30 PM.
+    </div>
+
+    <div style="margin-top:14px;">
+      <details id="playerAveragesBox">
+        <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:10px;border-radius:10px;font-weight:800;">
+          📊 Player Averages
+        </summary>
+        <div id="player-history" style="margin-top:10px;padding:10px;background:#ffffff;border-radius:10px;"></div>
+      </details>
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
+  <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
+  <div style="text-align:center;margin-top:15px;">
+    <a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a>
+  </div>
+</div>
+
+<div id="view-confirm" class="card hidden">
+  <div class="header"><h1>✅ Registration Complete!</h1></div>
+  <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
+    <h3 style="color:#2e7d32;">You're In!</h3>
+    <p>Your registration is pending approval.</p>
+  </div>
+  <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
+</div>
+
+<div id="view-game" class="card hidden">
+  <div class="header"><h1>🏆 My Team Scores</h1></div>
+  <div class="tabs" style="grid-template-columns: 1fr 1fr;">
+    <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
+    <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
+  </div>
+  <div id="tab-myteam">
+    <div id="myteam-score-panel" class="admin-section"></div>
+  </div>
+  <div id="tab-otherteams" class="hidden"></div>
+</div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
