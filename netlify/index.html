@@ -825,15 +825,24 @@
 async function loadAllData() {
   try {
     const [playersResult, teamsResult, settingsResult] = await Promise.all([
-      db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
-      db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
-      db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings')
+      db(
+        window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }),
+        'Load players'
+      ),
+      db(
+        window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }),
+        'Load teams'
+      ),
+      db(
+        window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1),
+        'Load settings'
+      )
     ]);
 
-    appState.players = playersResult.data || [];
-    appState.teams = teamsResult.data || [];
+    appState.players = playersResult || [];
+    appState.teams = teamsResult || [];
 
-    const settingsRow = settingsResult.data?.[0] || null;
+    const settingsRow = settingsResult?.[0] || null;
     if (settingsRow) {
       appState.settingsLiveEnabled = true;
       appState.settings = {
@@ -849,9 +858,16 @@ async function loadAllData() {
     renderAdminPlayers();
     renderAdminTeams();
     renderLeaderboard();
+
+    if (typeof setStatus === 'function') {
+      setStatus('Connected');
+    }
   } catch (err) {
-    alert(err.message || err);
+    alert(err.message || String(err));
     console.error(err);
+    if (typeof setStatus === 'function') {
+      setStatus('Connection error');
+    }
   }
 }
 
