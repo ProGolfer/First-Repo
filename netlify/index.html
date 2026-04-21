@@ -545,6 +545,7 @@
     const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSY3tqwgNGHQ5blbQSivoY524cvmI73W9sGLk2KpKoGP1h59D3MJia5FJrPNSIRrjdkg/exec';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -672,6 +673,23 @@
       document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
     }
+    async function loadPlayerAverages() {
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=averages`);
+
+    if (!res.ok) throw new Error('Failed to load averages');
+
+    const data = await res.json();
+
+    appState.playerAverages = Array.isArray(data?.players)
+      ? data.players
+      : [];
+
+  } catch (err) {
+    console.log('Averages failed:', err);
+    appState.playerAverages = [];
+  }
+}
 
     function showAdminLogin(){ showView('view-admin'); }
 
@@ -813,6 +831,7 @@
 
       appState.players = playersResult.data || [];
       appState.teams = teamsResult.data || [];
+      await loadPlayerAverages();
 
       const settingsRow = settingsResult.data?.[0] || null;
       if (settingsRow) {
