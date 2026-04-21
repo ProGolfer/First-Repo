@@ -387,7 +387,7 @@
  <div id="home-averages-display" class="players-section">
   <div class="players-header" style="cursor:pointer;" onclick="toggleAverages()">
     <h3>Player Averages</h3>
-    <span id="averages-toggle-label" class="players-count">Test</span>
+    <span id="averages-toggle-label" class="players-count">Show</span>
   </div>
   <div id="home-averages-list" style="margin-top:12px;">
   
@@ -1024,15 +1024,14 @@ const homePlayersDisplay = document.getElementById('home-players-display');
 const homeAveragesDisplay = document.getElementById('home-averages-display');
 
       function renderPlayerAverages() {
-  const wrap = document.getElementById('home-averages-display');
+
+const wrap = document.getElementById('home-averages-display');
   const list = document.getElementById('home-averages-list');
   const label = document.getElementById('averages-toggle-label');
 
   if (!wrap || !list || !label) return;
 
-  if (!appState.playerAverages || !appState.playerAverages.length) {
-    wrap.classList.add('hidden');
-    return;
+  if (!appState.playerAverages) return;
   }
 
   wrap.classList.remove('hidden');
