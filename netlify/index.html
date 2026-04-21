@@ -1034,6 +1034,14 @@ const homeAveragesDisplay = document.getElementById('home-averages-display');
   wrap.classList.remove('hidden');
   list.classList.toggle('hidden', !appState.averagesOpen);
   label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
+
+       list.innerHTML = appState.playerAverages.map(p => `
+    <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div style="font-weight:700;">${p.name || '-'}</div>
+      <div style="text-align:right;font-weight:700;">${p.avg ?? '-'}</div>
+      <div style="text-align:right;font-weight:700;">${p.last ?? '-'}</div>
+    </div>
+  `).join('');
 }
 
         appState.playerAverages = [
