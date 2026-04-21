@@ -451,10 +451,13 @@
     /***********************
      * CONFIG
      ***********************/
-    const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL';
-    const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY';
-    const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
-    const GOOGLE_SCRIPT_SECRET = 'PASTE_YOUR_SHARED_SECRET';
+  const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
+const ADMIN_PASSWORD = 'golf123';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSY3tqwgNGHQ5blbQSivoY524cvmI73W9sGLk2KpKoGP1h59D3MJia5FJrPNSIRrjdkg/exec';
+const GOOGLE_SCRIPT_SECRET = 'golf123';
+
+const SETTINGS_KEY = 'app';
 
     // Optional table names. Change if your Supabase tables use different names.
     const TABLES = {
@@ -603,6 +606,36 @@
             is_captain: captainSide === 'player2'
           }
         ];
+
+        async function syncScoreToSheet({ date, captainName, teamName, teamId, scores }) {
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      secret: GOOGLE_SCRIPT_SECRET,
+      date,
+      captainName,
+      teamName,
+      teamId,
+      scores
+    })
+  });
+
+  const text = await res.text();
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error('Apps Script returned invalid response: ' + text);
+  }
+
+  if (!data.ok) {
+    throw new Error(data.error || 'Google Sheet sync failed');
+  }
+
+  return data;
+}
 
         const { error: playerError } = await supabase.from(TABLES.players).insert(playersPayload);
         if (playerError) throw playerError;
