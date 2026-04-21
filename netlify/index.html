@@ -577,20 +577,21 @@
       return { name, avg, last };
     }).filter(p => p.name);
 
-    mount.innerHTML = `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:800;">
-        <div style="flex:1;">Player</div>
-        <div style="width:60px;text-align:center;">Avg</div>
-        <div style="width:60px;text-align:center;">Last</div>
-      </div>
-      ${players.map(p => `
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);">
-          <div style="flex:1;">${p.name}</div>
-          <div style="width:60px;text-align:center;">${p.avg || '-'}</div>
-          <div style="width:60px;text-align:center;">${p.last || '-'}</div>
-        </div>
-      `).join('')}
-    `;
+ mount.innerHTML = `
+  <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.15);font-weight:800;color:#0f172a;">
+    <div style="flex:1;">Player</div>
+    <div style="width:60px;text-align:center;">Avg</div>
+    <div style="width:60px;text-align:center;">Last</div>
+  </div>
+
+  ${players.map(p => `
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08);color:#0f172a;">
+      <div style="flex:1;font-weight:700;">${p.name}</div>
+      <div style="width:60px;text-align:center;font-weight:800;">${p.avg || '-'}</div>
+      <div style="width:60px;text-align:center;">${p.last || '-'}</div>
+    </div>
+  `).join('')}
+`;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
