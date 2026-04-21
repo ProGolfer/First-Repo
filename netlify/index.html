@@ -1023,20 +1023,18 @@ const homeTeamsList = document.getElementById('home-teams-list');
 const homePlayersDisplay = document.getElementById('home-players-display');
 const homeAveragesDisplay = document.getElementById('home-averages-display');
 
-      function renderPlayerAverages() {
-
-const wrap = document.getElementById('home-averages-display');
+ function renderPlayerAverages() {
+  const wrap = document.getElementById('home-averages-display');
   const list = document.getElementById('home-averages-list');
   const label = document.getElementById('averages-toggle-label');
 
   if (!wrap || !list || !label) return;
-
-  if (!appState.playerAverages) return;
-  }
+  if (!appState.playerAverages.length) return;
 
   wrap.classList.remove('hidden');
   list.classList.toggle('hidden', !appState.averagesOpen);
   label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
+}
 
         appState.playerAverages = [
   { name: 'Mike', avg: 74.2, last: 72 },
