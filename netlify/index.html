@@ -386,6 +386,12 @@
       <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
         <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
         <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
+        <details id="playerAveragesBox" style="margin-top:16px;">
+  <summary style="cursor:pointer;font-weight:800;font-size:18px;">
+    Player Averages
+  </summary>
+  <div id="player-history" style="margin-top:10px;"></div>
+</details>
       </div>
       <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
       <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
@@ -1713,6 +1719,7 @@
         await loadWeather();
         setInterval(loadWeather, 600000);
         updateAutoRefreshMode();
+       
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
         window.supabaseClient
@@ -1733,6 +1740,8 @@
             setStatus('Status: ' + status);
             updateAutoRefreshMode();
           });
+              await loadPlayerHistory();
+        
       } catch (err) {
         const msg = formatError(err);
         setStatus('Startup error');
