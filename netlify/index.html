@@ -383,18 +383,35 @@
         <div class="players-header"><h3>Teams</h3></div>
         <div id="home-teams-list"></div>
       </div>
-      <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
-        <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
-        <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
-      <div style="margin-top:12px;">
-  <details id="playerAveragesBox">
-    <summary style="cursor:pointer;background:#1e8e3e;color:#fff;padding:12px;border-radius:10px;font-weight:800;">
-      📊 Player Averages
-    </summary>
-    <div id="player-history" style="margin-top:10px;padding:10px;background:rgba(255,255,255,.06);border-radius:10px;"></div>
-  </details>
+     <div style="background:#e2e8f0;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
+  
+  <div style="color:#b45309;font-weight:900;margin-bottom:6px;">
+    ⏰ Registration Hours
+  </div>
+
+  <div id="registration-hours-display" style="font-size:22px;font-weight:900;color:#0f172a;">
+    6:00 AM - 9:30 AM
+  </div>
+
+  <div style="margin-top:10px;color:#0f172a;font-weight:800;">
+    Registration is still OPEN
+  </div>
+
+  <div style="color:#475569;margin-top:4px;">
+    Team selection is available now and registration closes at 9:30 PM.
+  </div>
+
+  <div style="margin-top:14px;">
+    <details id="playerAveragesBox">
+      <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:12px;border-radius:10px;font-weight:900;">
+        📊 Player Averages
+      </summary>
+
+      <div id="player-history" style="margin-top:10px;padding:10px;background:#f8fafc;border-radius:10px;"></div>
+    </details>
+  </div>
+
 </div>
-      </div>
       <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
       <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
       <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a></div>
