@@ -1,1746 +1,1357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Golf Money Game</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(46, 178, 84, 0.16), transparent 30%),
-        radial-gradient(circle at top right, rgba(81, 143, 255, 0.12), transparent 28%),
-        linear-gradient(180deg, #02101d 0%, #041a2e 48%, #02111f 100%);
-      min-height: 100vh;
-      padding: 20px;
-      color: #eef6ff;
+    :root {
+      --bg: #07111a;
+      --bg-2: #0d1b27;
+      --panel: #122537;
+      --panel-2: #173149;
+      --line: rgba(255,255,255,0.08);
+      --text: #f4fbff;
+      --muted: #9cb5c7;
+      --accent: #5dd39e;
+      --accent-2: #93c5fd;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+      --radius: 20px;
     }
-    .container { max-width: 620px; margin: 0 auto; width: 100%; }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #06111a 0%, #0a1724 100%);
+      color: var(--text);
+      font-family: Inter, Arial, Helvetica, sans-serif;
+    }
+
+    body { min-height: 100vh; }
+
+    .app {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 20px 14px 60px;
+    }
+
+    .hidden { display: none !important; }
+
     .card {
-      background: linear-gradient(180deg, rgba(7,24,40,0.96) 0%, rgba(5,20,34,0.98) 100%);
-      border: 1px solid rgba(117, 153, 188, 0.18);
-      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(23,49,73,0.96), rgba(12,28,42,0.96));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
       padding: 18px;
       margin-bottom: 16px;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.38);
-      width: 100%;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
     }
-    .header {
-      background:
-        linear-gradient(180deg, rgba(8,31,54,0.96) 0%, rgba(4,18,31,0.96) 100%),
-        linear-gradient(135deg, #0a2f1a 0%, #103b22 100%);
-      color: white;
-      padding: 28px 24px;
+
+    .hero {
       text-align: center;
-      border-radius: 22px 22px 18px 18px;
-      margin: -18px -18px 18px -18px;
-      border-bottom: 1px solid rgba(108, 214, 126, 0.22);
-      position: relative;
+      padding: 22px 18px;
     }
-    .header::after {
-      content: "";
-      position: absolute;
-      inset: auto 22px 0 22px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(122,255,153,.45), transparent);
-    }
-    .header h1 { font-size: 30px; line-height: 1.1; font-weight: 900; letter-spacing: -.03em; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #dff0ff; }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 14px;
-      border: 1px solid rgba(113, 139, 167, 0.24);
-      border-radius: 14px;
-      background: rgba(244,248,252,0.06);
-      color: #f4fbff;
-      outline: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .form-group input::placeholder { color: #8fa7bb; }
-    .btn {
-      width: 100%;
-      padding: 16px 14px;
-      min-height: 48px;
-      border: none;
-      border-radius: 14px;
-      font-size: 16px;
-      font-weight: 800;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color:transparent;
-      margin-bottom: 8px;
-      transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary {
-      background: linear-gradient(135deg, #44d05f 0%, #1ea54f 100%);
-      color: #041510;
-      box-shadow: 0 10px 20px rgba(53, 193, 95, 0.28);
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06);
-      color: #eef6ff;
-      border: 1px solid rgba(121, 151, 178, 0.18);
-    }
-    .btn-success {
-      background: linear-gradient(135deg, #55d572 0%, #2fb85c 100%);
-      color: #062012;
-      box-shadow: 0 10px 20px rgba(56, 194, 101, 0.26);
-    }
-    .btn-danger { background: linear-gradient(135deg, #ff6860 0%, #ef3d39 100%); color: white; }
-    .btn-warning { background: linear-gradient(135deg, #ffbd47 0%, #ff9a1f 100%); color: #2a1900; }
-    .btn-small { padding: 8px 12px; font-size: 12px; width: auto; min-height: auto; margin-bottom: 0; }
-    .btn-back { background: rgba(255,255,255,0.08); color: #eef6ff; margin-top: 10px; }
-    .players-section {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border: 1px solid rgba(120, 152, 181, 0.14);
+
+    .hero img {
+      width: 86px;
+      height: 86px;
       border-radius: 18px;
-      padding: 16px;
-      margin-top: 15px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      object-fit: cover;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
     }
-    .players-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .players-header h3, .section-title { color: #f4fbff; }
-    .players-count {
-      background: linear-gradient(135deg, #52d46f 0%, #20984a 100%);
-      color: #04150e;
-      padding: 4px 12px;
-      border-radius: 999px;
+
+    h1, h2, h3, h4, p { margin: 0; }
+    h1 { font-size: 34px; line-height: 1.05; margin-top: 12px; }
+    h2 { font-size: 24px; margin-bottom: 12px; }
+    h3 { font-size: 18px; }
+    p.sub {
+      color: var(--muted);
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .weather-grid,
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .weather-item,
+    .stat-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .weather-value,
+    .stat-value {
+      font-size: 20px;
       font-weight: 900;
+      margin-bottom: 4px;
     }
-    .player-list { list-style: none; }
-    .player-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; }
-    .table-container { overflow-x: auto; max-width:100%; -webkit-overflow-scrolling:touch; border-radius: 12px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); color: #eef6ff; }
-    .status-approved { color: #63de83; font-weight: bold; }
-    .status-pending { color: #ffc55c; font-weight: bold; }
+
+    .weather-label,
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, select, button, textarea {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      padding: 14px 14px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input::placeholder, textarea::placeholder { color: #86a0b5; }
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(147,197,253,0.7);
+      box-shadow: 0 0 0 3px rgba(147,197,253,0.16);
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 900;
+      background: linear-gradient(180deg, #63d6a4, #3eb37f);
+      color: #072014;
+      border: none;
+      transition: transform .12s ease, opacity .12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.secondary {
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    button.warn {
+      background: linear-gradient(180deg, #f8c15c, #e3a021);
+      color: #332000;
+    }
+    button.danger {
+      background: linear-gradient(180deg, #ff8585, #e25353);
+      color: #300606;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .25px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .player-row,
+    .team-row,
+    .score-row,
+    .avg-row,
+    .leader-row {
+      display: grid;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .player-row:last-child,
+    .team-row:last-child,
+    .score-row:last-child,
+    .avg-row:last-child,
+    .leader-row:last-child { border-bottom: none; }
+
+    .player-row { grid-template-columns: 1.5fr auto auto; }
+    .team-row { grid-template-columns: 1.2fr .7fr .7fr .7fr; }
+    .score-row { grid-template-columns: 1fr 1fr 1fr; }
+    .avg-row { grid-template-columns: 1.4fr .6fr .6fr; }
+    .leader-row { grid-template-columns: .5fr 1.4fr .7fr .7fr .7fr; }
+
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-weight: 800;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 900;
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: rgba(147,197,253,0.15);
+      color: #dbeafe;
+      border: 1px solid rgba(147,197,253,0.18);
+    }
+
+    .you-tag {
+      background: rgba(93,211,158,0.16);
+      color: #d7fbe9;
+      border: 1px solid rgba(93,211,158,0.18);
+    }
+
+    .muted { color: var(--muted); }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .strong { font-weight: 900; }
+
     .tabs {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      margin-bottom: 15px;
-      background: rgba(255,255,255,0.04);
-      padding: 6px;
+      margin-bottom: 14px;
+    }
+
+    .tabs button.active {
+      background: linear-gradient(180deg, #93c5fd, #5ca8f6);
+      color: #071521;
+    }
+
+    .nav-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .nav-row button { min-height: 56px; }
+
+    .empty {
+      padding: 14px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(255,255,255,0.1);
       border-radius: 16px;
-      border: 1px solid rgba(120,152,181,.14);
+      background: rgba(255,255,255,0.03);
     }
-    .tab-btn {
-      width: 100%;
-      padding: 12px;
-      background: transparent;
-      color: #c9ddee;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color:transparent;
-      font-weight: 800;
-    }
-    .tab-btn.active {
-      background: linear-gradient(135deg, #49d466 0%, #279f4e 100%);
-      color: #04140e;
-      box-shadow: 0 8px 18px rgba(44,173,82,.24);
-    }
-    .admin-section {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border: 1px solid rgba(121,151,178,.16);
+
+    .success-box {
       border-radius: 18px;
-      padding: 15px;
-      margin: 15px 0;
+      padding: 16px;
+      background: rgba(93,211,158,0.12);
+      border: 1px solid rgba(93,211,158,0.2);
+      color: #ddfbea;
     }
-    .admin-top-status {
-      background: linear-gradient(180deg, rgba(53,120,255,.12) 0%, rgba(53,120,255,.06) 100%);
-      border: 1px solid rgba(76, 152, 255, 0.35);
-      border-radius:16px;
-      padding:16px;
-      text-align:center;
-      margin-bottom:18px;
+
+    .danger-box {
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.2);
+      color: #ffe0e0;
     }
-    .admin-top-status strong { font-size: 16px; }
-    .admin-top-status .closed { color:#ff897f; font-weight:800; }
-    .admin-top-status .open { color:#70e08d; font-weight:800; }
-    .admin-pill-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
-    .admin-pill-btn {
-      background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-      border:1px solid rgba(121,151,178,.16);
-      border-radius:18px;
-      padding:16px 14px;
-      font-weight:800;
-      font-size:16px;
-      color:#eaf5ff;
-      cursor:pointer;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:2px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-      transition: all .15s ease;
+
+    .settings-grid,
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
-    .admin-pill-btn:hover { background: rgba(255,255,255,0.1); }
-    .admin-pill-btn.active {
-      background: linear-gradient(135deg, rgba(77,210,103,0.22) 0%, rgba(29,122,60,0.22) 100%);
-      color:#7dff9f;
-      border-color: rgba(99, 222, 131, 0.32);
-    }
-    .pill-line { display:block; line-height:1.1; }
-    .pill-line-bottom { display:flex; align-items:center; gap:6px; }
-    .admin-pill-btn.has-badge { display:flex; align-items:center; justify-content:center; gap:6px; }
-    .admin-pill-badge {
-      min-width:20px;
-      height:20px;
-      padding:0 6px;
-      border-radius:999px;
-      background:#ff4a45;
-      color:#fff;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      font-size:12px;
-      font-weight:900;
-      line-height:1;
-      margin-left:4px;
-      box-shadow: 0 6px 14px rgba(255,74,69,.28);
-    }
-    .approval-note {
-      background: linear-gradient(180deg, rgba(73,212,102,0.1) 0%, rgba(73,212,102,0.05) 100%);
-      border:1px solid rgba(99,222,131,.32);
-      border-radius:16px;
-      padding:16px;
-      text-align:center;
-      margin-bottom:18px;
-    }
-    .approval-note .title { font-size:16px; font-weight:800; margin-bottom:6px; color: #f4fbff; }
-    .section-title { font-size:18px; font-weight:800; margin:18px 0 10px; }
-    .empty-state { color:#8ea8bc; text-align:center; padding:18px 0; }
-    .logout-soft { background: rgba(255,255,255,0.06); color:#eef6ff; border:1px solid rgba(121,151,178,.16); }
-    .hidden { display: none; }
-    .status-line {
-      background: linear-gradient(90deg, rgba(73,212,102,0.18) 0%, rgba(67,137,255,0.14) 100%);
-      color:#dff7ea;
-      border:1px solid rgba(94, 211, 119, 0.2);
-      border-radius:14px;
-      padding:10px 12px;
-      margin-bottom:15px;
-      font-weight:700;
-      width: 100%;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.14);
-    }
-    .muted { color:#9eb6c9; }
-    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
-    .btn-row .btn { margin-bottom:0; }
-    .name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .you-badge {
-      background: linear-gradient(135deg, #52d46f 0%, #22974a 100%);
-      color:#03120b;
-      font-size:11px;
-      font-weight:900;
-      padding:4px 8px;
-      border-radius:999px;
-      letter-spacing:0.3px;
-    }
-    .current-player-card {
-      background: linear-gradient(180deg, rgba(74,212,102,0.16) 0%, rgba(74,212,102,0.08) 100%) !important;
-      border-radius:14px;
-      padding:12px !important;
-      border:1px solid rgba(99,222,131,.36) !important;
-      box-shadow: 0 0 0 1px rgba(99,222,131,.08), 0 10px 24px rgba(19,67,37,.18);
-    }
-    .team-card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border:1px solid rgba(121,151,178,.14);
-      border-radius:18px;
-      padding:14px;
-      margin-bottom:16px;
-      box-shadow:none;
-    }
-    .team-card.current-team {
-      background: linear-gradient(180deg, rgba(73,212,102,0.14) 0%, rgba(73,212,102,0.07) 100%);
-      border:1px solid rgba(99,222,131,.34);
-    }
-    .team-card-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
-    .team-card-title h4 { font-size:18px; font-weight:800; color:#f4fbff; }
-    .captain-row { font-weight:800; font-size:16px; color:#ebf7ff; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-    .team-player-row { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-    .team-player-row:last-child { border-bottom:none; }
-    .hero-brand {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:10px;
-      animation: fadeInBrand .7s ease;
-    }
-    .hero-brand img {
-      width:100px;
-      height:100px;
-      border-radius:50%;
-      object-fit:cover;
-      border:3px solid #d4af37;
-      box-shadow:0 4px 10px rgba(0,0,0,0.2);
-      background:#fff;
-    }
-    .hero-brand h1 { margin:0; }
-    @keyframes fadeInBrand {
-      from { opacity:0; transform: translateY(-8px); }
-      to { opacity:1; transform: translateY(0); }
-    }
-    .captain-select-wrap {
-      background:linear-gradient(135deg,#fff6db 0%,#ffe9a8 100%);
-      border:2px solid #f0b429;
-      border-radius:12px;
-      padding:8px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-    }
-    .captain-select-wrap label {
-      display:block;
-      font-size:11px;
-      font-weight:900;
-      color:#8a5a00;
-      letter-spacing:.4px;
-      margin-bottom:6px;
-      text-transform:uppercase;
-    }
-    .captain-select {
-      width:100%;
-      padding:10px;
-      border-radius:10px;
-      border:2px solid #e0b24d;
-      background:#fffaf0;
-      color:#5a3d00;
-      font-weight:800;
-    }
-    .place-badge {
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:13px;
-      font-weight:800;
-      color:#eef6ff;
-    }
-    .weather-box {
-      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%) !important;
-      border: 1px solid rgba(121,151,178,.14);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-    }
-    select { max-width: 100%; }
-    td select { min-width: 110px; width: 100%; }
-    @media (max-width: 640px) {
-      body { padding: 12px; }
-      .container { max-width: 100%; }
-      .header { padding: 18px; margin: -18px -18px 16px -18px; }
-      .header h1 { font-size: 24px; }
-      .tabs { grid-template-columns: 1fr; }
-      .player-item { align-items: flex-start; }
-      .btn-row { flex-direction: column; }
-      th, td { font-size: 13px; }
-      .team-card-title { align-items:flex-start; flex-direction:column; }
+
+    .clickable { cursor: pointer; }
+
+    @media (max-width: 720px) {
+      .weather-grid,
+      .stat-grid,
+      .form-grid,
+      .settings-grid,
+      .admin-grid,
+      .nav-row { grid-template-columns: 1fr; }
+      .player-row { grid-template-columns: 1fr; }
+      .team-row,
+      .leader-row,
+      .avg-row,
+      .score-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      h1 { font-size: 28px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="status-line" id="live-status">Connecting...</div>
+  <div class="app">
+    <section id="view-home">
+      <div class="card hero">
+        <img src="https://images.unsplash.com/photo-1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop" alt="Cliffside Golf Club Logo" />
+        <h1>Golf Money Game</h1>
+        <p class="sub">Cliffside Golf Club live registration, teams, scores, leaderboard, and averages.</p>
 
-    <div id="view-home" class="card">
-      <div class="header"><div class="hero-brand"><img src="cliffside-logo.png" alt="Cliffside Golf Club Logo"><h1>Golf Money Game</h1></div></div>
-      <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-          <div><span id="weather-temp" style="font-size:20px;font-weight:bold;">--°F</span><br><small>Temp</small></div>
-          <div><span id="weather-wind" style="font-size:20px;font-weight:bold;">--</span><br><small>Wind mph</small></div>
-          <div><span id="weather-humidity" style="font-size:20px;font-weight:bold;">--%</span><br><small>Humidity</small></div>
-          <div><span id="weather-condition" style="font-size:20px;font-weight:bold;">--</span><br><small>Sky</small></div>
+        <div class="weather-grid">
+          <div class="weather-item"><div id="weather-temp" class="weather-value">--°F</div><div class="weather-label">Temp</div></div>
+          <div class="weather-item"><div id="weather-wind" class="weather-value">--</div><div class="weather-label">Wind mph</div></div>
+          <div class="weather-item"><div id="weather-humidity" class="weather-value">--%</div><div class="weather-label">Humidity</div></div>
+          <div class="weather-item"><div id="weather-sky" class="weather-value">--</div><div class="weather-label">Sky</div></div>
         </div>
       </div>
-      <div class="form-group">
-        <label>Select Course</label>
-        <select id="reg-course"><option value="Cliffside Golf Club" selected>Cliffside Golf Club</option></select>
+
+      <div class="card">
+        <div class="section-head">
+          <h2>Register for Today&apos;s Game</h2>
+          <span id="registration-pill" class="pill">Checking registration...</span>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="course-select">Select Course</label>
+            <select id="course-select">
+              <option value="Cliffside Golf Club">Cliffside Golf Club</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="player-name">Your Name</label>
+            <input id="player-name" type="text" placeholder="Enter your name" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="player-email">Email (optional)</label>
+          <input id="player-email" type="email" placeholder="Enter email" />
+        </div>
+        <button id="register-btn" onclick="registerPlayer()">Register for Today&apos;s Game</button>
       </div>
-      <div class="form-group"><label>Your Name</label><input type="text" id="reg-name" placeholder="Enter your name"></div>
-      <div class="form-group"><label>Email (optional)</label><input type="email" id="reg-phone" placeholder="name@example.com"></div>
-      <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
-      <div id="pending-approval-bar" style="background:#efe3b7;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
-        <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
+
+      <div id="home-success" class="card hidden">
+        <div class="success-box">
+          <h3>✅ Registration Complete!</h3>
+          <p class="sub" style="color:#ddfbea; margin-top:8px;">You&apos;re in. Your registration is waiting for admin approval.</p>
+        </div>
       </div>
-      <div id="home-players-display" class="players-section">
-        <div class="players-header"><h3>Today's Registered Players</h3><span class="players-count" id="player-count">0</span></div>
-        <ul id="player-list" class="player-list"></ul>
+
+      <div class="card">
+        <div class="section-head">
+          <h3>Players Waiting for Approval</h3>
+          <span id="pending-count" class="pill">0</span>
+        </div>
+        <div id="pending-info" class="muted">Waiting for today&apos;s registrations...</div>
       </div>
-      <div id="home-teams-display" class="players-section hidden">
-        <div class="players-header"><h3>Teams</h3></div>
+
+      <div class="card">
+        <div class="section-head">
+          <h3>Today&apos;s Registered Players</h3>
+          <span id="registered-count" class="pill">0</span>
+        </div>
+        <div id="home-players-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h3>Teams</h3>
+          <span id="team-count" class="pill">0</span>
+        </div>
         <div id="home-teams-list"></div>
       </div>
-      <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
-        <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
-        <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
-      </div>
-      <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
-      <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
-      <div style="text-align:center;margin-top:15px;"><a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a></div>
-    </div>
 
-    <div id="view-confirm" class="card hidden">
-      <div class="header"><h1>✅ Registration Complete!</h1></div>
-      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
-        <h3 style="color:#2e7d32;">You're In!</h3>
-        <p>Your registration is pending approval.</p>
-      </div>
-      <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
-    </div>
-
-    <div id="view-game" class="card hidden">
-      <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs" style="grid-template-columns: 1fr 1fr;">
-        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
-      </div>
-      <div id="tab-myteam">
-        <div id="myteam-score-panel" class="admin-section"></div>
-      </div>
-      <div id="tab-otherteams" class="hidden"></div>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
-    </div>
-
-    <div id="view-leaderboard" class="card hidden">
-      <div class="header"><h1>🏅 Leaderboard</h1></div>
-      <div class="players-section">
-        <ul id="leaderboard-list" class="player-list"></ul>
-      </div>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
-    </div>
-
-    <div id="view-admin" class="card hidden">
-      <div class="header"><h1>🔐 Admin Access</h1></div>
-      <div class="form-group"><label>Password</label><input type="password" id="admin-password" placeholder="Enter password"></div>
-      <button class="btn btn-primary" onclick="adminLogin()">Login</button>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
-    </div>
-
-    <div id="view-admin-dashboard" class="card hidden">
-      <div class="header"><div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:38px;">⚙️</div><h1>Admin Dashboard</h1></div>
-
-      <div class="admin-top-status" id="admin-status-card">
-        <strong>Registration Status: <span id="admin-reg-status" class="closed">CLOSED</span></strong>
-        <div style="margin-top:8px;">Registration is closed. No new players can register.</div>
+      <div id="home-averages-card" class="card hidden">
+        <div class="section-head clickable" onclick="toggleAverages()">
+          <h3>Player Averages</h3>
+          <span id="averages-toggle-label" class="pill">Show</span>
+        </div>
+        <div id="home-averages-list" class="hidden"></div>
       </div>
 
-      <div class="admin-pill-tabs">
-        <button class="admin-pill-btn active has-badge" id="manage-players-tab-btn" onclick="switchAdminTab('players', event)">
-          <span class="pill-line">Manage</span>
-          <span class="pill-line pill-line-bottom">
-            <span>Players</span>
-            <span class="admin-pill-badge hidden" id="manage-players-badge">0</span>
-          </span>
-        </button>
-        <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
-        <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
+      <div class="card">
+        <div class="section-head">
+          <h3>Registration Hours</h3>
+          <span class="pill">Daily</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box"><div id="opens-value" class="stat-value">6:00 AM</div><div class="stat-label">Opens</div></div>
+          <div class="stat-box"><div id="closes-value" class="stat-value">9:30 AM</div><div class="stat-label">Closes</div></div>
+          <div class="stat-box"><div id="approved-value" class="stat-value">0</div><div class="stat-label">Approved</div></div>
+          <div class="stat-box"><div id="assigned-value" class="stat-value">0</div><div class="stat-label">On Teams</div></div>
+        </div>
       </div>
 
-      <div id="admin-players">
-        <div class="approval-note">
-          <div class="title">✅ Approval Always Available</div>
-          <div>You can approve or decline players anytime, even while registration is open.</div>
+      <div class="card">
+        <div class="nav-row">
+          <button class="secondary" onclick="goTo('scores')">My Team Scores</button>
+          <button class="secondary" onclick="goTo('leaderboard')">Leaderboard</button>
+          <button class="secondary" onclick="goTo('admin-login')">Admin Access</button>
+          <button class="secondary" onclick="loadAllData(true)">Refresh</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-scores" class="hidden">
+      <div class="card">
+        <div class="section-head">
+          <h2>My Team Scores</h2>
+          <button class="secondary" onclick="goTo('home')">← Back</button>
+        </div>
+        <div id="my-team-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h3>Submit Scores</h3>
+          <span id="captain-note" class="pill">Captain only</span>
+        </div>
+        <div class="score-row">
+          <div class="field" style="margin:0;">
+            <label for="team-front-score">Front</label>
+            <input id="team-front-score" type="number" min="0" step="1" placeholder="Front" oninput="updateScorePreview()" />
+          </div>
+          <div class="field" style="margin:0;">
+            <label for="team-back-score">Back</label>
+            <input id="team-back-score" type="number" min="0" step="1" placeholder="Back" oninput="updateScorePreview()" />
+          </div>
+          <div class="field" style="margin:0;">
+            <label>Total</label>
+            <input id="team-total-score" type="text" readonly value="--" />
+          </div>
+        </div>
+        <button onclick="submitTeamScore()">Save Final Team Score</button>
+      </div>
+    </section>
+
+    <section id="view-leaderboard" class="hidden">
+      <div class="card">
+        <div class="section-head">
+          <h2>Leaderboard</h2>
+          <button class="secondary" onclick="goTo('home')">← Back</button>
+        </div>
+        <div id="leaderboard-list"></div>
+      </div>
+    </section>
+
+    <section id="view-admin-login" class="hidden">
+      <div class="card">
+        <div class="section-head">
+          <h2>Admin Access</h2>
+          <button class="secondary" onclick="goTo('home')">← Back</button>
+        </div>
+        <div class="field">
+          <label for="admin-password">Password</label>
+          <input id="admin-password" type="password" placeholder="Enter admin password" />
+        </div>
+        <button onclick="adminLogin()">Login</button>
+      </div>
+    </section>
+
+    <section id="view-admin" class="hidden">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Admin Dashboard</h2>
+            <p id="admin-status-text" class="sub">Loading status...</p>
+          </div>
+          <button class="secondary" onclick="adminLogout()">← Log Out</button>
         </div>
 
-        <div class="section-title">⏳ Pending Players</div>
-        <div id="pending-players-list"></div>
-
-        <div class="section-title">✅ Approved Players (No Team)</div>
-        <div id="approved-no-team-list"></div>
-      </div>
-
-      <div id="admin-teams" class="hidden">
-        <div class="approval-note" id="team-selection-notice" style="background:#eef7ee;border-color:#4caf50;">
-          <div class="title" id="team-selection-title">✅ Registration is now CLOSED</div>
-          <div id="team-selection-subtitle">You can now assign players to teams:</div>
+        <div class="tabs">
+          <button id="tab-players" class="active" onclick="showAdminTab('players')">Manage Players</button>
+          <button id="tab-teams" onclick="showAdminTab('teams')">Select a Team</button>
+          <button id="tab-settings" onclick="showAdminTab('settings')">Settings</button>
         </div>
 
-        <div class="admin-section">
-          <div class="form-group" style="margin-bottom:0;">
-            <label>🏌️ Number of Teams</label>
-            <select id="num-teams" onchange="updateNumTeams()" style="padding:12px;border-radius:12px;border:2px solid #2d5a27;">
+        <div id="admin-tab-players">
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-bottom:12px;">
+            <div class="section-head">
+              <h3>Pending Players</h3>
+              <span id="admin-pending-count" class="pill">0</span>
+            </div>
+            <div id="admin-pending-list"></div>
+          </div>
+
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-bottom:12px;">
+            <div class="section-head">
+              <h3>Approved Players (No Team)</h3>
+              <span id="admin-approved-count" class="pill">0</span>
+            </div>
+            <div id="admin-approved-list"></div>
+          </div>
+        </div>
+
+        <div id="admin-tab-teams" class="hidden">
+          <div class="danger-box" style="margin-bottom:12px;">
+            <div class="strong">Approval Always Available</div>
+            <div class="sub" style="color:#ffe0e0; margin-top:6px;">You can approve or decline players anytime, even while registration is open.</div>
+          </div>
+
+          <div class="field">
+            <label for="num-teams">Number of Teams</label>
+            <select id="num-teams">
               <option value="1">1 Team</option>
               <option value="2">2 Teams</option>
               <option value="3">3 Teams</option>
-              <option value="4" selected>4 Teams</option>
+              <option value="4">4 Teams</option>
               <option value="5">5 Teams</option>
               <option value="6">6 Teams</option>
               <option value="7">7 Teams</option>
               <option value="8">8 Teams</option>
             </select>
           </div>
-          <button class="btn btn-primary" onclick="submitNumTeams()">Submit Number of Teams</button>
+          <button onclick="buildTeamSelectors()">Submit Number of Teams</button>
+
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-top:12px;">
+            <div class="section-head">
+              <h3>Players Waiting for Team</h3>
+              <span id="waiting-team-count" class="pill">0</span>
+            </div>
+            <div id="players-waiting-team"></div>
+          </div>
+
+          <div id="team-builder" class="card hidden" style="background:rgba(255,255,255,0.03); margin-top:12px;"></div>
+          <button id="submit-teams-btn" class="hidden" style="margin-top:12px;" onclick="submitTeams()">Submit Teams</button>
+
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-top:12px;">
+            <div class="section-head">
+              <h3>Teams</h3>
+              <span id="admin-team-count" class="pill">0</span>
+            </div>
+            <div id="admin-team-list"></div>
+          </div>
         </div>
 
-        <div class="section-title">Players Waiting for Team</div>
-        <div id="team-assignment-list"></div>
+        <div id="admin-tab-settings" class="hidden">
+          <div class="settings-grid">
+            <div class="card" style="background:rgba(255,255,255,0.03); margin:0;">
+              <h3 style="margin-bottom:12px;">Registration Times</h3>
+              <div class="field">
+                <label for="settings-open-time">Registration Opens At</label>
+                <input id="settings-open-time" type="time" />
+              </div>
+              <div class="field">
+                <label for="settings-close-time">Registration Closes At</label>
+                <input id="settings-close-time" type="time" />
+              </div>
+              <button onclick="saveSettings()">Save Times</button>
+            </div>
 
-        <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
-
-        <div class="section-title">Teams</div>
-        <div id="teams-container"></div>
+            <div class="card" style="background:rgba(255,255,255,0.03); margin:0;">
+              <h3 style="margin-bottom:12px;">Registration Controls</h3>
+              <div class="admin-grid">
+                <button class="warn" onclick="reopenRegistration()">Reopen Registration</button>
+                <button class="danger" onclick="clearAllPlayers()">Clear All Players</button>
+              </div>
+              <div style="height:12px"></div>
+              <h4 style="margin-bottom:8px;">Clear Team Score</h4>
+              <div class="field">
+                <label for="clear-team-select">Select Team to Clear</label>
+                <select id="clear-team-select"></select>
+              </div>
+              <button class="danger" onclick="clearSelectedTeamScore()">Clear Selected Team Score</button>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div id="admin-settings" class="hidden">
-        <div class="admin-section">
-          <div class="form-group">
-            <label>⏰ Registration Opens At</label>
-            <input type="time" id="open-time" value="06:00">
-          </div>
-          <div class="form-group">
-            <label>⏰ Registration Closes At</label>
-            <input type="time" id="cutoff-time" value="09:30">
-          </div>
-          <button class="btn btn-primary" onclick="saveSettings()">Save Times</button>
-          <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
-        </div>
-
-        <div class="admin-section" style="background:#f3e1e5;">
-          <h3 style="margin-bottom:10px;">🗑️ Clear Team Score</h3>
-          <div class="form-group">
-            <label>Select Team to Clear</label>
-            <select id="clear-team-select">
-              <option value="">-- Select Team --</option>
-            </select>
-          </div>
-          <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
-        </div>
-
-        <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
-      </div>
-
-      <button class="btn logout-soft" onclick="logout()">← Log Out</button>
-    </div>
+    </section>
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
-    const ADMIN_PASSWORD = 'golf123';
-    const SETTINGS_KEY = 'app';
-    const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
-    const DEVICE_ID_KEY = 'golf_money_game_device_id';
-    const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
-    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
+    const SUPABASE_URL = 'https://uwxxxxxxxxxxxxxxxx.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSY3tqwgNGHQ5blbQSivoY524cvmI73W9sGLk2KpKoGP1h59D3MJia5FJrPNSIRrjdkg/exec';
+    const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=39.2089&longitude=-81.5429&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph';
+    const ADMIN_PASSWORD = 'golfadmin';
+    const DEFAULT_SETTINGS = {
+      registration_open: '06:00',
+      registration_close: '09:30',
+      registration_force_closed: false
+    };
 
-    window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let appState = {
       players: [],
       teams: [],
-      settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
-      myTeam: null,
-      myPlayerName: '',
-      myDeviceId: '',
-      settingsLiveEnabled: false,
-      numTeams: 4,
-      selectedNumTeams: 4,
-      teamsSubmitted: false,
-      autoRefreshIntervalId: null
+      settings: { ...DEFAULT_SETTINGS },
+      playerAverages: [],
+      averagesOpen: false,
+      myPlayerName: localStorage.getItem('gmg_myPlayerName') || '',
+      myPlayerEmail: localStorage.getItem('gmg_myPlayerEmail') || '',
+      myTeam: localStorage.getItem('gmg_myTeam') || '',
+      isAdmin: sessionStorage.getItem('gmg_isAdmin') === 'true',
+      currentView: 'home',
+      adminTab: 'players'
     };
 
-    function formatError(err) {
-      if (!err) return 'Unknown error';
-      if (typeof err === 'string') return err;
-      if (err.message) return err.message;
-      if (err.error_description) return err.error_description;
-      try { return JSON.stringify(err, null, 2); } catch (_) { return String(err); }
+    function safeText(value) {
+      return String(value ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
-    function setStatus(text) {
-      document.getElementById('live-status').textContent = text;
+    function db(query, label = 'Database request') {
+      return query.then(({ data, error }) => {
+        if (error) throw new Error(`${label}: ${error.message}`);
+        return data;
+      });
     }
 
-    function shouldAutoRefresh() {
-      const registrationState = getRegistrationState();
-      if (registrationState.isOpen) return true;
-      if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
-      return false;
+    function nowMinutes() {
+      const now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
     }
 
-    function stopAutoRefresh() {
-      if (appState.autoRefreshIntervalId) {
-        clearInterval(appState.autoRefreshIntervalId);
-        appState.autoRefreshIntervalId = null;
-      }
+    function hhmmToMinutes(hhmm) {
+      const [h, m] = String(hhmm || '00:00').split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
     }
 
-    function updateAutoRefreshMode() {
-      const needsAutoRefresh = shouldAutoRefresh();
-      if (needsAutoRefresh && !appState.autoRefreshIntervalId) {
-        appState.autoRefreshIntervalId = setInterval(async () => {
-          try {
-            await loadAllData();
-            setStatus('Auto refreshed');
-          } catch (err) {
-            setStatus('Auto refresh error');
-          }
-        }, 15000);
-      } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
-        stopAutoRefresh();
-        setStatus('Manual refresh mode');
+    function formatTime12h(hhmm) {
+      const [h, m] = String(hhmm || '00:00').split(':').map(Number);
+      const hour = h % 12 || 12;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      return `${hour}:${String(m || 0).padStart(2, '0')} ${ampm}`;
+    }
+
+    function isRegistrationOpen() {
+      if (appState.settings.registration_force_closed) return false;
+      const now = nowMinutes();
+      const open = hhmmToMinutes(appState.settings.registration_open);
+      const close = hhmmToMinutes(appState.settings.registration_close);
+      return now >= open && now <= close;
+    }
+
+    function normalizePlayerName(name) {
+      return String(name || '').trim().toLowerCase();
+    }
+
+    function isCurrentPlayerName(name) {
+      return normalizePlayerName(name) === normalizePlayerName(appState.myPlayerName);
+    }
+
+    function getYouBadge(name) {
+      return isCurrentPlayerName(name) ? ' <span class="tag you-tag">YOU</span>' : '';
+    }
+
+    function getTeamName(teamId) {
+      const team = appState.teams.find(t => String(t.id) === String(teamId));
+      return team?.name || `Team ${teamId}`;
+    }
+
+    function getCaptainForTeam(teamId) {
+      const teamPlayers = appState.players.filter(p => p.status === 'approved' && String(p.team_id || '') === String(teamId));
+      if (!teamPlayers.length) return null;
+      return teamPlayers.find(p => p.is_captain) || teamPlayers[0];
+    }
+
+    function getApprovedPlayersForTeam(teamId) {
+      return appState.players.filter(p => p.status === 'approved' && String(p.team_id || '') === String(teamId));
+    }
+
+    function isCurrentCaptainForTeam(teamId) {
+      const captain = getCaptainForTeam(teamId);
+      return !!captain && isCurrentPlayerName(captain.name);
+    }
+
+    function calculateTeamTotal(front, back) {
+      const f = parseInt(front || 0, 10);
+      const b = parseInt(back || 0, 10);
+      return f + b;
+    }
+
+    function updateScorePreview() {
+      const front = document.getElementById('team-front-score')?.value || 0;
+      const back = document.getElementById('team-back-score')?.value || 0;
+      document.getElementById('team-total-score').value = calculateTeamTotal(front, back);
+    }
+
+    async function loadWeather() {
+      try {
+        const res = await fetch(WEATHER_URL, { cache: 'no-store' });
+        const data = await res.json();
+        const current = data.current || {};
+        document.getElementById('weather-temp').textContent = `${Math.round(current.temperature_2m ?? 0)}°F`;
+        document.getElementById('weather-wind').textContent = String(Math.round(current.wind_speed_10m ?? 0));
+        document.getElementById('weather-humidity').textContent = `${Math.round(current.relative_humidity_2m ?? 0)}%`;
+        document.getElementById('weather-sky').textContent = weatherCodeToText(current.weather_code);
+      } catch (err) {
+        console.log('Weather load failed safely', err);
       }
     }
 
     function weatherCodeToText(code) {
       const map = {
-        0: 'Clear',
-        1: 'Mostly Clear',
-        2: 'Partly Cloudy',
-        3: 'Cloudy',
-        45: 'Fog',
-        48: 'Fog',
-        51: 'Drizzle',
-        53: 'Drizzle',
-        55: 'Drizzle',
-        61: 'Rain',
-        63: 'Rain',
-        65: 'Heavy Rain',
-        71: 'Snow',
-        73: 'Snow',
-        75: 'Snow',
-        80: 'Rain Showers',
-        81: 'Rain Showers',
-        82: 'Heavy Showers',
-        95: 'Thunderstorm'
+        0:'Clear',1:'Mostly Clear',2:'Partly Cloudy',3:'Cloudy',45:'Fog',48:'Fog',51:'Drizzle',53:'Drizzle',55:'Drizzle',61:'Rain',63:'Rain',65:'Rain',71:'Snow',73:'Snow',75:'Snow',80:'Showers',81:'Showers',82:'Showers',95:'Storm'
       };
-      return map[code] || 'Weather';
+      return map[code] || '--';
     }
 
-    async function loadWeather() {
+    async function loadSettings() {
       try {
-        const lat = 39.2667;
-        const lon = -81.5615;
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`);
-        if (!res.ok) return;
+        const rows = await db(supabaseClient.from('settings').select('*').limit(1), 'Load settings');
+        const row = rows?.[0];
+        appState.settings = row ? {
+          registration_open: row.registration_open || DEFAULT_SETTINGS.registration_open,
+          registration_close: row.registration_close || DEFAULT_SETTINGS.registration_close,
+          registration_force_closed: !!row.registration_force_closed
+        } : { ...DEFAULT_SETTINGS };
+      } catch (err) {
+        console.log('Using default settings', err);
+        appState.settings = { ...DEFAULT_SETTINGS };
+      }
+    }
+
+    async function loadPlayers() {
+      appState.players = await db(
+        supabaseClient
+          .from('players')
+          .select('*')
+          .order('created_at', { ascending: true }),
+        'Load players'
+      );
+    }
+
+    async function loadTeams() {
+      appState.teams = await db(
+        supabaseClient
+          .from('teams')
+          .select('*')
+          .order('id', { ascending: true }),
+        'Load teams'
+      );
+    }
+
+    async function loadPlayerAverages() {
+      try {
+        const res = await fetch(`${APPS_SCRIPT_URL}?action=averages`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Averages request failed: ${res.status}`);
         const data = await res.json();
-        const current = data?.current;
-        if (!current) return;
-
-        const tempEl = document.getElementById('weather-temp');
-        const windEl = document.getElementById('weather-wind');
-        const humidityEl = document.getElementById('weather-humidity');
-        const conditionEl = document.getElementById('weather-condition');
-
-        if (tempEl) tempEl.textContent = `${Math.round(current.temperature_2m)}°F`;
-        if (windEl) windEl.textContent = `${Math.round(current.wind_speed_10m)}`;
-        if (humidityEl) humidityEl.textContent = `${Math.round(current.relative_humidity_2m)}%`;
-        if (conditionEl) conditionEl.textContent = weatherCodeToText(current.weather_code);
+        appState.playerAverages = Array.isArray(data?.players) ? data.players : [];
       } catch (err) {
-        console.log('Weather failed safely', err);
+        console.log('Player averages load failed safely', err);
+        appState.playerAverages = [];
       }
     }
 
-    function showView(v){
-      document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
-      document.getElementById(v).classList.remove('hidden');
-    }
-
-    function showAdminLogin(){ showView('view-admin'); }
-
-    function persistDevicePlayerName(name) {
-      appState.myPlayerName = name || '';
-      if (name) localStorage.setItem(DEVICE_PLAYER_KEY, name);
-      else localStorage.removeItem(DEVICE_PLAYER_KEY);
-    }
-
-    function generateDeviceId() {
-      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-      return 'device_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    }
-
-    function ensureDeviceId() {
-      let id = localStorage.getItem(DEVICE_ID_KEY);
-      if (!id) {
-        id = generateDeviceId();
-        localStorage.setItem(DEVICE_ID_KEY, id);
-      }
-      appState.myDeviceId = id;
-      return id;
-    }
-
-    function loadDeviceState() {
-      appState.myPlayerName = localStorage.getItem(DEVICE_PLAYER_KEY) || '';
-      appState.teamsSubmitted = localStorage.getItem(TEAMS_SUBMITTED_KEY) === 'true';
-      ensureDeviceId();
-    }
-
-    function persistTeamsSubmitted(value) {
-      appState.teamsSubmitted = !!value;
-      localStorage.setItem(TEAMS_SUBMITTED_KEY, String(!!value));
-    }
-
-    function isCurrentPlayer(player) {
-      if (!player) return false;
-      if (appState.myDeviceId && player.device_token && String(player.device_token) === String(appState.myDeviceId)) return true;
-      if (!player.device_token && player.name && appState.myPlayerName && player.name.trim().toLowerCase() === appState.myPlayerName.trim().toLowerCase()) return true;
-      return false;
-    }
-
-    function isCurrentPlayerName(name) {
-      return appState.players.some(p => (p.name || '') === name && isCurrentPlayer(p));
-    }
-
-    function getYouBadge(name) {
-      return isCurrentPlayerName(name) ? '<span class="you-badge">YOU</span>' : '';
-    }
-
-    function getRegistrationState() {
-      const now = new Date();
-      const openTime = appState.settings.open_time || '06:00';
-      const cutoffTime = appState.settings.cutoff_time || '09:30';
-      const openDate = new Date(now);
-      const cutoffDate = new Date(now);
-      const [openH, openM] = openTime.split(':').map(Number);
-      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-      openDate.setHours(openH, openM, 0, 0);
-      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-
-      const manuallyClosed = !!appState.settings.registration_closed;
-      const beforeOpen = now < openDate;
-      const afterCutoff = now > cutoffDate;
-      const isOpen = !manuallyClosed && !beforeOpen && !afterCutoff;
-
-      return {
-        isOpen,
-        manuallyClosed,
-        beforeOpen,
-        afterCutoff,
-        openTime,
-        cutoffTime,
-        openDate,
-        cutoffDate,
-        now
-      };
-    }
-
-    async function db(promise, label) {
+    async function loadAllData(showToast = false) {
       try {
-        const result = await promise;
-        if (result?.error) {
-          const msg = formatError(result.error);
-          throw new Error(msg);
-        }
-        return result;
+        await Promise.all([loadSettings(), loadPlayers(), loadTeams(), loadPlayerAverages(), loadWeather()]);
+        hydrateMyTeamFromPlayers();
+        renderAll();
+        if (showToast) alert('App refreshed');
       } catch (err) {
-        const msg = formatError(err);
-        throw new Error(msg);
+        console.error(err);
+        alert(err.message || 'Could not load app data');
       }
     }
 
-    async function ensureBaseData() {
-      const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
-      if (!teamsResult.data || teamsResult.data.length === 0) {
-        try {
-          await db(window.supabaseClient.from('teams').insert([
-            { team_number: 1, team_name: 'Team 1' },
-            { team_number: 2, team_name: 'Team 2' },
-            { team_number: 3, team_name: 'Team 3' },
-            { team_number: 4, team_name: 'Team 4' },
-            { team_number: 5, team_name: 'Team 5' }
-          ]), 'Seed teams');
-        } catch (err) {
-        }
-      }
-
-      const settingsResult = await db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings');
-      const settingsRow = settingsResult.data?.[0] || null;
-      if (!settingsRow) {
-        try {
-          await db(window.supabaseClient.from('settings').insert([DEFAULT_SETTINGS]), 'Seed settings');
-          appState.settingsLiveEnabled = true;
-          appState.settings = { ...appState.settings, ...DEFAULT_SETTINGS };
-        } catch (err) {
-          appState.settingsLiveEnabled = false;
-        }
-      } else {
-        appState.settingsLiveEnabled = Object.prototype.hasOwnProperty.call(settingsRow, 'game_started');
-        if (appState.settingsLiveEnabled) {
-          appState.settings = {
-            ...appState.settings,
-            game_started: !!settingsRow.game_started,
-            cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
-            open_time: settingsRow.open_time || appState.settings.open_time,
-            registration_closed: !!settingsRow.registration_closed
-          };
-        }
+    function hydrateMyTeamFromPlayers() {
+      const me = appState.players.find(p => isCurrentPlayerName(p.name));
+      if (me?.team_id) {
+        appState.myTeam = String(me.team_id);
+        localStorage.setItem('gmg_myTeam', appState.myTeam);
       }
     }
 
-    async function loadAllData() {
-      const [playersResult, teamsResult, settingsResult] = await Promise.all([
-        db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
-        db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
-        db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings')
-      ]);
-
-      appState.players = playersResult.data || [];
-      appState.teams = teamsResult.data || [];
-
-      const settingsRow = settingsResult.data?.[0] || null;
-      if (settingsRow) {
-        appState.settingsLiveEnabled = true;
-        appState.settings = {
-          ...appState.settings,
-          game_started: !!settingsRow.game_started,
-          cutoff_time: settingsRow.cutoff_time || '09:30',
-          open_time: settingsRow.open_time || '06:00',
-          registration_closed: !!settingsRow.registration_closed
-        };
-      }
-
+    function renderAll() {
       renderHome();
-      renderAdminPlayers();
-      renderAdminTeams();
+      renderScoresView();
       renderLeaderboard();
-      loadGameView();
-      updateSettingsView();
-    }
-
-    function getTeamName(teamId) {
-      const team = appState.teams.find(t => String(t.id) === String(teamId));
-      return team ? (team.team_name || team.name || `Team ${team.id}`) : '-';
-    }
-
-    function getActiveTeams() {
-      return appState.teams
-        .slice()
-        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, appState.numTeams || 4);
-    }
-
-    function getApprovedPlayersForTeam(teamId) {
-      return appState.players.filter(p => p.status === 'approved' && String(p.team) === String(teamId));
-    }
-
-    function getCaptainForTeam(teamId) {
-      const team = appState.teams.find(t => String(t.id) === String(teamId));
-      if (!team?.captain_id) return null;
-      return appState.players.find(p => String(p.id) === String(team.captain_id)) || null;
-    }
-
-    function isTodayDateString(value) {
-      if (!value) return false;
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return false;
-      const now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-    }
-
-    function getTeamScoreValue(team) {
-      if (!team) return null;
-      return team.team_score ?? null;
-    }
-
-    function getTeamFrontScore(team) {
-      if (!team) return null;
-      return team.front_score ?? null;
-    }
-
-    function getTeamBackScore(team) {
-      if (!team) return null;
-      return team.back_score ?? null;
-    }
-
-    function calculateTeamTotal(front, back) {
-      const frontNum = parseInt(front, 10);
-      const backNum = parseInt(back, 10);
-      const safeFront = Number.isNaN(frontNum) ? 0 : frontNum;
-      const safeBack = Number.isNaN(backNum) ? 0 : backNum;
-      return safeFront + safeBack;
-    }
-
-    function updateTeamTotalInput() {
-      const frontInput = document.getElementById('team-front-score');
-      const backInput = document.getElementById('team-back-score');
-      const totalInput = document.getElementById('team-total-score');
-      if (!frontInput || !backInput || !totalInput) return;
-      const hasAnyValue = String(frontInput.value).trim() !== '' || String(backInput.value).trim() !== '';
-      totalInput.value = hasAnyValue ? String(calculateTeamTotal(frontInput.value, backInput.value)) : '';
-    }
-
-    function hasTeamSubmittedToday(team) {
-      return getTeamScoreValue(team) !== null && isTodayDateString(team.score_submitted_at);
-    }
-
-    function getScoringTeams() {
-      return getActiveTeams().filter(team => getApprovedPlayersForTeam(team.id).length > 0);
-    }
-
-    function allScoringTeamsSubmittedToday() {
-      const scoringTeams = getScoringTeams();
-      if (!scoringTeams.length) return false;
-      return scoringTeams.every(team => hasTeamSubmittedToday(team));
-    }
-
-    function isCurrentCaptainForTeam(teamId) {
-      const captain = getCaptainForTeam(teamId);
-      return !!captain && isCurrentPlayer(captain);
-    }
-
-    async function clearExpiredTeamScoresIfNeeded() {
-      const expiredTeams = appState.teams.filter(team => {
-        const hasAnySavedScore = team.team_score !== null && team.team_score !== undefined;
-        const hasStaleDate = team.score_submitted_at && !isTodayDateString(team.score_submitted_at);
-        return hasAnySavedScore && hasStaleDate;
-      });
-
-      if (!expiredTeams.length) return;
-
-      for (const team of expiredTeams) {
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({ front_score: null, back_score: null, team_score: null, score_submitted_at: null })
-            .eq('id', team.id),
-          'Clear expired team score'
-        );
-      }
-    }
-
-    async function registerPlayer(){
-      try {
-        const name = document.getElementById('reg-name').value.trim();
-        const phone = document.getElementById('reg-phone').value.trim();
-        const course = document.getElementById('reg-course').value;
-        if(!name){ alert('Enter name'); return; }
-
-        const registrationState = getRegistrationState();
-        if (registrationState.manuallyClosed) {
-          alert('Registration is manually closed.');
-          return;
-        }
-        if (registrationState.beforeOpen) {
-          alert(`Registration opens at ${formatTime12(registrationState.openTime)}.`);
-          return;
-        }
-        if (registrationState.afterCutoff) {
-          alert(`Registration is closed. Cutoff time was ${formatTime12(registrationState.cutoffTime)}.`);
-          return;
-        }
-
-        const exists = appState.players.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
-        if (exists) { alert('Player already registered'); return; }
-        if (!appState.teams.length) { alert('No teams available yet'); return; }
-
-        await db(window.supabaseClient.from('players').insert([{
-          name: name,
-          phone: phone || null,
-          course: course || 'Cliffside Golf Club',
-          status: 'pending',
-          team: null,
-          registered_at: new Date().toISOString(),
-          is_captain: false,
-          device_token: ensureDeviceId()
-        }]), 'Register player');
-
-        persistDevicePlayerName(name);
-        document.getElementById('reg-name').value = '';
-        document.getElementById('reg-phone').value = '';
-        showView('view-confirm');
-        await loadAllData();
-      } catch (err) {
-        alert(`Could not register player: ${formatError(err)}`);
-      }
-    }
-
-    function formatTime12(time24) {
-      if (!time24 || !time24.includes(':')) return time24 || '';
-      const [hours, minutes] = time24.split(':');
-      const h = parseInt(hours, 10);
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      const h12 = h % 12 || 12;
-      return `${h12}:${minutes} ${ampm}`;
+      renderAdmin();
+      goTo(appState.currentView, true);
     }
 
     function renderHome() {
+      const pendingPlayers = appState.players.filter(p => p.status === 'pending');
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+      const assignedPlayers = approvedPlayers.filter(p => p.team_id);
+      const regOpen = isRegistrationOpen();
+
+      document.getElementById('registration-pill').textContent = regOpen ? 'Registration is OPEN' : 'Registration is CLOSED';
+      document.getElementById('pending-count').textContent = pendingPlayers.length;
+      document.getElementById('registered-count').textContent = approvedPlayers.length;
+      document.getElementById('team-count').textContent = appState.teams.length;
+      document.getElementById('opens-value').textContent = formatTime12h(appState.settings.registration_open);
+      document.getElementById('closes-value').textContent = formatTime12h(appState.settings.registration_close);
+      document.getElementById('approved-value').textContent = approvedPlayers.length;
+      document.getElementById('assigned-value').textContent = assignedPlayers.length;
+      document.getElementById('pending-info').textContent = pendingPlayers.length ? `${pendingPlayers.length} player(s) are waiting for approval.` : 'No one is waiting right now.';
+      document.getElementById('home-success').classList.toggle('hidden', !appState.myPlayerName);
+      document.getElementById('register-btn').disabled = !regOpen;
+
+      const playersHtml = approvedPlayers.length ? approvedPlayers.map(player => `
+        <div class="player-row">
+          <div class="name-row">${safeText(player.name)}${getYouBadge(player.name)}${player.is_captain ? ' <span class="tag">Captain</span>' : ''}</div>
+          <div class="muted center">${safeText(getTeamName(player.team_id) || 'Waiting')}</div>
+          <div class="muted right">${safeText(player.course || 'Cliffside Golf Club')}</div>
+        </div>
+      `).join('') : '<div class="empty">No approved players yet.</div>';
+      document.getElementById('home-players-list').innerHTML = playersHtml;
+
+      const teamsHtml = appState.teams.length ? appState.teams.map(team => {
+        const teamPlayers = getApprovedPlayersForTeam(team.id);
+        const captain = getCaptainForTeam(team.id);
+        return `
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-bottom:10px;">
+            <div class="section-head">
+              <h3>${safeText(team.name || `Team ${team.id}`)}</h3>
+              <span class="pill">Total ${safeText(team.team_score ?? '--')}</span>
+            </div>
+            ${teamPlayers.length ? teamPlayers.map(p => `
+              <div class="player-row">
+                <div class="name-row">${safeText(p.name)}${getYouBadge(p.name)}${captain && p.id === captain.id ? ' <span class="tag">Captain</span>' : ''}</div>
+                <div class="center muted">Front ${safeText(team.front_score ?? '--')}</div>
+                <div class="right muted">Back ${safeText(team.back_score ?? '--')}</div>
+              </div>
+            `).join('') : '<div class="empty">No players assigned.</div>'}
+          </div>
+        `;
+      }).join('') : '<div class="empty">Teams have not been created yet.</div>';
+      document.getElementById('home-teams-list').innerHTML = teamsHtml;
+
+      renderPlayerAverages();
+    }
+
+    function toggleAverages() {
+      appState.averagesOpen = !appState.averagesOpen;
+      renderPlayerAverages();
+    }
+
+    function renderPlayerAverages() {
+      const card = document.getElementById('home-averages-card');
+      const list = document.getElementById('home-averages-list');
+      const label = document.getElementById('averages-toggle-label');
       const approved = appState.players.filter(p => p.status === 'approved');
-      const pending = appState.players.filter(p => p.status === 'pending');
-      const playerCount = document.getElementById('player-count');
-      if (playerCount) playerCount.textContent = approved.length;
-      const pendingCount = document.getElementById('pending-count');
-      if (pendingCount) pendingCount.textContent = pending.length;
 
-      const playerList = document.getElementById('player-list');
-      const homeTeamsDisplay = document.getElementById('home-teams-display');
-      const homeTeamsList = document.getElementById('home-teams-list');
-      const homePlayersDisplay = document.getElementById('home-players-display');
-
-      if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
-        homeTeamsDisplay.classList.remove('hidden');
-        if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
-        if (playerList) playerList.innerHTML = '';
-
-        const availableTeams = appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams || 4);
-
-        const myPlayer = approved.find(p => isCurrentPlayer(p));
-        const myTeamId = myPlayer?.team ?? null;
-
-        homeTeamsList.innerHTML = availableTeams.map(t => {
-          const teamPlayers = approved.filter(p => String(p.team) === String(t.id));
-          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
-          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
-          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
-
-          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
-            <div class="team-card-title">
-              <h4>${getTeamName(t.id)}</h4>
-              ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
-            </div>
-            <div style="padding:2px 8px;">
-              ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:8px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-              ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:8px 0;color:#777;">No other players</div>'}
-            </div>
-          </div>`;
-        }).join('') || '<div class="empty-state">No teams yet</div>';
-      } else {
-        if (homeTeamsDisplay) homeTeamsDisplay.classList.add('hidden');
-        if (homePlayersDisplay) homePlayersDisplay.classList.remove('hidden');
-        if (playerList) {
-          playerList.innerHTML = approved.map(p => {
-            const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
-            return `
-              <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div class="name-row" style="font-weight:800;font-size:16px;color:#111;">${p.name}${getYouBadge(p.name)}</div>
-                <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
-              </li>
-            `;
-          }).join('') || '<li style="color:#999;">No approved players</li>';
-        }
+      if (!approved.length || !appState.playerAverages.length) {
+        card.classList.add('hidden');
+        return;
       }
 
-      const hoursDisplay = document.getElementById('registration-hours-display');
-      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
+      const approvedNames = new Set(approved.map(p => normalizePlayerName(p.name)));
+      const rows = appState.playerAverages
+        .filter(p => approvedNames.has(normalizePlayerName(p.name)))
+        .sort((a, b) => Number(a.avg ?? 999999) - Number(b.avg ?? 999999));
 
-      const registrationState = getRegistrationState();
-      const registerBtn = document.querySelector('#view-home .btn.btn-primary');
-      if (registerBtn) {
-        registerBtn.disabled = !registrationState.isOpen;
-        registerBtn.style.opacity = registrationState.isOpen ? '1' : '0.7';
-        if (registrationState.manuallyClosed) {
-          registerBtn.textContent = 'Registration Closed';
-        } else if (registrationState.beforeOpen) {
-          registerBtn.textContent = `Registration Opens at ${formatTime12(registrationState.openTime)}`;
-        } else if (registrationState.afterCutoff) {
-          registerBtn.textContent = `Registration Closed at ${formatTime12(registrationState.cutoffTime)}`;
-        } else {
-          registerBtn.textContent = `Register for Today's Game`;
-        }
+      if (!rows.length) {
+        card.classList.add('hidden');
+        return;
       }
+
+      card.classList.remove('hidden');
+      label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
+      list.classList.toggle('hidden', !appState.averagesOpen);
+      list.innerHTML = `
+        <div class="avg-row strong muted">
+          <div>Player</div>
+          <div class="right">Avg</div>
+          <div class="right">Last</div>
+        </div>
+        ${rows.map(p => `
+          <div class="avg-row">
+            <div class="name-row">${safeText(p.name)}${getYouBadge(p.name)}</div>
+            <div class="right strong">${safeText(p.avg ?? '-')}</div>
+            <div class="right strong">${safeText(p.last ?? '-')}</div>
+          </div>
+        `).join('')}
+      `;
     }
 
-    function switchGameTab(t, ev){
-      document.querySelectorAll('#view-game .tab-btn').forEach(b=>b.classList.remove('active'));
-      if (ev?.target) ev.target.classList.add('active');
-      document.getElementById('tab-myteam').classList.add('hidden');
-      document.getElementById('tab-otherteams').classList.add('hidden');
-      document.getElementById('tab-'+t).classList.remove('hidden');
-    }
+    function renderScoresView() {
+      const box = document.getElementById('my-team-box');
+      const team = appState.teams.find(t => String(t.id) === String(appState.myTeam));
 
-    function loadGameView() {
-      const myPlayer = appState.players.find(p => isCurrentPlayer(p));
-      const fallbackTeam = appState.teams[0]?.id ?? null;
-      appState.myTeam = myPlayer?.team ?? fallbackTeam;
-
-      const myTeam = appState.teams.find(t => String(t.id) === String(appState.myTeam)) || null;
-      const myCaptain = myTeam ? getCaptainForTeam(myTeam.id) : null;
-      const iAmCaptain = myTeam ? isCurrentCaptainForTeam(myTeam.id) : false;
-      const myTeamScore = myTeam ? getTeamScoreValue(myTeam) : null;
-      const myFrontScore = myTeam ? getTeamFrontScore(myTeam) : null;
-      const myBackScore = myTeam ? getTeamBackScore(myTeam) : null;
-      const myTeamSubmitted = myTeam ? hasTeamSubmittedToday(myTeam) : false;
-      const allSubmitted = allScoringTeamsSubmittedToday();
-      const myTeamPlayers = myTeam ? getApprovedPlayersForTeam(myTeam.id) : [];
-      const myTeamPanel = document.getElementById('myteam-score-panel');
-
-      if (myTeamPanel) {
-        if (!myPlayer || !myTeam) {
-          myTeamPanel.innerHTML = '<div class="empty-state">Register and get assigned to a team to use score keeping.</div>';
-        } else {
-          const currentButtonText = myTeamSubmitted ? 'Update Team Score' : 'Submit Team Score';
-          const frontInputValue = myFrontScore !== null && myFrontScore !== undefined ? String(myFrontScore) : '';
-          const backInputValue = myBackScore !== null && myBackScore !== undefined ? String(myBackScore) : '';
-          const scoreInputValue = myTeamScore !== null && myTeamScore !== undefined ? String(myTeamScore) : '';
-          const playerNames = myTeamPlayers.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ');
-
-          if (iAmCaptain) {
-            myTeamPanel.innerHTML = `
-              <div style="background:#eef7ee;border:2px solid #2d5a27;border-radius:16px;padding:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-                  <div>
-                    <div style="font-size:12px;font-weight:800;color:#2d5a27;letter-spacing:.4px;">OFFICIAL SCORE KEEPER</div>
-                    <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}</div>
-                  </div>
-                  <span class="you-badge">CAPTAIN</span>
-                </div>
-                <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
-                <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
-                <div style="background:#fff;border-radius:14px;padding:14px;">
-                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#efe3b7;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Enter Scores (After Game Starts)</div>
-                  <div style="background:#f4f4f4;border-radius:14px;padding:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-                      <div style="font-size:18px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}${myCaptain ? ` (${myCaptain.name})` : ''}</div>
-                      ${myTeamSubmitted ? '<span style="background:#4caf50;color:#fff;font-size:13px;font-weight:800;padding:6px 10px;border-radius:8px;">✓ Score Submitted</span>' : ''}
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
-                        <input type="number" id="team-front-score" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Back</label>
-                        <input type="number" id="team-back-score" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Total</label>
-                        <input type="number" id="team-total-score" placeholder="Total" value="${scoreInputValue}" readonly style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;background:#f0f0f0;">
-                      </div>
-                    </div>
-                    <button class="btn btn-success" onclick="submitTeamScore()" style="margin-top:14px;">${currentButtonText}</button>
-                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
-                  </div>
-                </div>
-              </div>`;
-          } else {
-            myTeamPanel.innerHTML = `
-              <div style="background:#f7f7f7;border:2px solid #e0e0e0;border-radius:16px;padding:16px;">
-                <div style="font-size:22px;font-weight:800;color:#143b2f;margin-bottom:8px;">${getTeamName(myTeam.id)}</div>
-                <div class="muted" style="margin-bottom:10px;">Captain: ${myCaptain ? `${myCaptain.name}${isCurrentPlayer(myCaptain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the captain with YOU beside their name can submit or edit this team score.</div>
-                ${myTeamSubmitted ? `<div style="margin-top:12px;background:#eef7ee;border-radius:12px;padding:12px;font-weight:700;color:#1a472a;">Your team has submitted a score.${allSubmitted ? ` Final score: ${myTeamScore}` : ' Scores will appear when all teams submit.'}</div>` : ''}
-              </div>`;
-          }
-        }
+      if (!appState.myPlayerName) {
+        box.innerHTML = '<div class="empty">Register first on this device to see your team.</div>';
+        return;
       }
 
-      const otherTeamsContainer = document.getElementById('tab-otherteams');
-      const teamsToShow = getScoringTeams();
-      if (!allSubmitted) {
-        otherTeamsContainer.innerHTML = '<div class="admin-section"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
-      } else {
-        const rankedTeams = teamsToShow
-          .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
-          .sort((a, b) => a.score - b.score);
+      if (!team) {
+        box.innerHTML = '<div class="empty">You do not have a team yet.</div>';
+        return;
+      }
 
-        function getPlaceMeta(index, total) {
-          if (index === 0) return '🥇 1st Place';
-          if (index === 1) return '🥈 2nd Place';
-          if (index === 2) return '🥉 3rd Place';
-          if (index === total - 1) return '💩 Last Place';
-          return `#${index + 1}`;
-        }
+      const captain = getCaptainForTeam(team.id);
+      const players = getApprovedPlayersForTeam(team.id);
+      document.getElementById('captain-note').textContent = isCurrentCaptainForTeam(team.id) ? 'You are captain' : `Captain: ${captain?.name || 'TBD'}`;
+      document.getElementById('team-front-score').value = team.front_score ?? '';
+      document.getElementById('team-back-score').value = team.back_score ?? '';
+      document.getElementById('team-total-score').value = team.team_score ?? '--';
 
-        const others = rankedTeams.map((entry, index) => {
-          const team = entry.team;
-          const players = getApprovedPlayersForTeam(team.id);
-          const captain = getCaptainForTeam(team.id);
-          const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
-          const teamScore = getTeamScoreValue(team);
-          const placeLabel = getPlaceMeta(index, rankedTeams.length);
-          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
-            <div class="team-card-title">
-              <h4>${getTeamName(team.id)}</h4>
-              <span class="place-badge">${placeLabel}</span>
+      box.innerHTML = `
+        <div class="card" style="background:rgba(255,255,255,0.03); margin:0;">
+          <div class="section-head">
+            <h3>${safeText(team.name || `Team ${team.id}`)}</h3>
+            <span class="pill">Total ${safeText(team.team_score ?? '--')}</span>
+          </div>
+          ${players.map(player => `
+            <div class="player-row">
+              <div class="name-row">${safeText(player.name)}${getYouBadge(player.name)}${captain && captain.id === player.id ? ' <span class="tag">Captain</span>' : ''}</div>
+              <div class="center muted">Front ${safeText(team.front_score ?? '--')}</div>
+              <div class="right muted">Back ${safeText(team.back_score ?? '--')}</div>
             </div>
-            <div class="muted" style="margin-bottom:10px;">Captain: ${captain ? `${captain.name}${isCurrentPlayer(captain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Front</div>
-                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamFrontScore(team) ?? '-'}</div>
-              </div>
-              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Back</div>
-                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamBackScore(team) ?? '-'}</div>
-              </div>
-              <div style="background:#eef7ee;border-radius:10px;padding:10px;border:2px solid #cfe3d0;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Total</div>
-                <div style="font-size:24px;font-weight:900;color:#143b2f;">${teamScore ?? '-'}</div>
-              </div>
-            </div>
-            <div>${players.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div>
-          </div>`;
-        }).join('');
-        otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
-      }
-    }
-
-    async function submitTeamScore(){
-      try {
-        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
-        if (!appState.myTeam) { alert('You are not assigned to a team yet'); return; }
-        if (!isCurrentCaptainForTeam(appState.myTeam)) {
-          alert('Only the captain with YOU beside their name can submit or edit this team score.');
-          return;
-        }
-
-        const frontValue = document.getElementById('team-front-score')?.value;
-        const backValue = document.getElementById('team-back-score')?.value;
-        if((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')){ alert('Enter both front and back scores'); return; }
-
-        const totalScore = calculateTeamTotal(frontValue, backValue);
-        const nowIso = new Date().toISOString();
-
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
-            .eq('id', appState.myTeam),
-          'Submit team score'
-        );
-        alert('Team score saved!');
-        await loadAllData();
-      } catch (err) {
-        alert(`Could not save team score: ${formatError(err)}`);
-      }
+          `).join('')}
+        </div>
+      `;
     }
 
     function renderLeaderboard() {
-      const ranked = appState.players
-        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
-        .sort((a,b) => a.score - b.score);
+      const wrap = document.getElementById('leaderboard-list');
+      const rows = [...appState.teams].sort((a, b) => {
+        const av = Number(a.team_score ?? 999999);
+        const bv = Number(b.team_score ?? 999999);
+        return av - bv;
+      });
 
-      document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
-        <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><span>${idx + 1}. ${p.name} ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}</span><span>${p.score}</span></li>
-      `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
+      wrap.innerHTML = rows.length ? `
+        <div class="leader-row strong muted">
+          <div>#</div>
+          <div>Team</div>
+          <div class="right">Front</div>
+          <div class="right">Back</div>
+          <div class="right">Total</div>
+        </div>
+        ${rows.map((team, idx) => `
+          <div class="leader-row">
+            <div class="strong">${idx + 1}</div>
+            <div class="name-row">${safeText(team.name || `Team ${team.id}`)}</div>
+            <div class="right strong">${safeText(team.front_score ?? '--')}</div>
+            <div class="right strong">${safeText(team.back_score ?? '--')}</div>
+            <div class="right strong">${safeText(team.team_score ?? '--')}</div>
+          </div>
+        `).join('')}
+      ` : '<div class="empty">No team scores yet.</div>';
     }
 
-    function showLeaderboard() {
-      renderLeaderboard();
-      showView('view-leaderboard');
-    }
+    function renderAdmin() {
+      const regOpen = isRegistrationOpen();
+      document.getElementById('admin-status-text').textContent = regOpen
+        ? 'Registration is OPEN. Players can register right now.'
+        : 'Registration is CLOSED. No new players can register right now.';
+      document.getElementById('settings-open-time').value = appState.settings.registration_open;
+      document.getElementById('settings-close-time').value = appState.settings.registration_close;
 
-    function adminLogin(){
-      if(document.getElementById('admin-password').value === ADMIN_PASSWORD){
-        showView('view-admin-dashboard');
-        renderAdminPlayers();
-      } else alert('Invalid password');
-    }
-
-    function renderAdminPlayers(){
       const pending = appState.players.filter(p => p.status === 'pending');
-      const managePlayersBadge = document.getElementById('manage-players-badge');
-      if (managePlayersBadge) {
-        managePlayersBadge.textContent = String(pending.length);
-        managePlayersBadge.classList.toggle('hidden', pending.length === 0);
-      }
-      const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
+      const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && !p.team_id);
 
+      document.getElementById('admin-pending-count').textContent = pending.length;
+      document.getElementById('admin-approved-count').textContent = approvedNoTeam.length;
+      document.getElementById('waiting-team-count').textContent = approvedNoTeam.length;
+      document.getElementById('admin-team-count').textContent = appState.teams.length;
 
-      const pendingList = document.getElementById('pending-players-list');
-      if (pendingList) {
-        pendingList.innerHTML = pending.length ? pending.map(p => `
-          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
-            <div>
-              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
-              <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
+      document.getElementById('admin-pending-list').innerHTML = pending.length ? pending.map(player => `
+        <div class="player-row">
+          <div class="name-row">${safeText(player.name)}</div>
+          <button onclick="approvePlayer(${player.id})">Approve</button>
+          <button class="danger" onclick="declinePlayer(${player.id})">Decline</button>
+        </div>
+      `).join('') : '<div class="empty">No pending players.</div>';
+
+      document.getElementById('admin-approved-list').innerHTML = approvedNoTeam.length ? approvedNoTeam.map(player => `
+        <div class="player-row">
+          <div class="name-row">${safeText(player.name)}</div>
+          <div class="muted center">Approved</div>
+          <div class="right muted">Waiting for team</div>
+        </div>
+      `).join('') : '<div class="empty">No approved players waiting for teams.</div>';
+
+      document.getElementById('players-waiting-team').innerHTML = approvedNoTeam.length ? approvedNoTeam.map(player => `
+        <div class="player-row">
+          <div class="name-row">${safeText(player.name)}</div>
+          <div class="muted center">Ready</div>
+          <div class="right muted">No team yet</div>
+        </div>
+      `).join('') : '<div class="empty">All approved players are already on teams.</div>';
+
+      document.getElementById('admin-team-list').innerHTML = appState.teams.length ? appState.teams.map(team => {
+        const players = getApprovedPlayersForTeam(team.id);
+        const captain = getCaptainForTeam(team.id);
+        return `
+          <div class="card" style="background:rgba(255,255,255,0.03); margin-bottom:10px;">
+            <div class="section-head">
+              <h3>${safeText(team.name || `Team ${team.id}`)}</h3>
+              <span class="pill">Total ${safeText(team.team_score ?? '--')}</span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-success btn-small" onclick="approve('${p.id}')">✓ Approve</button>
-              <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">✗ Decline</button>
-            </div>
+            ${players.length ? players.map(player => `
+              <div class="player-row">
+                <div class="name-row">${safeText(player.name)}${captain && captain.id === player.id ? ' <span class="tag">Captain</span>' : ''}</div>
+                <div class="center muted">Front ${safeText(team.front_score ?? '--')}</div>
+                <div class="right muted">Back ${safeText(team.back_score ?? '--')}</div>
+              </div>
+            `).join('') : '<div class="empty">No players assigned.</div>'}
           </div>
-        `).join('') : '<div class="empty-state">No pending players</div>';
-      }
+        `;
+      }).join('') : '<div class="empty">No teams created yet.</div>';
 
-      const approvedNoTeamList = document.getElementById('approved-no-team-list');
-      if (approvedNoTeamList) {
-        approvedNoTeamList.innerHTML = approvedNoTeam.length ? approvedNoTeam.map(p => `
-          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
-            <div>
-              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
-              <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span style="background:#e8f2ff;color:#1565c0;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;">No Team</span>
-              <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">🗑️ Delete</button>
-            </div>
-          </div>
-        `).join('') : '<div class="empty-state">No approved players without a team</div>';
-      }
+      const clearSelect = document.getElementById('clear-team-select');
+      clearSelect.innerHTML = `<option value="">-- Select Team --</option>${appState.teams.map(team => `<option value="${team.id}">${safeText(team.name || `Team ${team.id}`)}</option>`).join('')}`;
+      showAdminTab(appState.adminTab);
+    }
 
-      const registrationState = getRegistrationState();
-      const statusEl = document.getElementById('admin-reg-status');
-      const cardEl = document.getElementById('admin-status-card');
-      if (statusEl && cardEl) {
-        statusEl.textContent = registrationState.isOpen ? 'OPEN' : 'CLOSED';
-        statusEl.className = registrationState.isOpen ? 'open' : 'closed';
+    function showAdminTab(tab) {
+      appState.adminTab = tab;
+      document.getElementById('admin-tab-players').classList.toggle('hidden', tab !== 'players');
+      document.getElementById('admin-tab-teams').classList.toggle('hidden', tab !== 'teams');
+      document.getElementById('admin-tab-settings').classList.toggle('hidden', tab !== 'settings');
+      document.getElementById('tab-players').classList.toggle('active', tab === 'players');
+      document.getElementById('tab-teams').classList.toggle('active', tab === 'teams');
+      document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
+    }
 
-        if (registrationState.isOpen) {
-          cardEl.querySelector('div').textContent = `Registration is open until ${formatTime12(registrationState.cutoffTime)}.`;
-        } else if (registrationState.beforeOpen) {
-          cardEl.querySelector('div').textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
-        } else if (registrationState.manuallyClosed) {
-          cardEl.querySelector('div').textContent = 'Registration is manually closed.';
-        } else {
-          cardEl.querySelector('div').textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
-        }
+    function goTo(view, skipStateUpdate = false) {
+      if (!skipStateUpdate) appState.currentView = view;
+      ['home','scores','leaderboard','admin-login','admin'].forEach(name => {
+        document.getElementById(`view-${name}`).classList.toggle('hidden', name !== view);
+      });
+      if (view === 'admin' && !appState.isAdmin) {
+        appState.currentView = 'admin-login';
+        goTo('admin-login', true);
       }
     }
 
-    async function changeTeam(id, teamId){
+    async function registerPlayer() {
       try {
-        const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
-        await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', id), 'Change team');
-        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, team: nextTeam } : p);
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not change team: ${formatError(err)}`);
-      }
-    }
-
-    async function approve(id){
-      try {
-        await db(window.supabaseClient.from('players').update({ status: 'approved' }).eq('id', id), 'Approve player');
-        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, status: 'approved' } : p);
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not approve player: ${formatError(err)}`);
-      }
-    }
-
-    async function deleteP(id){
-      if(!confirm('Delete?')) return;
-      try {
-        await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
-        appState.players = appState.players.filter(p => String(p.id) !== String(id));
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not delete player: ${formatError(err)}`);
-      }
-    }
-
-    function renderAdminTeams(){
-      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-      const availableTeams = appState.teams
-        .slice()
-        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, appState.numTeams || 4);
-
-      const numTeamsSelect = document.getElementById('num-teams');
-      if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
-
-      const teamAssignmentList = document.getElementById('team-assignment-list');
-      if (teamAssignmentList) {
-        teamAssignmentList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
-          const playerTeam = p.team ?? '';
-          const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
-          const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
-          return `
-            <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
-              <div style="min-width:110px;">
-                <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
-                <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
-              </div>
-              <div style="flex:1;min-width:140px;">
-                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
-                  <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
-                  ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
-                </select>
-              </div>
-              <div style="flex:1;min-width:180px;">
-                <div class="captain-select-wrap">
-                  <label>👑 Captain Control</label>
-                  <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)" ${!playerTeam ? 'disabled' : ''}>
-                    <option value="">-- Choose Role --</option>
-                    <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>👑 Make Captain</option>
-                    <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Player Only</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('') : '<div class="empty-state">No approved players</div>';
-      }
-
-      const teamsContainer = document.getElementById('teams-container');
-      if (teamsContainer) {
-        const myPlayer = approvedPlayers.find(p => isCurrentPlayerName(p.name));
-        const myTeamId = myPlayer?.team ?? null;
-
-        teamsContainer.innerHTML = availableTeams.map(t => {
-          const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
-          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
-          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
-          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
-          return `
-            <div class="team-card ${isMyTeam ? 'current-team' : ''}">
-              <div class="team-card-title">
-                <h4>${getTeamName(t.id)}</h4>
-                ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
-              </div>
-              <div style="padding:4px 8px;">
-                ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-                ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:6px 0;color:#777;">No other players</div>'}
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      const notice = document.getElementById('team-selection-notice');
-      const noticeTitle = document.getElementById('team-selection-title');
-      const noticeSubtitle = document.getElementById('team-selection-subtitle');
-      if (notice && noticeTitle && noticeSubtitle) {
-        const registrationState = getRegistrationState();
-
-        if (registrationState.isOpen) {
-          notice.style.background = '#fff7ea';
-          notice.style.borderColor = '#f0a020';
-          noticeTitle.textContent = '⏰ Registration is still OPEN';
-          noticeSubtitle.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
-        } else if (registrationState.beforeOpen) {
-          notice.style.background = '#eef5fb';
-          notice.style.borderColor = '#2f93ff';
-          noticeTitle.textContent = '🕓 Registration has not opened yet';
-          noticeSubtitle.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
-        } else if (registrationState.manuallyClosed) {
-          notice.style.background = '#eef7ee';
-          notice.style.borderColor = '#4caf50';
-          noticeTitle.textContent = '✅ Registration was manually CLOSED';
-          noticeSubtitle.textContent = 'You can now assign players to teams:';
-        } else {
-          notice.style.background = '#eef7ee';
-          notice.style.borderColor = '#4caf50';
-          noticeTitle.textContent = '✅ Registration is now CLOSED';
-          noticeSubtitle.textContent = 'You can now assign players to teams:';
-        }
-      }
-    }
-
-    function updateNumTeams() {
-      const select = document.getElementById('num-teams');
-      appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
-    }
-
-    function submitNumTeams() {
-      appState.numTeams = appState.selectedNumTeams || 4;
-      const allowedTeamIds = new Set(
-        appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams)
-          .map(t => String(t.id))
-      );
-      appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
-      appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
-      renderAdminTeams();
-    }
-
-    function submitTeams() {
-      persistTeamsSubmitted(true);
-      renderHome();
-      renderAdminTeams();
-      updateAutoRefreshMode();
-      alert('Teams submitted successfully!');
-    }
-
-    async function setCaptainFromPlayerRow(playerId, value) {
-      try {
-        const player = appState.players.find(p => String(p.id) === String(playerId));
-        if (!player || !player.team) return;
-        const teamId = player.team;
-        if (value === 'yes') {
-          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
-          appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
-        } else {
-          const team = appState.teams.find(t => String(t.id) === String(teamId));
-          if (team && String(team.captain_id) === String(playerId)) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
-          }
-        }
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-      } catch (err) {
-        alert(`Could not update captain: ${formatError(err)}`);
-      }
-    }
-
-    async function assignPlayerToTeam(playerId, teamId) {
-      if (!playerId) return;
-      try {
-        await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
-        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not assign player: ${formatError(err)}`);
-      }
-    }
-
-    async function unassignPlayer(playerId) {
-      try {
-        const team = appState.teams.find(t => String(t.captain_id) === String(playerId));
-        if (team) {
-          await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', team.id), 'Clear captain');
-          appState.teams = appState.teams.map(t => String(t.id) === String(team.id) ? { ...t, captain_id: null } : t);
-        }
-        await db(window.supabaseClient.from('players').update({ team: null }).eq('id', playerId), 'Unassign player');
-        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: null } : p);
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not remove player: ${formatError(err)}`);
-      }
-    }
-
-    async function setCaptain(teamId, playerId) {
-      try {
-        const captainId = playerId === '' ? null : playerId;
-        await db(window.supabaseClient.from('teams').update({ captain_id: captainId }).eq('id', teamId), 'Set captain');
-        appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: captainId } : t);
-        renderAdminTeams();
-      } catch (err) {
-        alert(`Could not set captain: ${formatError(err)}`);
-      }
-    }
-
-    async function startGame(){
-      try {
-        if (!appState.settingsLiveEnabled) {
-          appState.settings.game_started = true;
-          renderAdminTeams();
-          alert('Game started locally. Add the settings columns in Supabase to make this live on all devices.');
-          return;
-        }
-        await db(window.supabaseClient.from('settings').update({ game_started: true }).eq('key', SETTINGS_KEY), 'Start game');
-        alert('Game started!');
-      } catch (err) {
-        alert(`Could not start game: ${formatError(err)}`);
-      }
-    }
-
-    async function endGame(){
-      try {
-        if (!appState.settingsLiveEnabled) {
-          appState.settings.game_started = false;
-          renderAdminTeams();
-          alert('Game ended locally. Add the settings columns in Supabase to make this live on all devices.');
-          return;
-        }
-        await db(window.supabaseClient.from('settings').update({ game_started: false }).eq('key', SETTINGS_KEY), 'End game');
-        alert('Game ended!');
-      } catch (err) {
-        alert(`Could not end game: ${formatError(err)}`);
-      }
-    }
-
-    async function saveSettings(){
-      try {
-        const openTime = document.getElementById('open-time').value;
-        const cutoffTime = document.getElementById('cutoff-time').value;
-        appState.settings.open_time = openTime;
-        appState.settings.cutoff_time = cutoffTime;
-
-        if (!appState.settingsLiveEnabled) {
-          renderHome();
-          renderAdminPlayers();
-          renderAdminTeams();
-          updateSettingsView();
-          alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
+        if (!isRegistrationOpen()) {
+          alert('Registration is closed right now.');
           return;
         }
 
-        const updateResult = await db(
-          window.supabaseClient
-            .from('settings')
-            .update({ open_time: openTime, cutoff_time: cutoffTime })
-            .eq('key', SETTINGS_KEY)
-            .select(),
-          'Save settings'
+        const name = document.getElementById('player-name').value.trim();
+        const email = document.getElementById('player-email').value.trim();
+        const course = document.getElementById('course-select').value;
+        if (!name) {
+          alert('Enter your name first.');
+          return;
+        }
+
+        const existing = appState.players.find(p => normalizePlayerName(p.name) === normalizePlayerName(name));
+        if (existing) {
+          appState.myPlayerName = existing.name;
+          appState.myPlayerEmail = existing.email || email;
+          localStorage.setItem('gmg_myPlayerName', appState.myPlayerName);
+          localStorage.setItem('gmg_myPlayerEmail', appState.myPlayerEmail || '');
+          alert('You are already registered today.');
+          renderAll();
+          return;
+        }
+
+        await db(
+          supabaseClient.from('players').insert({
+            name,
+            email,
+            course,
+            status: 'pending',
+            team_id: null,
+            is_captain: false
+          }),
+          'Register player'
         );
 
-        const savedRow = updateResult.data?.[0];
-        if (savedRow) {
-          appState.settings = {
-            ...appState.settings,
-            open_time: savedRow.open_time || openTime,
-            cutoff_time: savedRow.cutoff_time || cutoffTime,
-            game_started: !!savedRow.game_started,
-            registration_closed: !!savedRow.registration_closed
-          };
-        }
-
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        updateSettingsView();
-        updateAutoRefreshMode();
-        alert('Saved!');
+        appState.myPlayerName = name;
+        appState.myPlayerEmail = email;
+        localStorage.setItem('gmg_myPlayerName', name);
+        localStorage.setItem('gmg_myPlayerEmail', email);
+        await loadAllData();
       } catch (err) {
-        alert(`Could not save settings: ${formatError(err)}`);
+        alert(err.message || 'Could not register player');
       }
     }
 
-    function updateSettingsView() {
-      const openInput = document.getElementById('open-time');
-      const cutoffInput = document.getElementById('cutoff-time');
-      const toggleBtn = document.getElementById('toggle-registration-btn');
-      const clearTeamSelect = document.getElementById('clear-team-select');
-
-      if (openInput) openInput.value = appState.settings.open_time || '06:00';
-      if (cutoffInput) cutoffInput.value = appState.settings.cutoff_time || '09:30';
-      if (toggleBtn) toggleBtn.textContent = appState.settings.registration_closed ? 'Reopen Registration' : 'Close Registration Now';
-
-      if (clearTeamSelect) {
-        const availableTeams = appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams || 4);
-        clearTeamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
-          availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
-      }
-    }
-
-    async function toggleRegistration() {
-      try {
-        const nextState = !appState.settings.registration_closed;
-        const result = await db(
-          window.supabaseClient
-            .from('settings')
-            .update({ registration_closed: nextState })
-            .eq('key', SETTINGS_KEY)
-            .select(),
-          'Toggle registration'
-        );
-        appState.settings.registration_closed = nextState;
-        if (result.data?.[0]) {
-          appState.settings = { ...appState.settings, ...result.data[0] };
-        }
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        updateSettingsView();
-        updateAutoRefreshMode();
-        alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
-      } catch (err) {
-        alert(`Could not toggle registration: ${formatError(err)}`);
-      }
-    }
-
-    async function clearSpecificTeamScore() {
-      const teamId = document.getElementById('clear-team-select')?.value;
-      if (!teamId) {
-        alert('Please select a team to clear');
-        return;
-      }
-      if (!confirm('Clear this team score?')) return;
+    async function approvePlayer(playerId) {
       try {
         await db(
-          window.supabaseClient.from('players').update({ score: null }).eq('team', parseInt(teamId, 10)),
-          'Clear team score'
+          supabaseClient.from('players').update({ status: 'approved' }).eq('id', playerId),
+          'Approve player'
         );
-        appState.players = appState.players.map(p => String(p.team) === String(teamId) ? { ...p, score: null } : p);
-        renderAdminTeams();
-        renderLeaderboard();
-        alert('Selected team score cleared');
+        await loadAllData();
       } catch (err) {
-        alert(`Could not clear team score: ${formatError(err)}`);
+        alert(err.message || 'Could not approve player');
+      }
+    }
+
+    async function declinePlayer(playerId) {
+      try {
+        await db(
+          supabaseClient.from('players').delete().eq('id', playerId),
+          'Decline player'
+        );
+        await loadAllData();
+      } catch (err) {
+        alert(err.message || 'Could not decline player');
+      }
+    }
+
+    function buildTeamSelectors() {
+      const count = parseInt(document.getElementById('num-teams').value, 10);
+      const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && !p.team_id);
+      const builder = document.getElementById('team-builder');
+
+      if (!approvedNoTeam.length) {
+        builder.classList.remove('hidden');
+        builder.innerHTML = '<div class="empty">No approved players are waiting for teams.</div>';
+        document.getElementById('submit-teams-btn').classList.add('hidden');
+        return;
+      }
+
+      builder.classList.remove('hidden');
+      builder.innerHTML = Array.from({ length: count }).map((_, idx) => `
+        <div class="card" style="background:rgba(255,255,255,0.03); margin-bottom:12px;">
+          <div class="field">
+            <label for="team-name-${idx + 1}">Team ${idx + 1} Name</label>
+            <input id="team-name-${idx + 1}" type="text" value="Team ${idx + 1}" />
+          </div>
+          <div class="field">
+            <label>Players for Team ${idx + 1}</label>
+            <select id="team-players-${idx + 1}" multiple size="${Math.min(approvedNoTeam.length, 10)}">
+              ${approvedNoTeam.map(player => `<option value="${player.id}">${safeText(player.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('submit-teams-btn').classList.remove('hidden');
+    }
+
+    async function submitTeams() {
+      try {
+        const count = parseInt(document.getElementById('num-teams').value, 10);
+        const payload = [];
+        const usedIds = new Set();
+
+        for (let i = 1; i <= count; i++) {
+          const name = document.getElementById(`team-name-${i}`).value.trim() || `Team ${i}`;
+          const select = document.getElementById(`team-players-${i}`);
+          const ids = Array.from(select.selectedOptions).map(o => Number(o.value));
+          ids.forEach(id => usedIds.add(id));
+          payload.push({ name, ids });
+        }
+
+        if (!usedIds.size) {
+          alert('Select at least one player.');
+          return;
+        }
+
+        await db(supabaseClient.from('teams').delete().neq('id', 0), 'Clear old teams');
+        await db(supabaseClient.from('players').update({ team_id: null, is_captain: false }).not('id', 'is', null), 'Reset players before teams');
+
+        for (let i = 0; i < payload.length; i++) {
+          const teamNumber = i + 1;
+          const inserted = await db(
+            supabaseClient.from('teams').insert({
+              id: teamNumber,
+              name: payload[i].name,
+              front_score: null,
+              back_score: null,
+              team_score: null,
+              score_submitted_at: null
+            }).select(),
+            'Create team'
+          );
+          const teamId = inserted[0].id;
+          const ids = payload[i].ids;
+          for (let j = 0; j < ids.length; j++) {
+            await db(
+              supabaseClient.from('players').update({ team_id: teamId, is_captain: j === 0 }).eq('id', ids[j]),
+              'Assign player to team'
+            );
+          }
+        }
+
+        await loadAllData();
+        showAdminTab('teams');
+        alert('Teams submitted');
+      } catch (err) {
+        alert(err.message || 'Could not submit teams');
+      }
+    }
+
+    async function syncTeamScoreToGoogleSheet(team, captain, front, back, total) {
+      const players = getApprovedPlayersForTeam(team.id).map(p => p.name);
+      const payload = {
+        action: 'saveTeamScores',
+        teamId: team.id,
+        teamName: team.name || `Team ${team.id}`,
+        captain: captain?.name || '',
+        date: new Date().toISOString(),
+        front: parseInt(front, 10),
+        back: parseInt(back, 10),
+        total: parseInt(total, 10),
+        players
+      };
+
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`Google Sheet sync failed: ${res.status}`);
+      return res.json().catch(() => ({}));
+    }
+
+    async function submitTeamScore() {
+      try {
+        if (!appState.myPlayerName) {
+          alert('Register first on this device.');
+          return;
+        }
+        if (!appState.myTeam) {
+          alert('You do not have a team yet.');
+          return;
+        }
+        if (!isCurrentCaptainForTeam(appState.myTeam)) {
+          alert('Only the captain with YOU beside their name can save this team score.');
+          return;
+        }
+
+        const frontValue = document.getElementById('team-front-score').value;
+        const backValue = document.getElementById('team-back-score').value;
+        if (frontValue === '' || backValue === '') {
+          alert('Enter both front and back scores.');
+          return;
+        }
+
+        const totalScore = calculateTeamTotal(frontValue, backValue);
+        const nowIso = new Date().toISOString();
+        const myTeam = appState.teams.find(t => String(t.id) === String(appState.myTeam));
+        const myCaptain = myTeam ? getCaptainForTeam(myTeam.id) : null;
+
+        await db(
+          supabaseClient.from('teams').update({
+            front_score: parseInt(frontValue, 10),
+            back_score: parseInt(backValue, 10),
+            team_score: totalScore,
+            score_submitted_at: nowIso
+          }).eq('id', appState.myTeam),
+          'Submit team score'
+        );
+
+        if (myTeam) {
+          await syncTeamScoreToGoogleSheet(myTeam, myCaptain, frontValue, backValue, totalScore);
+        }
+
+        await loadPlayerAverages();
+        await loadAllData();
+        alert('Team score saved!');
+      } catch (err) {
+        alert(err.message || 'Could not save team score');
+      }
+    }
+
+    async function saveSettings() {
+      try {
+        const registration_open = document.getElementById('settings-open-time').value || DEFAULT_SETTINGS.registration_open;
+        const registration_close = document.getElementById('settings-close-time').value || DEFAULT_SETTINGS.registration_close;
+        const existing = await db(supabaseClient.from('settings').select('*').limit(1), 'Check settings');
+        if (existing[0]) {
+          await db(supabaseClient.from('settings').update({ registration_open, registration_close }).eq('id', existing[0].id), 'Update settings');
+        } else {
+          await db(supabaseClient.from('settings').insert({ registration_open, registration_close, registration_force_closed: false }), 'Insert settings');
+        }
+        await loadAllData();
+        alert('Times saved');
+      } catch (err) {
+        alert(err.message || 'Could not save settings');
+      }
+    }
+
+    async function reopenRegistration() {
+      try {
+        const existing = await db(supabaseClient.from('settings').select('*').limit(1), 'Check settings');
+        if (existing[0]) {
+          await db(supabaseClient.from('settings').update({ registration_force_closed: false }).eq('id', existing[0].id), 'Reopen registration');
+        } else {
+          await db(supabaseClient.from('settings').insert({ ...DEFAULT_SETTINGS, registration_force_closed: false }), 'Insert reopen settings');
+        }
+        await loadAllData();
+        alert('Registration reopened');
+      } catch (err) {
+        alert(err.message || 'Could not reopen registration');
+      }
+    }
+
+    async function clearSelectedTeamScore() {
+      try {
+        const teamId = document.getElementById('clear-team-select').value;
+        if (!teamId) {
+          alert('Select a team first.');
+          return;
+        }
+        await db(
+          supabaseClient.from('teams').update({
+            front_score: null,
+            back_score: null,
+            team_score: null,
+            score_submitted_at: null
+          }).eq('id', teamId),
+          'Clear selected team score'
+        );
+        await loadAllData();
+        alert('Team score cleared');
+      } catch (err) {
+        alert(err.message || 'Could not clear team score');
       }
     }
 
     async function clearAllPlayers() {
-      if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
       try {
-        await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
-        appState.players = [];
-        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
-        persistTeamsSubmitted(false);
-        updateAutoRefreshMode();
-        await db(window.supabaseClient.from('teams').update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
+        if (!confirm('Clear all players and teams?')) return;
+        await db(supabaseClient.from('players').delete().neq('id', 0), 'Clear all players');
+        await db(supabaseClient.from('teams').delete().neq('id', 0), 'Clear all teams');
+        localStorage.removeItem('gmg_myPlayerName');
+        localStorage.removeItem('gmg_myPlayerEmail');
+        localStorage.removeItem('gmg_myTeam');
+        appState.myPlayerName = '';
+        appState.myPlayerEmail = '';
+        appState.myTeam = '';
+        await loadAllData();
         alert('All players cleared');
       } catch (err) {
-        alert(`Could not clear all players: ${formatError(err)}`);
+        alert(err.message || 'Could not clear players');
       }
     }
 
-    function switchAdminTab(t, ev){
-      document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
-      if (ev?.target) ev.target.classList.add('active');
-      document.getElementById('admin-players').classList.add('hidden');
-      document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-settings').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='players') renderAdminPlayers();
-      if(t==='teams') renderAdminTeams();
-      if(t==='settings') updateSettingsView();
-    }
-
-    function logout(){ showView('view-home'); }
-
-    async function initApp() {
-      try {
-        loadDeviceState();
-        setStatus('Connecting...');
-        await ensureBaseData();
-        await loadAllData();
-        await clearExpiredTeamScoresIfNeeded();
-        await loadAllData();
-        await loadWeather();
-        setInterval(loadWeather, 600000);
-        updateAutoRefreshMode();
-        setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
-
-        window.supabaseClient
-          .channel('players-live')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
-            setStatus('Live: players updated');
-            await loadAllData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
-            setStatus('Live: teams updated');
-            await loadAllData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
-            setStatus('Live: settings updated');
-            await loadAllData();
-          })
-          .subscribe((status) => {
-            setStatus('Status: ' + status);
-            updateAutoRefreshMode();
-          });
-      } catch (err) {
-        const msg = formatError(err);
-        setStatus('Startup error');
-        alert(`Startup failed: ${msg}`);
+    function adminLogin() {
+      const pass = document.getElementById('admin-password').value;
+      if (pass !== ADMIN_PASSWORD) {
+        alert('Wrong password');
+        return;
       }
+      appState.isAdmin = true;
+      sessionStorage.setItem('gmg_isAdmin', 'true');
+      goTo('admin');
     }
 
-    window.addEventListener('load', initApp);
+    function adminLogout() {
+      appState.isAdmin = false;
+      sessionStorage.removeItem('gmg_isAdmin');
+      goTo('home');
+    }
+
+    window.addEventListener('load', async () => {
+      if (appState.myPlayerName) document.getElementById('player-name').value = appState.myPlayerName;
+      if (appState.myPlayerEmail) document.getElementById('player-email').value = appState.myPlayerEmail;
+      await loadAllData();
+    });
   </script>
 </body>
 </html>
