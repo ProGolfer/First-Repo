@@ -383,6 +383,13 @@
         <div class="players-header"><h3>Teams</h3></div>
         <div id="home-teams-list"></div>
       </div>
+      <div id="home-averages-display" class="players-section hidden">
+  <div class="players-header" style="cursor:pointer;" onclick="toggleAverages()">
+    <h3>Player Averages</h3>
+    <span id="averages-toggle-label" class="players-count">Show</span>
+  </div>
+  <div id="home-averages-list" class="hidden" style="margin-top:12px;"></div>
+</div>
       <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
         <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
         <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
@@ -542,6 +549,8 @@
       players: [],
       teams: [],
       settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
+      playerAverages: [],
+      averagesOpen: false,
       myTeam: null,
       myPlayerName: '',
       myDeviceId: '',
@@ -559,6 +568,17 @@
       if (err.error_description) return err.error_description;
       try { return JSON.stringify(err, null, 2); } catch (_) { return String(err); }
     }
+    function toggleAverages() {
+  appState.averagesOpen = !appState.averagesOpen;
+
+  const list = document.getElementById('home-averages-list');
+  const label = document.getElementById('averages-toggle-label');
+
+  if (!list || !label) return;
+
+  list.classList.toggle('hidden', !appState.averagesOpen);
+  label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
+}
 
     function setStatus(text) {
       document.getElementById('live-status').textContent = text;
@@ -978,6 +998,43 @@
       const homeTeamsDisplay = document.getElementById('home-teams-display');
       const homeTeamsList = document.getElementById('home-teams-list');
       const homePlayersDisplay = document.getElementById('home-players-display');
+
+      function renderPlayerAverages() {
+  const wrap = document.getElementById('home-averages-display');
+  const list = document.getElementById('home-averages-list');
+  const label = document.getElementById('averages-toggle-label');
+
+  if (!wrap || !list || !label) return;
+
+  if (!appState.playerAverages || !appState.playerAverages.length) {
+    wrap.classList.add('hidden');
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  list.classList.toggle('hidden', !appState.averagesOpen);
+  label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
+
+        appState.playerAverages = [
+  { name: 'Mike', avg: 74.2, last: 72 },
+  { name: 'Conner', avg: 76.8, last: 78 }
+];
+
+  list.innerHTML = `
+    <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:8px 0;font-weight:800;color:#9eb6c9;border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div>Player</div>
+      <div style="text-align:right;">Avg</div>
+      <div style="text-align:right;">Last</div>
+    </div>
+    ${appState.playerAverages.map(p => `
+      <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div style="font-weight:700;">${p.name || '-'}</div>
+        <div style="text-align:right;font-weight:700;">${p.avg ?? '-'}</div>
+        <div style="text-align:right;font-weight:700;">${p.last ?? '-'}</div>
+      </div>
+    `).join('')}
+  `;
+}
 
       if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
