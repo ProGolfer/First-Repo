@@ -376,24 +376,13 @@
         <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
       </div>
       <div id="home-players-display" class="players-section">
-        <div class="players-header" style="cursor:pointer;" onclick="toggleAverages()"><h3>Today's Registered Players</h3><span class="players-count" id="player-count">0</span></div>
+        <div class="players-header"><h3>Today's Registered Players</h3><span class="players-count" id="player-count">0</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
-    
       <div id="home-teams-display" class="players-section hidden">
-        <div class="players-header" style="cursor:pointer;" onclick="toggleAverages()"><h3>Teams</h3></div>
+        <div class="players-header"><h3>Teams</h3></div>
         <div id="home-teams-list"></div>
       </div>
- <div id="home-averages-display" class="players-section">
-  <div class="players-header" style="cursor:pointer;" onclick="toggleAverages()">
-    <h3>Player Averages</h3>
-    <span id="averages-toggle-label" class="players-count">Show</span>
-  </div>
-  <div id="home-averages-list" style="margin-top:12px;">
-  
-
-</div>
-</div>
       <div style="background:#f5e5c5;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
         <div style="color:#f05a00;font-weight:800;margin-bottom:8px;">⏰ Registration Hours</div>
         <div id="registration-hours-display" style="font-size:22px;font-weight:800;color:#1f2f46;">6:00 AM - 9:30 AM</div>
@@ -545,7 +534,6 @@
     const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSY3tqwgNGHQ5blbQSivoY524cvmI73W9sGLk2KpKoGP1h59D3MJia5FJrPNSIRrjdkg/exec';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -554,8 +542,6 @@
       players: [],
       teams: [],
       settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
-      playerAverages: [],
-      averagesOpen: false,
       myTeam: null,
       myPlayerName: '',
       myDeviceId: '',
@@ -573,17 +559,6 @@
       if (err.error_description) return err.error_description;
       try { return JSON.stringify(err, null, 2); } catch (_) { return String(err); }
     }
-    function toggleAverages() {
-  appState.averagesOpen = !appState.averagesOpen;
-
-  const list = document.getElementById('home-averages-list');
-  const label = document.getElementById('averages-toggle-label');
-
-  if (!list || !label) return;
-
-  list.classList.toggle('hidden', !appState.averagesOpen);
-  label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
-}
 
     function setStatus(text) {
       document.getElementById('live-status').textContent = text;
@@ -673,23 +648,6 @@
       document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
     }
-    async function loadPlayerAverages() {
-  try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=averages`);
-
-    if (!res.ok) throw new Error('Failed to load averages');
-
-    const data = await res.json();
-
-    appState.playerAverages = Array.isArray(data?.players)
-      ? data.players
-      : [];
-
-  } catch (err) {
-    console.log('Averages failed:', err);
-    appState.playerAverages = [];
-  }
-}
 
     function showAdminLogin(){ showView('view-admin'); }
 
@@ -822,56 +780,35 @@
       }
     }
 
-async function loadAllData() {
-  try {
-    const [playersResult, teamsResult, settingsResult] = await Promise.all([
-      db(
-        window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }),
-        'Load players'
-      ),
-      db(
-        window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }),
-        'Load teams'
-      ),
-      db(
-        window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1),
-        'Load settings'
-      )
-    ]);
+    async function loadAllData() {
+      const [playersResult, teamsResult, settingsResult] = await Promise.all([
+        db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
+        db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
+        db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings')
+      ]);
 
-    appState.players = playersResult || [];
-    appState.teams = teamsResult || [];
+      appState.players = playersResult.data || [];
+      appState.teams = teamsResult.data || [];
 
-    const settingsRow = settingsResult?.[0] || null;
-    if (settingsRow) {
-      appState.settingsLiveEnabled = true;
-      appState.settings = {
-        ...appState.settings,
-        game_started: !!settingsRow.game_started,
-        cutoff_time: settingsRow.cutoff_time || '09:30',
-        open_time: settingsRow.open_time || '06:00',
-        registration_closed: !!settingsRow.registration_closed
-      };
+      const settingsRow = settingsResult.data?.[0] || null;
+      if (settingsRow) {
+        appState.settingsLiveEnabled = true;
+        appState.settings = {
+          ...appState.settings,
+          game_started: !!settingsRow.game_started,
+          cutoff_time: settingsRow.cutoff_time || '09:30',
+          open_time: settingsRow.open_time || '06:00',
+          registration_closed: !!settingsRow.registration_closed
+        };
+      }
+
+      renderHome();
+      renderAdminPlayers();
+      renderAdminTeams();
+      renderLeaderboard();
+      loadGameView();
+      updateSettingsView();
     }
-
-    renderHome();
-    renderAdminPlayers();
-    renderAdminTeams();
-    renderLeaderboard();
-
-    if (typeof setStatus === 'function') {
-      setStatus('Connected');
-    }
-  } catch (err) {
-    alert(err.message || String(err));
-    console.error(err);
-    if (typeof setStatus === 'function') {
-      setStatus('Connection error');
-    }
-  }
-}
-
-
 
     function getTeamName(teamId) {
       const team = appState.teams.find(t => String(t.id) === String(teamId));
@@ -1038,52 +975,9 @@ async function loadAllData() {
       if (pendingCount) pendingCount.textContent = pending.length;
 
       const playerList = document.getElementById('player-list');
-const homeTeamsDisplay = document.getElementById('home-teams-display');
-const homeTeamsList = document.getElementById('home-teams-list');
-const homePlayersDisplay = document.getElementById('home-players-display');
-const homeAveragesDisplay = document.getElementById('home-averages-display');
-
- function renderPlayerAverages() {
-  const wrap = document.getElementById('home-averages-display');
-  const list = document.getElementById('home-averages-list');
-  const label = document.getElementById('averages-toggle-label');
-
-  if (!wrap || !list || !label) return;
-  if (!appState.playerAverages.length) return;
-
-  wrap.classList.remove('hidden');
-  list.classList.toggle('hidden', !appState.averagesOpen);
-  label.textContent = appState.averagesOpen ? 'Hide' : 'Show';
-
-       list.innerHTML = appState.playerAverages.map(p => `
-    <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
-      <div style="font-weight:700;">${p.name || '-'}</div>
-      <div style="text-align:right;font-weight:700;">${p.avg ?? '-'}</div>
-      <div style="text-align:right;font-weight:700;">${p.last ?? '-'}</div>
-    </div>
-  `).join('');
-}
-
-        appState.playerAverages = [
-  { name: 'Mike', avg: 74.2, last: 72 },
-  { name: 'Conner', avg: 76.8, last: 78 }
-];
-
-  list.innerHTML = `
-    <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:8px 0;font-weight:800;color:#9eb6c9;border-bottom:1px solid rgba(255,255,255,0.08);">
-      <div>Player</div>
-      <div style="text-align:right;">Avg</div>
-      <div style="text-align:right;">Last</div>
-    </div>
-    ${appState.playerAverages.map(p => `
-      <div style="display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
-        <div style="font-weight:700;">${p.name || '-'}</div>
-        <div style="text-align:right;font-weight:700;">${p.avg ?? '-'}</div>
-        <div style="text-align:right;font-weight:700;">${p.last ?? '-'}</div>
-      </div>
-    `).join('')}
-  `;
-}
+      const homeTeamsDisplay = document.getElementById('home-teams-display');
+      const homeTeamsList = document.getElementById('home-teams-list');
+      const homePlayersDisplay = document.getElementById('home-players-display');
 
       if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
