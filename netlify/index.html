@@ -754,7 +754,7 @@
      **********************************************************************/
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
-    const supabaseClient = window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
+    const supabase = window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       : null;
 
@@ -939,18 +939,18 @@
      * Replace table names/field mapping here if your current schema differs.
      **********************************************************************/
     async function loadAppData() {
-      if (supabaseClient) {
+      if (!supabase) {
         console.warn('Supabase client not configured. Using demo placeholders.');
         renderAll();
         return;
       }
 
       try {
-       const [{ data: players }, { data: teams }, { data: settingsRows }] = await Promise.all([
-  supabaseClient.from('players').select('*').order('created_at', { ascending: true }),
-  supabaseClient.from('teams').select('*').order('id', { ascending: true }),
-  supabaseClient.from('settings').select('*')
-]);
+        const [{ data: players }, { data: teams }, { data: settingsRows }] = await Promise.all([
+          supabase.from('players').select('*').order('created_at', { ascending: true }),
+          supabase.from('teams').select('*').order('id', { ascending: true }),
+          supabase.from('settings').select('*')
+        ]);
 
         state.players = players || [];
         state.teams = teams || [];
