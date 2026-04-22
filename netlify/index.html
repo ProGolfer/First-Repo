@@ -677,6 +677,9 @@
   </div>
 
   <script>
+    let isSubmittingScores = false;
+const scoreDraft = {};
+    
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
@@ -1423,7 +1426,17 @@ let isTypingScores = false;
         otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
       }
     }
+function getScoreDraftKey(teamId, playerId) {
+  return `${teamId}__${playerId}`;
+}
 
+function getDraftPlayerScore(teamId, playerId) {
+  return scoreDraft[getScoreDraftKey(teamId, playerId)] ?? '';
+}
+
+function setDraftPlayerScore(teamId, playerId, value) {
+  scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
+}
  async function submitTeamScore(){
   if (isSubmittingScores) return;
   isSubmittingScores = true;
@@ -1450,14 +1463,17 @@ let isTypingScores = false;
       return; 
     }
 
-    const playerScores = myTeamPlayers.map(p => {
-      const value = document.getElementById(`player-score-${p.id}`)?.value;
-      return {
-        id: p.id,
-        name: p.name,
-        score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
-      };
-    });
+   const playerScores = myTeamPlayers.map(p => {
+  const draftValue = getDraftPlayerScore(appState.myTeam, p.id);
+  const domValue = document.getElementById(`player-score-${p.id}`)?.value;
+  const value = draftValue !== '' ? draftValue : domValue;
+
+  return {
+    id: p.id,
+    name: p.name,
+    score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
+  };
+});
 
     const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
     if (missingPlayerScore) {
@@ -1488,12 +1504,16 @@ let isTypingScores = false;
       'Submit team score'
     );
 
-    await sendScoresToSheet(
-      playerScores.map(p => ({ name: p.name, score: p.score }))
-    );
+  await sendScoresToSheet(
+  playerScores.map(p => ({ name: p.name, score: p.score }))
+);
 
-    alert('Player scores and team score saved!');
-    await loadAllData();
+myTeamPlayers.forEach(p => {
+  delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
+});
+
+alert('Player scores and team score saved!');
+await loadAllData();
 
   } catch (err) {
     alert(`Could not save team score: ${formatError(err)}`);
