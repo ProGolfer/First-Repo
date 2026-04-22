@@ -742,7 +742,7 @@
 }
 
 
-  async function sendScoresToSheet(players) {
+ async function sendScoresToSheet(players) {
   try {
     await fetch(APP_SCRIPT_URL, {
       method: "POST",
@@ -762,7 +762,7 @@
     console.error("Sheet error:", err);
     throw err;
   }
-}  
+}
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
