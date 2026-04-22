@@ -1448,6 +1448,28 @@ function setDraftPlayerScore(teamId, playerId, value) {
     }
   }
 });
+function syncScoreDraftToInputs() {
+  if (!appState.myTeam) return;
+
+  document.querySelectorAll('[id^="player-score-"]').forEach(el => {
+    const playerId = el.id.replace('player-score-', '');
+    const draftValue = getDraftPlayerScore(appState.myTeam, playerId);
+
+    if (draftValue !== '' && el.value !== draftValue) {
+      el.value = draftValue;
+    }
+  });
+}
+
+const scoreDraftObserver = new MutationObserver(() => {
+  syncScoreDraftToInputs();
+});
+
+scoreDraftObserver.observe(document.body, {
+  childList: true,
+  subtree: true
+});
+    
 
 async function submitTeamScore(){
   if (isSubmittingScores) return;
