@@ -1460,16 +1460,6 @@ let isTypingScores = false;
           'Submit team score'
         );
 
-        for (const player of playerScores) {
-          await db(
-            window.supabaseClient
-              .from('players')
-              .update({ score: player.score })
-              .eq('id', player.id),
-            'Update player score'
-          );
-        }
-
         await sendScoresToSheet(playerScores.map(p => ({ name: p.name, score: p.score })));
 
         alert('Player scores and team score saved!');
