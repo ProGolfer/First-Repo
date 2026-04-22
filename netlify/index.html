@@ -686,6 +686,7 @@
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jz1AUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
+    const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
 
     async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
@@ -739,6 +740,23 @@
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
   }
 }
+
+
+    async function sendScoresToSheet(players) {
+      try {
+        await fetch(APP_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString().split("T")[0],
+            players
+          })
+        });
+        console.log("Scores sent to sheet");
+      } catch (err) {
+        console.error("Sheet error:", err);
+      }
+    }
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1012,7 +1030,6 @@
       renderLeaderboard();
       loadGameView();
       updateSettingsView();
-      updateTeamSelectionNotice();
     }
 
     function getTeamName(teamId) {
@@ -1170,38 +1187,6 @@
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
-    function updateTeamSelectionNotice() {
-      const box = document.getElementById('team-selection-notice');
-      const title = document.getElementById('team-selection-title');
-      const subtitle = document.getElementById('team-selection-subtitle');
-      if (!box || !title || !subtitle) return;
-
-      const registrationState = getRegistrationState();
-      const cutoffText = formatTime12(appState.settings.cutoff_time || '09:30');
-      const openText = formatTime12(appState.settings.open_time || '06:00');
-
-      if (registrationState.manuallyClosed || registrationState.afterCutoff) {
-        box.style.background = '#ef4444';
-        box.style.color = '#000000';
-        title.innerHTML = '🚫 REGISTRATION IS CLOSED';
-        subtitle.innerHTML = 'Team selection is available now.';
-        return;
-      }
-
-      if (registrationState.beforeOpen) {
-        box.style.background = '#f59e0b';
-        box.style.color = '#000000';
-        title.innerHTML = '⏰ REGISTRATION HAS NOT OPENED';
-        subtitle.innerHTML = `Registration opens at ${openText}.`;
-        return;
-      }
-
-      box.style.background = '#22c55e';
-      box.style.color = '#000000';
-      title.innerHTML = '⏰ REGISTRATION IS STILL OPEN';
-      subtitle.innerHTML = `Team selection is available now and registration closes at ${cutoffText}.`;
-    }
-
 
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
@@ -1329,12 +1314,25 @@
                 <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
                 <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
                 <div style="background:#fff;border-radius:14px;padding:14px;">
-                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Enter Scores (After Game Starts)</div>
+                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Captain Only: Enter Player Scores + Team Score</div>
                   <div style="background:#f4f4f4;border-radius:14px;padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                       <div style="font-size:18px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}${myCaptain ? ` (${myCaptain.name})` : ''}</div>
                       ${myTeamSubmitted ? '<span style="background:#4caf50;color:#fff;font-size:13px;font-weight:800;padding:6px 10px;border-radius:8px;">✓ Score Submitted</span>' : ''}
                     </div>
+
+                    <div style="margin-bottom:16px;">
+                      <div style="font-size:13px;font-weight:800;color:#143b2f;margin-bottom:10px;text-transform:uppercase;">Player Scores</div>
+                      <div style="display:grid;grid-template-columns:1fr;gap:10px;">
+                        ${myTeamPlayers.map(p => `
+                          <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;background:#ffffff;border:1px solid #d8d8d8;border-radius:10px;padding:10px 12px;">
+                            <div style="font-weight:800;color:#143b2f;">${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}${String(p.id) === String(myCaptain?.id) ? ' 👑' : ''}</div>
+                            <input type="number" id="player-score-${p.id}" placeholder="Score" value="${p.score !== null && p.score !== undefined ? String(p.score) : ''}" style="width:100%;padding:10px;border:2px solid #d8d8d8;border-radius:8px;font-size:18px;font-weight:800;text-align:center;">
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
@@ -1350,7 +1348,7 @@
                       </div>
                     </div>
                     <button class="btn btn-success" onclick="submitTeamScore()" style="margin-top:14px;">${currentButtonText}</button>
-                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
+                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your player scores and team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the designated captain on the device marked YOU can submit player scores and the final team score.'}</div>
                   </div>
                 </div>
               </div>`;
@@ -1359,7 +1357,7 @@
               <div style="background:#f7f7f7;border:2px solid #e0e0e0;border-radius:16px;padding:16px;">
                 <div style="font-size:22px;font-weight:800;color:#143b2f;margin-bottom:8px;">${getTeamName(myTeam.id)}</div>
                 <div class="muted" style="margin-bottom:10px;">Captain: ${myCaptain ? `${myCaptain.name}${isCurrentPlayer(myCaptain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the captain with YOU beside their name can submit or edit this team score.</div>
+                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.</div>
                 ${myTeamSubmitted ? `<div style="margin-top:12px;background:#eef7ee;border-radius:12px;padding:12px;font-weight:700;color:#1a472a;">Your team has submitted a score.${allSubmitted ? ` Final score: ${myTeamScore}` : ' Scores will appear when all teams submit.'}</div>` : ''}
               </div>`;
           }
@@ -1416,33 +1414,31 @@
         otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
       }
     }
-async function sendScoresToSheet(players) {
-  const url = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
 
-  const payload = {
-    date: new Date().toISOString().split("T")[0],
-    players: players
-  };
-
-  try {
-    await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
-    console.log("Scores sent to sheet");
-  } catch (err) {
-    console.error("Sheet error:", err);
-  }
-}
     async function submitTeamScore(){
       try {
         if (!appState.myPlayerName) { alert('Register first on this device'); return; }
         if (!appState.myTeam) { alert('You are not assigned to a team yet'); return; }
         if (!isCurrentCaptainForTeam(appState.myTeam)) {
-          alert('Only the captain with YOU beside their name can submit or edit this team score.');
+          alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
+          return;
+        }
+
+        const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
+        if (!myTeamPlayers.length) { alert('No players found for this team yet.'); return; }
+
+        const playerScores = myTeamPlayers.map(p => {
+          const value = document.getElementById(`player-score-${p.id}`)?.value;
+          return {
+            id: p.id,
+            name: p.name,
+            score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
+          };
+        });
+
+        const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
+        if (missingPlayerScore) {
+          alert(`Enter a score for ${missingPlayerScore.name}.`);
           return;
         }
 
@@ -1453,30 +1449,34 @@ async function sendScoresToSheet(players) {
         const totalScore = calculateTeamTotal(frontValue, backValue);
         const nowIso = new Date().toISOString();
 
-       await db(
-  window.supabaseClient
-    .from('teams')
-    .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
-    .eq('id', appState.myTeam),
-  'Submit team score'
-);
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
+            .eq('id', appState.myTeam),
+          'Submit team score'
+        );
 
-const players = [
-  { name: "Gabe", score: 73 },
-  { name: "Ryan", score: 75 },
-  { name: "Joe", score: 80 },
-  { name: "Mike", score: 81 }
-];
+        for (const player of playerScores) {
+          await db(
+            window.supabaseClient
+              .from('players')
+              .update({ score: player.score })
+              .eq('id', player.id),
+            'Update player score'
+          );
+        }
 
-await sendScoresToSheet(players);
+        await sendScoresToSheet(playerScores.map(p => ({ name: p.name, score: p.score })));
 
-alert('Team score saved!');
-await loadAllData();
+        alert('Player scores and team score saved!');
+        await loadAllData();
       } catch (err) {
         alert(`Could not save team score: ${formatError(err)}`);
       }
     }
 
+    
     function renderLeaderboard() {
       const ranked = appState.players
         .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
@@ -1862,7 +1862,6 @@ await loadAllData();
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
-        updateTeamSelectionNotice();
         updateAutoRefreshMode();
         alert('Saved!');
       } catch (err) {
@@ -1909,7 +1908,6 @@ await loadAllData();
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
-        updateTeamSelectionNotice();
         updateAutoRefreshMode();
         alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
       } catch (err) {
