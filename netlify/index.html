@@ -519,7 +519,7 @@
           <div id="team-selection-subtitle">You can now assign players to teams:</div>
         </div>
 
-        <div class="admin-section">
+        <div class="admin-section" style="max-width:600px;margin:20px auto;">
           <div class="form-group" style="margin-bottom:0;">
             <label>🏌️ Number of Teams</label>
             <select id="num-teams" onchange="updateNumTeams()" style="padding:12px;border-radius:12px;border:2px solid #2d5a27;">
@@ -546,7 +546,7 @@
       </div>
 
       <div id="admin-settings" class="hidden">
-        <div class="admin-section">
+        <div class="admin-section" style="max-width:600px;margin:20px auto;">
           <div class="form-group">
             <label>⏰ Registration Opens At</label>
             <input type="time" id="open-time" value="06:00">
@@ -1237,7 +1237,7 @@
       const otherTeamsContainer = document.getElementById('tab-otherteams');
       const teamsToShow = getScoringTeams();
       if (!allSubmitted) {
-        otherTeamsContainer.innerHTML = '<div class="admin-section"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
+        otherTeamsContainer.innerHTML = '<div class="admin-section" style="max-width:600px;margin:20px auto;"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
       } else {
         const rankedTeams = teamsToShow
           .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
