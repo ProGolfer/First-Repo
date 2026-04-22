@@ -745,18 +745,23 @@ const scoreDraft = {};
 }
 
 
- async function sendScoresToSheet(players) {
+async function sendScoresToSheet(players) {
   try {
+    const payload = {
+      date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
+      players: Array.isArray(players) ? players : []
+    };
+
+    console.log("Sending payload to Apps Script:", payload);
+    alert("Apps Script payload: " + JSON.stringify(payload));
+
     await fetch(APP_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
       },
-      body: JSON.stringify({
-        date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
-        players: players
-      })
+      body: JSON.stringify(payload)
     });
 
     console.log("Scores sent to sheet");
@@ -1538,16 +1543,29 @@ async function submitTeamScore(){
       'Submit team score'
     );
 
-    await sendScoresToSheet(
-      playerScores.map(p => ({ name: p.name, score: p.score }))
-    );
+   const sheetPlayersPayload = playerScores
+  .map(p => ({
+    name: String(p.name || '').trim(),
+    score: p.score
+  }))
+  .filter(p => p.name !== '' && p.score !== null && !Number.isNaN(p.score));
 
-    myTeamPlayers.forEach(p => {
-      delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
-    });
+console.log('sheetPlayersPayload:', sheetPlayersPayload);
+alert('Sending to sheet: ' + JSON.stringify(sheetPlayersPayload));
 
-    alert('Player scores and team score saved!');
-    await loadAllData();
+if (!sheetPlayersPayload.length) {
+  alert('No valid player scores were built for Google Sheets.');
+  return;
+}
+
+await sendScoresToSheet(sheetPlayersPayload);
+
+myTeamPlayers.forEach(p => {
+  delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
+});
+
+alert('Player scores and team score saved!');
+await loadAllData();
 
   } catch (err) {
     alert(`Could not save team score: ${formatError(err)}`);
@@ -1557,14 +1575,32 @@ async function submitTeamScore(){
 }
     
     function renderLeaderboard() {
-      const ranked = appState.players
-        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
-        .sort((a,b) => a.score - b.score);
+  const ranked = appState.players
+    .filter(p => p.status === 'approved')
+    .map(p => {
+      const avg = p.avg !== null && p.avg !== undefined && p.avg !== '' ? parseFloat(p.avg) : null;
+      const last = p.score !== null && p.score !== undefined && p.score !== '' ? parseFloat(p.score) : null;
+      return { ...p, avg, last };
+    })
+    .sort((a, b) => {
+      if (a.avg === null && b.avg === null) return (a.name || '').localeCompare(b.name || '');
+      if (a.avg === null) return 1;
+      if (b.avg === null) return -1;
+      return a.avg - b.avg;
+    });
 
-      document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
-        <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><span>${idx + 1}. ${p.name} ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}</span><span>${p.score}</span></li>
-      `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
-    }
+       document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
+    <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
+      <span>
+        ${idx + 1}. ${p.name}
+        ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}
+      </span>
+      <span>${p.avg !== null ? p.avg.toFixed(2) : '-'}</span>
+    </li>
+  `).join('') || '<li style="color:#999;">No approved players yet</li>';
+}
+
+
 
     function showLeaderboard() {
       renderLeaderboard();
