@@ -753,7 +753,6 @@ async function sendScoresToSheet(players) {
     };
 
     console.log("Sending payload to Apps Script:", payload);
-    alert("Apps Script payload: " + JSON.stringify(payload));
 
     await fetch(APP_SCRIPT_URL, {
       method: "POST",
@@ -764,7 +763,6 @@ async function sendScoresToSheet(players) {
       body: JSON.stringify(payload)
     });
 
-    console.log("Scores sent to sheet");
     return true;
   } catch (err) {
     console.error("Sheet error:", err);
