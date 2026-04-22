@@ -760,6 +760,8 @@
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let isTypingScores = false;
+    
     let appState = {
       players: [],
       teams: [],
@@ -1003,6 +1005,7 @@
     }
 
     async function loadAllData() {
+      if (isTypingScores) return;
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
         db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
@@ -1327,7 +1330,7 @@
                         ${myTeamPlayers.map(p => `
                           <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;background:#ffffff;border:1px solid #d8d8d8;border-radius:10px;padding:10px 12px;">
                             <div style="font-weight:800;color:#143b2f;">${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}${String(p.id) === String(myCaptain?.id) ? ' 👑' : ''}</div>
-                            <input type="number" id="player-score-${p.id}" placeholder="Score" value="${p.score !== null && p.score !== undefined ? String(p.score) : ''}" style="width:100%;padding:10px;border:2px solid #d8d8d8;border-radius:8px;font-size:18px;font-weight:800;text-align:center;">
+                           <input type="number" id="player-score-${p.id}" placeholder="Score" value="${p.score !== null && p.score !== undefined ? String(p.score) : ''}" onfocus="isTypingScores = true" onblur="isTypingScores = false" style="width:100%;padding:10px;border:2px solid #d8d8d8;border-radius:8px;font-size:18px;font-weight:800;text-align:center;">
                           </div>
                         `).join('')}
                       </div>
@@ -1336,11 +1339,11 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
-                        <input type="number" id="team-front-score" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                        <<input type="number" id="team-front-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
                       </div>
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Back</label>
-                        <input type="number" id="team-back-score" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                        <<input type="number" id="team-back-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
                       </div>
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Total</label>
