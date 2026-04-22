@@ -1170,7 +1170,6 @@
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
-
     function updateTeamSelectionNotice() {
       const box = document.getElementById('team-selection-notice');
       const title = document.getElementById('team-selection-title');
@@ -1833,6 +1832,7 @@
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
+        updateTeamSelectionNotice();
         updateAutoRefreshMode();
         alert('Saved!');
       } catch (err) {
@@ -1879,6 +1879,7 @@
         renderAdminPlayers();
         renderAdminTeams();
         updateSettingsView();
+        updateTeamSelectionNotice();
         updateAutoRefreshMode();
         alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
       } catch (err) {
