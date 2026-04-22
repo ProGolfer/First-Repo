@@ -742,21 +742,27 @@
 }
 
 
-    async function sendScoresToSheet(players) {
-      try {
-        await fetch(APP_SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: new Date().toISOString().split("T")[0],
-            players
-          })
-        });
-        console.log("Scores sent to sheet");
-      } catch (err) {
-        console.error("Sheet error:", err);
-      }
-    }
+  async function sendScoresToSheet(players) {
+  try {
+    await fetch(APP_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify({
+        date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
+        players: players
+      })
+    });
+
+    console.log("Scores sent to sheet");
+    return true;
+  } catch (err) {
+    console.error("Sheet error:", err);
+    throw err;
+  }
+}  
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
