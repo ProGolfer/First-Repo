@@ -1012,6 +1012,7 @@
       renderLeaderboard();
       loadGameView();
       updateSettingsView();
+      updateTeamSelectionNotice();
     }
 
     function getTeamName(teamId) {
@@ -1169,6 +1170,39 @@
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
+
+    function updateTeamSelectionNotice() {
+      const box = document.getElementById('team-selection-notice');
+      const title = document.getElementById('team-selection-title');
+      const subtitle = document.getElementById('team-selection-subtitle');
+      if (!box || !title || !subtitle) return;
+
+      const registrationState = getRegistrationState();
+      const cutoffText = formatTime12(appState.settings.cutoff_time || '09:30');
+      const openText = formatTime12(appState.settings.open_time || '06:00');
+
+      if (registrationState.manuallyClosed || registrationState.afterCutoff) {
+        box.style.background = '#ef4444';
+        box.style.color = '#000000';
+        title.innerHTML = '🚫 REGISTRATION IS CLOSED';
+        subtitle.innerHTML = 'Team selection is available now.';
+        return;
+      }
+
+      if (registrationState.beforeOpen) {
+        box.style.background = '#f59e0b';
+        box.style.color = '#000000';
+        title.innerHTML = '⏰ REGISTRATION HAS NOT OPENED';
+        subtitle.innerHTML = `Registration opens at ${openText}.`;
+        return;
+      }
+
+      box.style.background = '#22c55e';
+      box.style.color = '#000000';
+      title.innerHTML = '⏰ REGISTRATION IS STILL OPEN';
+      subtitle.innerHTML = `Team selection is available now and registration closes at ${cutoffText}.`;
+    }
+
 
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
