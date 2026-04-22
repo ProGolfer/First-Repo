@@ -6,7 +6,7 @@
   <title>Golf Money Game</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }f
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background:
@@ -1424,56 +1424,83 @@ let isTypingScores = false;
       }
     }
 
-    async function submitTeamScore(){
-      try {
-        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
-        if (!appState.myTeam) { alert('You are not assigned to a team yet'); return; }
-        if (!isCurrentCaptainForTeam(appState.myTeam)) {
-          alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
-          return;
-        }
+ async function submitTeamScore(){
+  if (isSubmittingScores) return;
+  isSubmittingScores = true;
 
-        const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
-        if (!myTeamPlayers.length) { alert('No players found for this team yet.'); return; }
-
-        const playerScores = myTeamPlayers.map(p => {
-          const value = document.getElementById(`player-score-${p.id}`)?.value;
-          return {
-            id: p.id,
-            name: p.name,
-            score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
-          };
-        });
-
-        const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
-        if (missingPlayerScore) {
-          alert(`Enter a score for ${missingPlayerScore.name}.`);
-          return;
-        }
-
-        const frontValue = document.getElementById('team-front-score')?.value;
-        const backValue = document.getElementById('team-back-score')?.value;
-        if((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')){ alert('Enter both front and back scores'); return; }
-
-        const totalScore = calculateTeamTotal(frontValue, backValue);
-        const nowIso = new Date().toISOString();
-
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
-            .eq('id', appState.myTeam),
-          'Submit team score'
-        );
-
-        await sendScoresToSheet(playerScores.map(p => ({ name: p.name, score: p.score })));
-
-        alert('Player scores and team score saved!');
-        await loadAllData();
-      } catch (err) {
-        alert(`Could not save team score: ${formatError(err)}`);
-      }
+  try {
+    if (!appState.myPlayerName) { 
+      alert('Register first on this device'); 
+      return; 
     }
+
+    if (!appState.myTeam) { 
+      alert('You are not assigned to a team yet'); 
+      return; 
+    }
+
+    if (!isCurrentCaptainForTeam(appState.myTeam)) {
+      alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
+      return;
+    }
+
+    const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
+    if (!myTeamPlayers.length) { 
+      alert('No players found for this team yet.'); 
+      return; 
+    }
+
+    const playerScores = myTeamPlayers.map(p => {
+      const value = document.getElementById(`player-score-${p.id}`)?.value;
+      return {
+        id: p.id,
+        name: p.name,
+        score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
+      };
+    });
+
+    const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
+    if (missingPlayerScore) {
+      alert(`Enter a score for ${missingPlayerScore.name}.`);
+      return;
+    }
+
+    const frontValue = document.getElementById('team-front-score')?.value;
+    const backValue = document.getElementById('team-back-score')?.value;
+    if ((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')) { 
+      alert('Enter both front and back scores'); 
+      return; 
+    }
+
+    const totalScore = calculateTeamTotal(frontValue, backValue);
+    const nowIso = new Date().toISOString();
+
+    await db(
+      window.supabaseClient
+        .from('teams')
+        .update({
+          front_score: parseInt(frontValue, 10),
+          back_score: parseInt(backValue, 10),
+          team_score: totalScore,
+          score_submitted_at: nowIso
+        })
+        .eq('id', appState.myTeam),
+      'Submit team score'
+    );
+
+    await sendScoresToSheet(
+      playerScores.map(p => ({ name: p.name, score: p.score }))
+    );
+
+    alert('Player scores and team score saved!');
+    await loadAllData();
+
+  } catch (err) {
+    alert(`Could not save team score: ${formatError(err)}`);
+  } finally {
+    isSubmittingScores = false;
+  }
+}
 
     
     function renderLeaderboard() {
