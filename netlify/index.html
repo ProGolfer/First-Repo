@@ -294,18 +294,18 @@
       to { opacity:1; transform: translateY(0); }
     }
     .captain-select-wrap {
-      background:#0f172a;
-      border:2px solid #22c55e;
+      background: linear-gradient(180deg, rgba(12,25,43,0.98) 0%, rgba(8,18,31,0.99) 100%);
+      border: 2px solid rgba(34,197,94,0.45);
       border-radius:12px;
       padding:10px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .captain-select-wrap label {
       display:block;
       font-size:11px;
       font-weight:900;
-      color:#dcfce7;
-      letter-spacing:.6px;
+      color:#bbf7d0;
+      letter-spacing:.06em;
       margin-bottom:6px;
       text-transform:uppercase;
     }
@@ -313,8 +313,8 @@
       width:100%;
       padding:10px;
       border-radius:10px;
-      border:2px solid #22c55e;
-      background:#020817;
+      border:2px solid rgba(34,197,94,0.45);
+      background:#071426;
       color:#ffffff;
       font-weight:900;
     }
@@ -349,22 +349,96 @@
       .team-card-title { align-items:flex-start; flex-direction:column; }
     }
   
-    /* clean admin sizing */
-    #view-admin-dashboard { max-width: 650px; margin: 0 auto; }
+    /* ADMIN POLISH */
+    #view-admin-dashboard {
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    #view-admin-dashboard .header {
+      padding: 24px 20px;
+    }
+    #view-admin-dashboard .header h1 {
+      font-size: 28px;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
     #view-admin-dashboard .admin-top-status,
     #view-admin-dashboard .admin-pill-tabs,
     #view-admin-dashboard #admin-players,
     #view-admin-dashboard #admin-teams,
     #view-admin-dashboard #admin-settings,
-    #view-admin-dashboard .admin-section,
     #view-admin-dashboard .approval-note,
-    #view-admin-dashboard .btn {
+    #view-admin-dashboard .admin-section,
+    #view-admin-dashboard > .btn {
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
     }
     #view-admin-dashboard .admin-pill-tabs {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    #view-admin-dashboard .admin-pill-btn {
+      min-height: 72px;
+      border-radius: 18px;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+    #view-admin-dashboard .admin-section {
+      background: linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);
+      border: 1px solid rgba(89, 125, 158, 0.26);
+      border-radius: 20px;
+      padding: 18px;
+      margin-top: 16px;
+      margin-bottom: 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    #view-admin-dashboard .approval-note {
+      background: linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);
+      border: 1px solid rgba(34,197,94,0.28);
+      color: #eaf6ff;
+    }
+    #view-admin-dashboard .approval-note .title {
+      color: #ffffff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    #view-admin-dashboard .section-title {
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-weight: 900;
+      margin-top: 22px;
+      margin-bottom: 10px;
+    }
+    #view-admin-dashboard .form-group label {
+      color: #dbeafe;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    #view-admin-dashboard input,
+    #view-admin-dashboard select {
+      background: rgba(255,255,255,0.04);
+      color: #eef6ff;
+      border: 1px solid rgba(121,151,178,.26);
+    }
+    #view-admin-dashboard option {
+      background: #071426;
+      color: #eef6ff;
+    }
+    #view-admin-dashboard .btn {
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+    #view-admin-dashboard .btn-danger {
+      max-width: 600px;
+    }
+    @media (max-width: 640px) {
+      #view-admin-dashboard .admin-pill-tabs {
+        grid-template-columns: 1fr;
+      }
     }
 
   </style>
@@ -436,11 +510,11 @@
       6:00 AM - 9:30 AM
     </div>
 
-    <div style="margin-top:8px;color:#22c55e;font-weight:900;font-size:16px;">
+    <div style="margin-top:8px;color:#1f2937;font-weight:800;font-size:16px;">
       ⏰ Registration is OPEN
     </div>
 
-    <div style="color:#cbd5e1;margin-top:4px;font-size:14px;font-weight:700;">
+    <div style="color:#475569;margin-top:4px;font-size:14px;font-weight:600;">
       Team selection is available now and closes at 9:30 PM.
     </div>
 
@@ -533,7 +607,7 @@
       </div>
 
       <div id="admin-teams" class="hidden">
-        <div class="approval-note" id="team-selection-notice" style="background:#eef7ee;border-color:#4caf50;">
+        <div class="approval-note" id="team-selection-notice" style="background:linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);border-color:rgba(34,197,94,0.28);">
           <div class="title" id="team-selection-title">✅ Registration is now CLOSED</div>
           <div id="team-selection-subtitle">You can now assign players to teams:</div>
         </div>
@@ -578,11 +652,11 @@
           <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
         </div>
 
-        <div class="admin-section" style="background:#0f172a;border:1px solid rgba(248,113,113,.28);max-width:600px;margin:20px auto;">
-          <h3 style="margin-bottom:10px;color:#ffffff;">🗑️ Clear Team Score</h3>
+        <div class="admin-section" style="background:linear-gradient(180deg, rgba(36,11,16,0.92) 0%, rgba(24,8,12,0.98) 100%);border:1px solid rgba(248,113,113,0.26);">
+          <h3 style="margin-bottom:10px;color:#ffffff;font-weight:900;text-transform:uppercase;letter-spacing:.03em;">🗑️ Clear Team Score</h3>
           <div class="form-group">
-            <label>Select Team to Clear</label>
-            <select id="clear-team-select" style="background:#020817;color:#ffffff;border:1px solid rgba(255,255,255,.18);">
+            <label style="color:#dbeafe;font-weight:800;text-transform:uppercase;letter-spacing:.03em;">Select Team to Clear</label>
+            <select id="clear-team-select" style="background:rgba(255,255,255,0.04);color:#eef6ff;border:1px solid rgba(121,151,178,.26);">
               <option value="">-- Select Team --</option>
             </select>
           </div>
@@ -605,7 +679,7 @@
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
-    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
+    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jz1AUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
 
     async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
