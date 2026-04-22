@@ -1437,7 +1437,8 @@ function getDraftPlayerScore(teamId, playerId) {
 function setDraftPlayerScore(teamId, playerId, value) {
   scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
 }
- async function submitTeamScore(){
+
+async function submitTeamScore(){
   if (isSubmittingScores) return;
   isSubmittingScores = true;
 
@@ -1463,17 +1464,17 @@ function setDraftPlayerScore(teamId, playerId, value) {
       return; 
     }
 
-   const playerScores = myTeamPlayers.map(p => {
-  const draftValue = getDraftPlayerScore(appState.myTeam, p.id);
-  const domValue = document.getElementById(`player-score-${p.id}`)?.value;
-  const value = draftValue !== '' ? draftValue : domValue;
+    const playerScores = myTeamPlayers.map(p => {
+      const draftValue = getDraftPlayerScore(appState.myTeam, p.id);
+      const domValue = document.getElementById(`player-score-${p.id}`)?.value;
+      const value = draftValue !== '' ? draftValue : domValue;
 
-  return {
-    id: p.id,
-    name: p.name,
-    score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
-  };
-});
+      return {
+        id: p.id,
+        name: p.name,
+        score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
+      };
+    });
 
     const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
     if (missingPlayerScore) {
@@ -1504,24 +1505,23 @@ function setDraftPlayerScore(teamId, playerId, value) {
       'Submit team score'
     );
 
-  await sendScoresToSheet(
-  playerScores.map(p => ({ name: p.name, score: p.score }))
-);
+    await sendScoresToSheet(
+      playerScores.map(p => ({ name: p.name, score: p.score }))
+    );
 
-myTeamPlayers.forEach(p => {
-  delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
-});
+    myTeamPlayers.forEach(p => {
+      delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
+    });
 
-alert('Player scores and team score saved!');
-await loadAllData();
+    alert('Player scores and team score saved!');
+    await loadAllData();
 
- 
-} catch (err) {
-  alert(`Could not save team score: ${formatError(err)}`);
-} finally {
-  isSubmittingScores = false;
+  } catch (err) {
+    alert(`Could not save team score: ${formatError(err)}`);
+  } finally {
+    isSubmittingScores = false;
+  }
 }
-
     
     function renderLeaderboard() {
       const ranked = appState.players
