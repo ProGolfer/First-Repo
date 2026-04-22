@@ -1416,7 +1416,27 @@
         otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
       }
     }
+async function sendScoresToSheet(players) {
+  const url = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
 
+  const payload = {
+    date: new Date().toISOString().split("T")[0],
+    players: players
+  };
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    console.log("Scores sent to sheet");
+  } catch (err) {
+    console.error("Sheet error:", err);
+  }
+}
     async function submitTeamScore(){
       try {
         if (!appState.myPlayerName) { alert('Register first on this device'); return; }
@@ -1433,15 +1453,25 @@
         const totalScore = calculateTeamTotal(frontValue, backValue);
         const nowIso = new Date().toISOString();
 
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
-            .eq('id', appState.myTeam),
-          'Submit team score'
-        );
-        alert('Team score saved!');
-        await loadAllData();
+       await db(
+  window.supabaseClient
+    .from('teams')
+    .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
+    .eq('id', appState.myTeam),
+  'Submit team score'
+);
+
+const players = [
+  { name: "Gabe", score: 73 },
+  { name: "Ryan", score: 75 },
+  { name: "Joe", score: 80 },
+  { name: "Mike", score: 81 }
+];
+
+await sendScoresToSheet(players);
+
+alert('Team score saved!');
+await loadAllData();
       } catch (err) {
         alert(`Could not save team score: ${formatError(err)}`);
       }
