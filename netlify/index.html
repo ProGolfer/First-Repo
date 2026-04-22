@@ -1437,6 +1437,17 @@ function getDraftPlayerScore(teamId, playerId) {
 function setDraftPlayerScore(teamId, playerId, value) {
   scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
 }
+    document.addEventListener('input', function(e) {
+  const el = e.target;
+  if (!el || !el.id) return;
+
+  if (el.id.startsWith('player-score-')) {
+    const playerId = el.id.replace('player-score-', '');
+    if (appState.myTeam) {
+      setDraftPlayerScore(appState.myTeam, playerId, el.value);
+    }
+  }
+});
 
 async function submitTeamScore(){
   if (isSubmittingScores) return;
