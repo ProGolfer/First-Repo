@@ -693,7 +693,7 @@ const scoreDraft = {};
 
     async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
-  if (!mount) return;
+  if (!mount) throw new Error('validation');
 
   try {
     const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
@@ -702,7 +702,7 @@ const scoreDraft = {};
     const rows = csv.trim().split('\n').map(r => r.split(','));
     if (!rows.length || rows.length < 2) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
+      throw new Error('validation');
     }
 
     const header = rows[0];
@@ -858,10 +858,10 @@ let isTypingScores = false;
         const lat = 39.2667;
         const lon = -81.5615;
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`);
-        if (!res.ok) return;
+        if (!res.ok) throw new Error('validation');
         const data = await res.json();
         const current = data?.current;
-        if (!current) return;
+        if (!current) throw new Error('validation');
 
         const tempEl = document.getElementById('weather-temp');
         const windEl = document.getElementById('weather-wind');
@@ -1014,7 +1014,7 @@ let isTypingScores = false;
     }
 
     async function loadAllData() {
-      if (isTypingScores) return;
+      if (isTypingScores) throw new Error('validation');
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
         db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
@@ -1101,7 +1101,7 @@ let isTypingScores = false;
       const frontInput = document.getElementById('team-front-score');
       const backInput = document.getElementById('team-back-score');
       const totalInput = document.getElementById('team-total-score');
-      if (!frontInput || !backInput || !totalInput) return;
+      if (!frontInput || !backInput || !totalInput) throw new Error('validation');
       const hasAnyValue = String(frontInput.value).trim() !== '' || String(backInput.value).trim() !== '';
       totalInput.value = hasAnyValue ? String(calculateTeamTotal(frontInput.value, backInput.value)) : '';
     }
@@ -1132,7 +1132,7 @@ let isTypingScores = false;
         return hasAnySavedScore && hasStaleDate;
       });
 
-      if (!expiredTeams.length) return;
+      if (!expiredTeams.length) throw new Error('validation');
 
       for (const team of expiredTeams) {
         await db(
@@ -1150,25 +1150,25 @@ let isTypingScores = false;
         const name = document.getElementById('reg-name').value.trim();
         const phone = document.getElementById('reg-phone').value.trim();
         const course = document.getElementById('reg-course').value;
-        if(!name){ alert('Enter name'); return; }
+        if(!name){ alert('Enter name'); throw new Error('validation'); }
 
         const registrationState = getRegistrationState();
         if (registrationState.manuallyClosed) {
           alert('Registration is manually closed.');
-          return;
+          throw new Error('validation');
         }
         if (registrationState.beforeOpen) {
           alert(`Registration opens at ${formatTime12(registrationState.openTime)}.`);
-          return;
+          throw new Error('validation');
         }
         if (registrationState.afterCutoff) {
           alert(`Registration is closed. Cutoff time was ${formatTime12(registrationState.cutoffTime)}.`);
-          return;
+          throw new Error('validation');
         }
 
         const exists = appState.players.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
-        if (exists) { alert('Player already registered'); return; }
-        if (!appState.teams.length) { alert('No teams available yet'); return; }
+        if (exists) { alert('Player already registered'); throw new Error('validation'); }
+        if (!appState.teams.length) { alert('No teams available yet'); throw new Error('validation'); }
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
@@ -1438,29 +1438,29 @@ function setDraftPlayerScore(teamId, playerId, value) {
   scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
 }
  async function submitTeamScore(){
-  if (isSubmittingScores) return;
+  if (isSubmittingScores) throw new Error('validation');
   isSubmittingScores = true;
 
   try {
     if (!appState.myPlayerName) { 
       alert('Register first on this device'); 
-      return; 
+      throw new Error('validation'); 
     }
 
     if (!appState.myTeam) { 
       alert('You are not assigned to a team yet'); 
-      return; 
+      throw new Error('validation'); 
     }
 
     if (!isCurrentCaptainForTeam(appState.myTeam)) {
       alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
-      return;
+      throw new Error('validation');
     }
 
     const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
     if (!myTeamPlayers.length) { 
       alert('No players found for this team yet.'); 
-      return; 
+      throw new Error('validation'); 
     }
 
    const playerScores = myTeamPlayers.map(p => {
@@ -1478,14 +1478,14 @@ function setDraftPlayerScore(teamId, playerId, value) {
     const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
     if (missingPlayerScore) {
       alert(`Enter a score for ${missingPlayerScore.name}.`);
-      return;
+      throw new Error('validation');
     }
 
     const frontValue = document.getElementById('team-front-score')?.value;
     const backValue = document.getElementById('team-back-score')?.value;
     if ((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')) { 
       alert('Enter both front and back scores'); 
-      return; 
+      throw new Error('validation'); 
     }
 
     const totalScore = calculateTeamTotal(frontValue, backValue);
@@ -1516,7 +1516,9 @@ alert('Player scores and team score saved!');
 await loadAllData();
 
   } catch (err) {
-    alert(`Could not save team score: ${formatError(err)}`);
+  if (err.message !== 'validation') {
+  alert(`Could not save team score: ${formatError(err)}`);
+}
   } finally {
     isSubmittingScores = false;
   }
@@ -1634,7 +1636,7 @@ await loadAllData();
     }
 
     async function deleteP(id){
-      if(!confirm('Delete?')) return;
+      if(!confirm('Delete?')) throw new Error('validation');
       try {
         await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
         appState.players = appState.players.filter(p => String(p.id) !== String(id));
@@ -1775,7 +1777,7 @@ await loadAllData();
     async function setCaptainFromPlayerRow(playerId, value) {
       try {
         const player = appState.players.find(p => String(p.id) === String(playerId));
-        if (!player || !player.team) return;
+        if (!player || !player.team) throw new Error('validation');
         const teamId = player.team;
         if (value === 'yes') {
           await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
@@ -1796,7 +1798,7 @@ await loadAllData();
     }
 
     async function assignPlayerToTeam(playerId, teamId) {
-      if (!playerId) return;
+      if (!playerId) throw new Error('validation');
       try {
         await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
         appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
@@ -1844,7 +1846,7 @@ await loadAllData();
           appState.settings.game_started = true;
           renderAdminTeams();
           alert('Game started locally. Add the settings columns in Supabase to make this live on all devices.');
-          return;
+          throw new Error('validation');
         }
         await db(window.supabaseClient.from('settings').update({ game_started: true }).eq('key', SETTINGS_KEY), 'Start game');
         alert('Game started!');
@@ -1859,7 +1861,7 @@ await loadAllData();
           appState.settings.game_started = false;
           renderAdminTeams();
           alert('Game ended locally. Add the settings columns in Supabase to make this live on all devices.');
-          return;
+          throw new Error('validation');
         }
         await db(window.supabaseClient.from('settings').update({ game_started: false }).eq('key', SETTINGS_KEY), 'End game');
         alert('Game ended!');
@@ -1881,7 +1883,7 @@ await loadAllData();
           renderAdminTeams();
           updateSettingsView();
           alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
-          return;
+          throw new Error('validation');
         }
 
         const updateResult = await db(
@@ -1965,9 +1967,9 @@ await loadAllData();
       const teamId = document.getElementById('clear-team-select')?.value;
       if (!teamId) {
         alert('Please select a team to clear');
-        return;
+        throw new Error('validation');
       }
-      if (!confirm('Clear this team score?')) return;
+      if (!confirm('Clear this team score?')) throw new Error('validation');
       try {
         await db(
           window.supabaseClient.from('players').update({ score: null }).eq('team', parseInt(teamId, 10)),
@@ -1983,7 +1985,7 @@ await loadAllData();
     }
 
     async function clearAllPlayers() {
-      if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
+      if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) throw new Error('validation');
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
         appState.players = [];
