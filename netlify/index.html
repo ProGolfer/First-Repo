@@ -545,14 +545,24 @@
 </div>
 
 <div id="view-game" class="card hidden">
-  <div class="header"><h1>🏆 My Team Scores</h1></div>
+ <div id="view-game" class="card hidden">
+  <div class="header">
+    <h1>🏆 My Team Scores</h1>
+
+    <button class="btn btn-back" onclick="showView('view-home')" style="margin-top:10px;">
+      ← Back
+    </button>
+  </div>
+
   <div class="tabs" style="grid-template-columns: 1fr 1fr;">
     <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
     <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
   </div>
+
   <div id="tab-myteam">
     <div id="myteam-score-panel" class="admin-section"></div>
   </div>
+
   <div id="tab-otherteams" class="hidden"></div>
 </div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
