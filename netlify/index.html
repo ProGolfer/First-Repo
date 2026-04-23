@@ -691,39 +691,67 @@ const scoreDraft = {};
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
 
-    async function loadPlayerHistory() {
-const players = rows.slice(1).map(r => {
-  const name = (r[0] || '').trim();
-  const avg = (r[avgIndex] || '').trim();
+ async function loadPlayerHistory() {
+  const mount = document.getElementById('player-history');
+  if (!mount) return;
 
-  let last = '';
-  for (let i = avgIndex - 1; i >= 2; i--) {
-    if ((r[i] || '').trim() !== '') {
-      last = r[i].trim();
-      break;
+  try {
+    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
+    const csv = await res.text();
+
+    const rows = csv
+      .trim()
+      .split('\n')
+      .map(r => r.split(',').map(cell => (cell || '').trim()));
+
+    if (!rows.length || rows.length < 2) {
+      mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
+      return;
     }
-  }
 
-  return { name, avg, last };
-}).filter(p => p.name);
+    const header = rows[0];
+    const avgIndex = header.findIndex(h => h === 'Avg');
 
-mount.innerHTML = `
-  <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
-    <div style="flex:1;">Player</div>
-    <div style="width:60px;text-align:center;">Avg</div>
-    <div style="width:60px;text-align:center;">Last</div>
-  </div>
+    if (avgIndex === -1) {
+      mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
+      return;
+    }
 
-  ${players.map(p => `
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
-      <div style="flex:1;font-weight:800;">${p.name}</div>
-      <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
-      <div style="width:60px;text-align:center;">${p.last || '-'}</div>
-    </div>
-  `).join('')}
-`;
+    const players = rows.slice(1).map(r => {
+      const name = (r[0] || '').trim();
+      const avg = (r[avgIndex] || '').trim();
 
+      let last = '';
+      for (let i = avgIndex - 1; i >= 2; i--) {
+        if ((r[i] || '').trim() !== '') {
+          last = (r[i] || '').trim();
+          break;
+        }
+      }
 
+      return { name, avg, last };
+    }).filter(p => p.name);
+
+    if (!players.length) {
+      mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
+      return;
+    }
+
+    mount.innerHTML = `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
+        <div style="flex:1;">Player</div>
+        <div style="width:60px;text-align:center;">Avg</div>
+        <div style="width:60px;text-align:center;">Last</div>
+      </div>
+
+      ${players.map(p => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
+          <div style="flex:1;font-weight:800;">${p.name}</div>
+          <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
+          <div style="width:60px;text-align:center;">${p.last || '-'}</div>
+        </div>
+      `).join('')}
+    `;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
