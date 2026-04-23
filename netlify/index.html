@@ -1581,8 +1581,8 @@ if (!sheetPlayersPayload.length) {
   alert('No valid player scores were built for Google Sheets.');
   return;
 }
-
-await sendScoresToSheet(sheetPlayersPayload);
+alert('ABOUT TO SEND TO GOOGLE SHEET');
+    await sendScoresToSheet(sheetPlayersPayload);
 
 myTeamPlayers.forEach(p => {
   delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
