@@ -1006,12 +1006,15 @@ let isTypingScores = false;
       if (!teamsResult.data || teamsResult.data.length === 0) {
         try {
           await db(window.supabaseClient.from('teams').insert([
-            { team_number: 1, team_name: 'Team 1' },
-            { team_number: 2, team_name: 'Team 2' },
-            { team_number: 3, team_name: 'Team 3' },
-            { team_number: 4, team_name: 'Team 4' },
-            { team_number: 5, team_name: 'Team 5' }
-          ]), 'Seed teams');
+  { team_number: 1, team_name: 'Team 1' },
+  { team_number: 2, team_name: 'Team 2' },
+  { team_number: 3, team_name: 'Team 3' },
+  { team_number: 4, team_name: 'Team 4' },
+  { team_number: 5, team_name: 'Team 5' },
+  { team_number: 6, team_name: 'Team 6' },
+  { team_number: 7, team_name: 'Team 7' },
+  { team_number: 8, team_name: 'Team 8' }
+]), 'Seed teams');
         } catch (err) {
         }
       }
@@ -1407,14 +1410,23 @@ if (teamSelectionStatus) {
         }
       }
 
-      const otherTeamsContainer = document.getElementById('tab-otherteams');
-      const teamsToShow = getScoringTeams();
-      if (!allSubmitted) {
-        otherTeamsContainer.innerHTML = '<div class="admin-section" style="max-width:600px;margin:20px auto;"><strong>Scores are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before scores appear here.</div></div>';
-      } else {
-        const rankedTeams = teamsToShow
-          .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
-          .sort((a, b) => a.score - b.score);
+    const otherTeamsContainer = document.getElementById('tab-otherteams');
+const teamsToShow = getScoringTeams();
+
+if (!myTeamSubmitted) {
+  otherTeamsContainer.innerHTML = `
+    <div class="admin-section" style="max-width:600px;margin:20px auto;">
+      <strong>Scores are locked.</strong>
+      <div class="muted" style="margin-top:8px;">
+        Submit your team score first to unlock other team scores.
+      </div>
+    </div>
+  `;
+} else {
+  const rankedTeams = teamsToShow
+    .filter(team => hasTeamSubmittedToday(team))
+    .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
+    .sort((a, b) => a.score - b.score);
 
         function getPlaceMeta(index, total) {
           if (index === 0) return '🥇 1st Place';
