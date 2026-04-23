@@ -6,7 +6,7 @@
   <title>Golf Money Game</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }f
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background:
@@ -294,18 +294,18 @@
       to { opacity:1; transform: translateY(0); }
     }
     .captain-select-wrap {
-      background: linear-gradient(180deg, rgba(12,25,43,0.98) 0%, rgba(8,18,31,0.99) 100%);
-      border: 2px solid rgba(34,197,94,0.45);
+      background:#0f172a;
+      border:2px solid #22c55e;
       border-radius:12px;
       padding:10px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
     .captain-select-wrap label {
       display:block;
       font-size:11px;
       font-weight:900;
-      color:#bbf7d0;
-      letter-spacing:.06em;
+      color:#dcfce7;
+      letter-spacing:.6px;
       margin-bottom:6px;
       text-transform:uppercase;
     }
@@ -313,8 +313,8 @@
       width:100%;
       padding:10px;
       border-radius:10px;
-      border:2px solid rgba(34,197,94,0.45);
-      background:#071426;
+      border:2px solid #22c55e;
+      background:#020817;
       color:#ffffff;
       font-weight:900;
     }
@@ -349,96 +349,22 @@
       .team-card-title { align-items:flex-start; flex-direction:column; }
     }
   
-    /* ADMIN POLISH */
-    #view-admin-dashboard {
-      max-width: 650px;
-      margin: 0 auto;
-    }
-    #view-admin-dashboard .header {
-      padding: 24px 20px;
-    }
-    #view-admin-dashboard .header h1 {
-      font-size: 28px;
-      letter-spacing: .02em;
-      text-transform: uppercase;
-    }
+    /* clean admin sizing */
+    #view-admin-dashboard { max-width: 650px; margin: 0 auto; }
     #view-admin-dashboard .admin-top-status,
     #view-admin-dashboard .admin-pill-tabs,
     #view-admin-dashboard #admin-players,
     #view-admin-dashboard #admin-teams,
     #view-admin-dashboard #admin-settings,
-    #view-admin-dashboard .approval-note,
     #view-admin-dashboard .admin-section,
-    #view-admin-dashboard > .btn {
+    #view-admin-dashboard .approval-note,
+    #view-admin-dashboard .btn {
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
     }
     #view-admin-dashboard .admin-pill-tabs {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 22px;
-    }
-    #view-admin-dashboard .admin-pill-btn {
-      min-height: 72px;
-      border-radius: 18px;
-      font-weight: 900;
-      letter-spacing: .02em;
-    }
-    #view-admin-dashboard .admin-section {
-      background: linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);
-      border: 1px solid rgba(89, 125, 158, 0.26);
-      border-radius: 20px;
-      padding: 18px;
-      margin-top: 16px;
-      margin-bottom: 16px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-    }
-    #view-admin-dashboard .approval-note {
-      background: linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);
-      border: 1px solid rgba(34,197,94,0.28);
-      color: #eaf6ff;
-    }
-    #view-admin-dashboard .approval-note .title {
-      color: #ffffff;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
-    #view-admin-dashboard .section-title {
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      font-weight: 900;
-      margin-top: 22px;
-      margin-bottom: 10px;
-    }
-    #view-admin-dashboard .form-group label {
-      color: #dbeafe;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
-    #view-admin-dashboard input,
-    #view-admin-dashboard select {
-      background: rgba(255,255,255,0.04);
-      color: #eef6ff;
-      border: 1px solid rgba(121,151,178,.26);
-    }
-    #view-admin-dashboard option {
-      background: #071426;
-      color: #eef6ff;
-    }
-    #view-admin-dashboard .btn {
-      font-weight: 900;
-      letter-spacing: .02em;
-    }
-    #view-admin-dashboard .btn-danger {
-      max-width: 600px;
-    }
-    @media (max-width: 640px) {
-      #view-admin-dashboard .admin-pill-tabs {
-        grid-template-columns: 1fr;
-      }
+      grid-template-columns: 1fr;
     }
 
   </style>
@@ -510,13 +436,13 @@
       6:00 AM - 9:30 AM
     </div>
 
-<div style="margin-top:10px;background:#22c55e;color:#000000;font-weight:900;font-size:16px;padding:10px;border-radius:10px;">
-  ⏰ Registration is OPEN
-</div>
+    <div style="margin-top:8px;color:#22c55e;font-weight:900;font-size:16px;">
+      ⏰ Registration is OPEN
+    </div>
 
-<div style="background:#22c55e;color:#000000;margin-top:6px;font-size:14px;font-weight:700;padding:10px;border-radius:10px;">
-  Team selection is available now and registration closes at 9:30 PM.
-</div>
+    <div style="color:#cbd5e1;margin-top:4px;font-size:14px;font-weight:700;">
+      Team selection is available now and closes at 9:30 PM.
+    </div>
 
     <div style="margin-top:14px;">
       <details id="playerAveragesBox">
@@ -545,28 +471,18 @@
 </div>
 
 <div id="view-game" class="card hidden">
-
-  <div class="header">
-    <h1>🏆 My Team Scores</h1>
-  </div>
-
-  <!-- Back button -->
-  <button class="btn btn-back" onclick="showView('view-home')" style="margin-bottom:10px;">
-    ← Back
-  </button>
-
+  <div class="header"><h1>🏆 My Team Scores</h1></div>
   <div class="tabs" style="grid-template-columns: 1fr 1fr;">
     <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
     <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
   </div>
-
   <div id="tab-myteam">
     <div id="myteam-score-panel" class="admin-section"></div>
   </div>
-
   <div id="tab-otherteams" class="hidden"></div>
-
 </div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
 
     <div id="view-leaderboard" class="card hidden">
       <div class="header"><h1>🏅 Leaderboard</h1></div>
@@ -617,16 +533,10 @@
       </div>
 
       <div id="admin-teams" class="hidden">
-        <div class="approval-note" id="team-selection-notice" 
-     style="background:#22c55e;color:#000000;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
-  
-  ⏰ REGISTRATION IS STILL OPEN<br>
-
-  <span style="font-weight:700;font-size:14px;">
-    Team selection is available now and registration closes at 9:30 AM.
-  </span>
-
-</div>
+        <div class="approval-note" id="team-selection-notice" style="background:#eef7ee;border-color:#4caf50;">
+          <div class="title" id="team-selection-title">✅ Registration is now CLOSED</div>
+          <div id="team-selection-subtitle">You can now assign players to teams:</div>
+        </div>
 
         <div class="admin-section" style="max-width:600px;margin:20px auto;">
           <div class="form-group" style="margin-bottom:0;">
@@ -668,11 +578,11 @@
           <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
         </div>
 
-        <div class="admin-section" style="background:linear-gradient(180deg, rgba(36,11,16,0.92) 0%, rgba(24,8,12,0.98) 100%);border:1px solid rgba(248,113,113,0.26);">
-          <h3 style="margin-bottom:10px;color:#ffffff;font-weight:900;text-transform:uppercase;letter-spacing:.03em;">🗑️ Clear Team Score</h3>
+        <div class="admin-section" style="background:#0f172a;border:1px solid rgba(248,113,113,.28);max-width:600px;margin:20px auto;">
+          <h3 style="margin-bottom:10px;color:#ffffff;">🗑️ Clear Team Score</h3>
           <div class="form-group">
-            <label style="color:#dbeafe;font-weight:800;text-transform:uppercase;letter-spacing:.03em;">Select Team to Clear</label>
-            <select id="clear-team-select" style="background:rgba(255,255,255,0.04);color:#eef6ff;border:1px solid rgba(121,151,178,.26);">
+            <label>Select Team to Clear</label>
+            <select id="clear-team-select" style="background:#020817;color:#ffffff;border:1px solid rgba(255,255,255,.18);">
               <option value="">-- Select Team --</option>
             </select>
           </div>
@@ -687,9 +597,6 @@
   </div>
 
   <script>
-    let isSubmittingScores = false;
-const scoreDraft = {};
-    
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
@@ -698,10 +605,9 @@ const scoreDraft = {};
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
-    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
-    const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
+    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jz1AUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
 
- async function loadPlayerHistory() {
+    async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
   if (!mount) return;
 
@@ -709,23 +615,14 @@ const scoreDraft = {};
     const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
     const csv = await res.text();
 
-    const rows = csv
-      .trim()
-      .split('\n')
-      .map(r => r.split(',').map(cell => (cell || '').trim()));
-
+    const rows = csv.trim().split('\n').map(r => r.split(','));
     if (!rows.length || rows.length < 2) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
       return;
     }
 
     const header = rows[0];
-    const avgIndex = header.findIndex(h => h === 'Avg');
-
-    if (avgIndex === -1) {
-      mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
-      return;
-    }
+    const avgIndex = header.length - 1;
 
     const players = rows.slice(1).map(r => {
       const name = (r[0] || '').trim();
@@ -734,7 +631,7 @@ const scoreDraft = {};
       let last = '';
       for (let i = avgIndex - 1; i >= 2; i--) {
         if ((r[i] || '').trim() !== '') {
-          last = (r[i] || '').trim();
+          last = r[i].trim();
           break;
         }
       }
@@ -742,77 +639,29 @@ const scoreDraft = {};
       return { name, avg, last };
     }).filter(p => p.name);
 
-    if (!players.length) {
-      mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
-    }
+ mount.innerHTML = `
+  <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
+    <div style="flex:1;">Player</div>
+    <div style="width:60px;text-align:center;">Avg</div>
+    <div style="width:60px;text-align:center;">Last</div>
+  </div>
 
-    mount.innerHTML = `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
-        <div style="flex:1;">Player</div>
-        <div style="width:60px;text-align:center;">Avg</div>
-        <div style="width:60px;text-align:center;">Last</div>
-      </div>
-
-      ${players.map(p => `
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
-          <div style="flex:1;font-weight:800;">${p.name}</div>
-          <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
-          <div style="width:60px;text-align:center;">${p.last || '-'}</div>
-        </div>
-      `).join('')}
-    `;
+  ${players.map(p => `
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
+      <div style="flex:1;font-weight:800;">${p.name}</div>
+      <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
+      <div style="width:60px;text-align:center;">${p.last || '-'}</div>
+    </div>
+  `).join('')}
+`;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
   }
 }
 
-async function sendScoresToSheet(players) {
-  try {
-    const payload = {
-      date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
-      players: Array.isArray(players) ? players : [],
-      ts: Date.now()
-    };
-
-    await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
-      method: "POST",
-      mode: "no-cors",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    return true;
-  } catch (err) {
-    console.error("Sheet error:", err);
-    throw err;
-  }
-}
-
-  if (!beaconOk) {
-    await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
-      method: "POST",
-      mode: "no-cors",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(payload)
-    });
-  }
-
-  return true;
-}
-
-
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let isTypingScores = false;
-    
     let appState = {
       players: [],
       teams: [],
@@ -1056,7 +905,6 @@ let isTypingScores = false;
     }
 
     async function loadAllData() {
-      if (isTypingScores) return;
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
         db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
@@ -1368,33 +1216,20 @@ let isTypingScores = false;
                 <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
                 <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
                 <div style="background:#fff;border-radius:14px;padding:14px;">
-                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Captain Only: Enter Player Scores + Team Score</div>
+                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Enter Scores (After Game Starts)</div>
                   <div style="background:#f4f4f4;border-radius:14px;padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                       <div style="font-size:18px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}${myCaptain ? ` (${myCaptain.name})` : ''}</div>
                       ${myTeamSubmitted ? '<span style="background:#4caf50;color:#fff;font-size:13px;font-weight:800;padding:6px 10px;border-radius:8px;">✓ Score Submitted</span>' : ''}
                     </div>
-
-                    <div style="margin-bottom:16px;">
-                      <div style="font-size:13px;font-weight:800;color:#143b2f;margin-bottom:10px;text-transform:uppercase;">Player Scores</div>
-                      <div style="display:grid;grid-template-columns:1fr;gap:10px;">
-                        ${myTeamPlayers.map(p => `
-                          <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;background:#ffffff;border:1px solid #d8d8d8;border-radius:10px;padding:10px 12px;">
-                            <div style="font-weight:800;color:#143b2f;">${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}${String(p.id) === String(myCaptain?.id) ? ' 👑' : ''}</div>
-                           <input type="number" id="player-score-${p.id}" placeholder="Score" value="${p.score !== null && p.score !== undefined ? String(p.score) : ''}" onfocus="isTypingScores = true" onblur="isTypingScores = false" style="width:100%;padding:10px;border:2px solid #d8d8d8;border-radius:8px;font-size:18px;font-weight:800;text-align:center;">
-                          </div>
-                        `).join('')}
-                      </div>
-                    </div>
-
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
-                        <<input type="number" id="team-front-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                        <input type="number" id="team-front-score" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
                       </div>
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Back</label>
-                        <<input type="number" id="team-back-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
+                        <input type="number" id="team-back-score" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
                       </div>
                       <div>
                         <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Total</label>
@@ -1402,7 +1237,7 @@ let isTypingScores = false;
                       </div>
                     </div>
                     <button class="btn btn-success" onclick="submitTeamScore()" style="margin-top:14px;">${currentButtonText}</button>
-                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your player scores and team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the designated captain on the device marked YOU can submit player scores and the final team score.'}</div>
+                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the captain on the device marked YOU can submit this score.'}</div>
                   </div>
                 </div>
               </div>`;
@@ -1411,7 +1246,7 @@ let isTypingScores = false;
               <div style="background:#f7f7f7;border:2px solid #e0e0e0;border-radius:16px;padding:16px;">
                 <div style="font-size:22px;font-weight:800;color:#143b2f;margin-bottom:8px;">${getTeamName(myTeam.id)}</div>
                 <div class="muted" style="margin-bottom:10px;">Captain: ${myCaptain ? `${myCaptain.name}${isCurrentPlayer(myCaptain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.</div>
+                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the captain with YOU beside their name can submit or edit this team score.</div>
                 ${myTeamSubmitted ? `<div style="margin-top:12px;background:#eef7ee;border-radius:12px;padding:12px;font-weight:700;color:#1a472a;">Your team has submitted a score.${allSubmitted ? ` Final score: ${myTeamScore}` : ' Scores will appear when all teams submit.'}</div>` : ''}
               </div>`;
           }
@@ -1468,176 +1303,46 @@ let isTypingScores = false;
         otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
       }
     }
-function getScoreDraftKey(teamId, playerId) {
-  return `${teamId}__${playerId}`;
-}
 
-function getDraftPlayerScore(teamId, playerId) {
-  return scoreDraft[getScoreDraftKey(teamId, playerId)] ?? '';
-}
+    async function submitTeamScore(){
+      try {
+        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
+        if (!appState.myTeam) { alert('You are not assigned to a team yet'); return; }
+        if (!isCurrentCaptainForTeam(appState.myTeam)) {
+          alert('Only the captain with YOU beside their name can submit or edit this team score.');
+          return;
+        }
 
-function setDraftPlayerScore(teamId, playerId, value) {
-  scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
-}
-    document.addEventListener('input', function(e) {
-  const el = e.target;
-  if (!el || !el.id) return;
+        const frontValue = document.getElementById('team-front-score')?.value;
+        const backValue = document.getElementById('team-back-score')?.value;
+        if((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')){ alert('Enter both front and back scores'); return; }
 
-  if (el.id.startsWith('player-score-')) {
-    const playerId = el.id.replace('player-score-', '');
-    if (appState.myTeam) {
-      setDraftPlayerScore(appState.myTeam, playerId, el.value);
-    }
-  }
-});
-function syncScoreDraftToInputs() {
-  if (!appState.myTeam) return;
+        const totalScore = calculateTeamTotal(frontValue, backValue);
+        const nowIso = new Date().toISOString();
 
-  document.querySelectorAll('[id^="player-score-"]').forEach(el => {
-    const playerId = el.id.replace('player-score-', '');
-    const draftValue = getDraftPlayerScore(appState.myTeam, playerId);
-
-    if (draftValue !== '' && el.value !== draftValue) {
-      el.value = draftValue;
-    }
-  });
-}
-
-const scoreDraftObserver = new MutationObserver(() => {
-  syncScoreDraftToInputs();
-});
-
-scoreDraftObserver.observe(document.body, {
-  childList: true,
-  subtree: true
-});
-    
-
-async function submitTeamScore(){
-  if (isSubmittingScores) return;
-  isSubmittingScores = true;
-
-  try {
-    if (!appState.myPlayerName) { 
-      alert('Register first on this device'); 
-      return; 
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({ front_score: parseInt(frontValue, 10), back_score: parseInt(backValue, 10), team_score: totalScore, score_submitted_at: nowIso })
+            .eq('id', appState.myTeam),
+          'Submit team score'
+        );
+        alert('Team score saved!');
+        await loadAllData();
+      } catch (err) {
+        alert(`Could not save team score: ${formatError(err)}`);
+      }
     }
 
-    if (!appState.myTeam) { 
-      alert('You are not assigned to a team yet'); 
-      return; 
-    }
-
-    if (!isCurrentCaptainForTeam(appState.myTeam)) {
-      alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
-      return;
-    }
-
-    const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
-    if (!myTeamPlayers.length) { 
-      alert('No players found for this team yet.'); 
-      return; 
-    }
-
-    const playerScores = myTeamPlayers.map(p => {
-      const draftValue = getDraftPlayerScore(appState.myTeam, p.id);
-      const domValue = document.getElementById(`player-score-${p.id}`)?.value;
-      const value = draftValue !== '' ? draftValue : domValue;
-
-      return {
-        id: p.id,
-        name: p.name,
-        score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
-      };
-    });
-
-    const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
-    if (missingPlayerScore) {
-      alert(`Enter a score for ${missingPlayerScore.name}.`);
-      return;
-    }
-
-    const frontValue = document.getElementById('team-front-score')?.value;
-    const backValue = document.getElementById('team-back-score')?.value;
-    if ((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')) { 
-      alert('Enter both front and back scores'); 
-      return; 
-    }
-
-    const totalScore = calculateTeamTotal(frontValue, backValue);
-    const nowIso = new Date().toISOString();
-
-    await db(
-      window.supabaseClient
-        .from('teams')
-        .update({
-          front_score: parseInt(frontValue, 10),
-          back_score: parseInt(backValue, 10),
-          team_score: totalScore,
-          score_submitted_at: nowIso
-        })
-        .eq('id', appState.myTeam),
-      'Submit team score'
-    );
-
-   const sheetPlayersPayload = playerScores
-  .map(p => ({
-    name: String(p.name || '').trim(),
-    score: p.score
-  }))
-  .filter(p => p.name !== '' && p.score !== null && !Number.isNaN(p.score));
-
-console.log('sheetPlayersPayload:', sheetPlayersPayload);
-alert('Sending to sheet: ' + JSON.stringify(sheetPlayersPayload));
-
-if (!sheetPlayersPayload.length) {
-  alert('No valid player scores were built for Google Sheets.');
-  return;
-}
-
-    await sendScoresToSheet(sheetPlayersPayload);
-
-myTeamPlayers.forEach(p => {
-  delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
-});
-
-alert('Player scores and team score saved!');
-await loadAllData();
-
-  } catch (err) {
-    alert(`Could not save team score: ${formatError(err)}`);
-  } finally {
-    isSubmittingScores = false;
-  }
-}
-    
     function renderLeaderboard() {
-  const ranked = appState.players
-    .filter(p => p.status === 'approved')
-    .map(p => {
-      const avg = p.avg !== null && p.avg !== undefined && p.avg !== '' ? parseFloat(p.avg) : null;
-      const last = p.score !== null && p.score !== undefined && p.score !== '' ? parseFloat(p.score) : null;
-      return { ...p, avg, last };
-    })
-    .sort((a, b) => {
-      if (a.avg === null && b.avg === null) return (a.name || '').localeCompare(b.name || '');
-      if (a.avg === null) return 1;
-      if (b.avg === null) return -1;
-      return a.avg - b.avg;
-    });
+      const ranked = appState.players
+        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
+        .sort((a,b) => a.score - b.score);
 
-       document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
-    <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
-      <span>
-        ${idx + 1}. ${p.name}
-        ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}
-      </span>
-      <span>${p.avg !== null ? p.avg.toFixed(2) : '-'}</span>
-    </li>
-  `).join('') || '<li style="color:#999;">No approved players yet</li>';
-}
-
-
+      document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
+        <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><span>${idx + 1}. ${p.name} ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}</span><span>${p.score}</span></li>
+      `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
+    }
 
     function showLeaderboard() {
       renderLeaderboard();
