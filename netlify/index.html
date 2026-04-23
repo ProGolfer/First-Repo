@@ -694,27 +694,17 @@ const scoreDraft = {};
     async function loadPlayerHistory() {
 const players = rows.slice(1).map(r => {
   const name = (r[0] || '').trim();
-
-  const avgRaw = (r[avgIndex] || '').trim();
-  const avg = avgRaw !== '' ? avgRaw : '';
+  const avg = (r[avgIndex] || '').trim();
 
   let last = '';
   for (let i = avgIndex - 1; i >= 2; i--) {
-    const cell = (r[i] || '').trim();
-
-    // only accept real numeric golf scores
-    if (cell !== '' && !Number.isNaN(parseFloat(cell))) {
-      last = cell;
+    if ((r[i] || '').trim() !== '') {
+      last = r[i].trim();
       break;
     }
-  }
-
-  // if no average exists, don't show a last score either
-  if (avg === '') {
-    last = '';
-  }
 
   return { name, avg, last };
+}).filter(p => p.name);
 }).filter(p => p.name);
 
  mount.innerHTML = `
