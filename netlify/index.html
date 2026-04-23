@@ -514,8 +514,8 @@
   ⏰ Registration is OPEN
 </div>
 
-<div id="team-selection-status" style="background:#22c55e;color:#000000;margin-top:6px;font-size:14px;font-weight:700;padding:10px;border-radius:10px;">
-  Team selection is available now and registration closes at 9:30 AM.
+<div style="background:#22c55e;color:#000000;margin-top:6px;font-size:14px;font-weight:700;padding:10px;border-radius:10px;">
+  Team selection is available now and registration closes at 9:30 PM.
 </div>
 
     <div style="margin-top:14px;">
@@ -1303,9 +1303,10 @@ let isTypingScores = false;
 
       const hoursDisplay = document.getElementById('registration-hours-display');
       if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
-
       const teamSelectionStatus = document.getElementById('team-selection-status');
-      if (teamSelectionStatus) teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(appState.settings.cutoff_time || '09:30')}.`;
+if (teamSelectionStatus) {
+  teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(appState.settings.cutoff_time || '09:30')}.`;
+}
 
       const registrationState = getRegistrationState();
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
