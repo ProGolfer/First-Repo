@@ -618,11 +618,11 @@
 
       <div id="admin-teams" class="hidden">
         <div class="approval-note" id="team-selection-notice" 
-     style="background:#22c55e;color:#000000;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
+     style="background:linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);border:1px solid rgba(89,125,158,0.26);color:#eef6ff;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
   
   ⏰ REGISTRATION IS STILL OPEN<br>
 
-  <span style="font-weight:700;font-size:14px;">
+  <span style="font-weight:700;font-size:14px;color:#dbeafe;">
     Team selection is available now and registration closes at 9:30 AM.
   </span>
 
@@ -792,6 +792,7 @@ async function sendScoresToSheet(players) {
     throw err;
   }
 }
+
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1576,6 +1577,8 @@ async function submitTeamScore(){
   .filter(p => p.name !== '' && p.score !== null && !Number.isNaN(p.score));
 
 console.log('sheetPlayersPayload:', sheetPlayersPayload);
+alert('Sending to sheet: ' + JSON.stringify(sheetPlayersPayload));
+
 if (!sheetPlayersPayload.length) {
   alert('No valid player scores were built for Google Sheets.');
   return;
@@ -1694,6 +1697,20 @@ await loadAllData();
           cardEl.querySelector('div').textContent = 'Registration is manually closed.';
         } else {
           cardEl.querySelector('div').textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
+        }
+      }
+
+      const teamNotice = document.getElementById('team-selection-notice');
+      if (teamNotice) {
+        const noticeText = teamNotice.querySelector('span');
+        if (registrationState.isOpen) {
+          teamNotice.innerHTML = `⏰ REGISTRATION IS STILL OPEN<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.</span>`;
+        } else if (registrationState.beforeOpen) {
+          teamNotice.innerHTML = `⏰ REGISTRATION NOT OPEN YET<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection will be available when registration opens at ${formatTime12(registrationState.openTime)}.</span>`;
+        } else if (registrationState.manuallyClosed) {
+          teamNotice.innerHTML = `⏰ REGISTRATION MANUALLY CLOSED<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection is unavailable until registration is reopened.</span>`;
+        } else {
+          teamNotice.innerHTML = `⏰ REGISTRATION CLOSED<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection closed at ${formatTime12(registrationState.cutoffTime)}.</span>`;
         }
       }
     }
@@ -1964,22 +1981,34 @@ await loadAllData();
       try {
         const openTime = document.getElementById('open-time').value;
         const cutoffTime = document.getElementById('cutoff-time').value;
+
+        const now = new Date();
+        const openDate = new Date(now);
+        const cutoffDate = new Date(now);
+        const [openH, openM] = openTime.split(':').map(Number);
+        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+        openDate.setHours(openH, openM, 0, 0);
+        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+        const shouldBeClosed = now < openDate || now > cutoffDate;
+
         appState.settings.open_time = openTime;
         appState.settings.cutoff_time = cutoffTime;
+        appState.settings.registration_closed = shouldBeClosed;
 
         if (!appState.settingsLiveEnabled) {
           renderHome();
           renderAdminPlayers();
           renderAdminTeams();
           updateSettingsView();
-          alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
+          updateAutoRefreshMode();
+          alert('Saved locally. Registration status updated from the new times.');
           return;
         }
 
         const updateResult = await db(
           window.supabaseClient
             .from('settings')
-            .update({ open_time: openTime, cutoff_time: cutoffTime })
+            .update({ open_time: openTime, cutoff_time: cutoffTime, registration_closed: shouldBeClosed })
             .eq('key', SETTINGS_KEY)
             .select(),
           'Save settings'
@@ -2001,7 +2030,7 @@ await loadAllData();
         renderAdminTeams();
         updateSettingsView();
         updateAutoRefreshMode();
-        alert('Saved!');
+        alert(shouldBeClosed ? 'Saved! Registration is now closed based on the new times.' : 'Saved! Registration is now open based on the new times.');
       } catch (err) {
         alert(`Could not save settings: ${formatError(err)}`);
       }
