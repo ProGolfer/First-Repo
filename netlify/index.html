@@ -770,19 +770,18 @@ const scoreDraft = {};
   }
 }
 
-
 async function sendScoresToSheet(players) {
   try {
     const payload = {
       date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
-      players: Array.isArray(players) ? players : []
+      players: Array.isArray(players) ? players : [],
+      ts: Date.now()
     };
 
-    console.log("Sending payload to Apps Script:", payload);
-
-    await fetch(APP_SCRIPT_URL, {
+    await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
       method: "POST",
       mode: "no-cors",
+      cache: "no-store",
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
       },
@@ -795,6 +794,7 @@ async function sendScoresToSheet(players) {
     throw err;
   }
 }
+
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
