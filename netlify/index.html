@@ -771,23 +771,29 @@ const scoreDraft = {};
 }
 
 async function sendScoresToSheet(players) {
-  const payload = {
-    date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
-    players: Array.isArray(players) ? players : [],
-    ts: Date.now()
-  };
+  try {
+    const payload = {
+      date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
+      players: Array.isArray(players) ? players : [],
+      ts: Date.now()
+    };
 
-  alert('Sending to sheet: ' + JSON.stringify(payload.players));
+    await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
+      method: "POST",
+      mode: "no-cors",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const body = new Blob(
-    [JSON.stringify(payload)],
-    { type: 'text/plain;charset=utf-8' }
-  );
-
-  const beaconOk = navigator.sendBeacon(
-    APP_SCRIPT_URL + `?ts=${Date.now()}`,
-    body
-  );
+    return true;
+  } catch (err) {
+    console.error("Sheet error:", err);
+    throw err;
+  }
+}
 
   if (!beaconOk) {
     await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
@@ -1590,7 +1596,7 @@ if (!sheetPlayersPayload.length) {
   alert('No valid player scores were built for Google Sheets.');
   return;
 }
-alert('ABOUT TO SEND TO GOOGLE SHEET');
+
     await sendScoresToSheet(sheetPlayersPayload);
 
 myTeamPlayers.forEach(p => {
