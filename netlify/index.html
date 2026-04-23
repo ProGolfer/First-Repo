@@ -1279,7 +1279,7 @@ let isTypingScores = false;
             return `
               <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="flex-direction:column;align-items:flex-start;gap:4px;">
                 <div class="name-row" style="font-weight:800;font-size:16px;color:#ffffff;">${p.name}${getYouBadge(p.name)}</div>
-                <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
+                <div style="font-size:13px;color:#ffffff;font-weight:500;">${teamText}</div>
               </li>
             `;
           }).join('') || '<li style="color:#999;">No approved players</li>';
