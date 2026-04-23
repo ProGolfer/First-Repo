@@ -702,12 +702,12 @@ const players = rows.slice(1).map(r => {
       last = r[i].trim();
       break;
     }
+  }
 
   return { name, avg, last };
 }).filter(p => p.name);
-}).filter(p => p.name);
 
- mount.innerHTML = `
+mount.innerHTML = `
   <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
     <div style="flex:1;">Player</div>
     <div style="width:60px;text-align:center;">Avg</div>
@@ -721,6 +721,7 @@ const players = rows.slice(1).map(r => {
       <div style="width:60px;text-align:center;">${p.last || '-'}</div>
     </div>
   `).join('')}
+`;
 `;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
