@@ -1017,15 +1017,16 @@ let isTypingScores = false;
 
     async function ensureBaseData() {
       const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
-      if (!teamsResult.data || teamsResult.data.length === 0) {
+      const existingTeamNumbers = new Set((teamsResult.data || [])
+        .map(t => Number(t.team_number || t.id))
+        .filter(n => !Number.isNaN(n)));
+      const missingTeams = [1,2,3,4,5,6,7,8]
+        .filter(n => !existingTeamNumbers.has(n))
+        .map(n => ({ team_number: n, team_name: `Team ${n}` }));
+
+      if (missingTeams.length) {
         try {
-          await db(window.supabaseClient.from('teams').insert([
-            { team_number: 1, team_name: 'Team 1' },
-            { team_number: 2, team_name: 'Team 2' },
-            { team_number: 3, team_name: 'Team 3' },
-            { team_number: 4, team_name: 'Team 4' },
-            { team_number: 5, team_name: 'Team 5' }
-          ]), 'Seed teams');
+          await db(window.supabaseClient.from('teams').insert(missingTeams), 'Seed missing teams');
         } catch (err) {
         }
       }
@@ -1270,7 +1271,9 @@ function renderCaptainTeamSelection() {
 
   box.classList.remove('hidden');
 
-  list.innerHTML = approvedPlayers.map(p => `
+  list.innerHTML = `
+    <div style="font-size:13px;color:#dbeafe;font-weight:800;margin-bottom:10px;">Teams available: ${teams.length}</div>
+    ${approvedPlayers.map(p => `
     <div style="display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
       <div>
         <div style="font-weight:900;color:#ffffff;">${p.name}${isCurrentPlayer(p) ? ' <span class="you-badge">YOU</span>' : ''}</div>
@@ -1285,7 +1288,8 @@ function renderCaptainTeamSelection() {
         `).join('')}
       </select>
     </div>
-  `).join('');
+  `).join('')}
+  `;
 }
 
 async function submitCaptainTeamSelections() {
@@ -1300,8 +1304,17 @@ async function submitCaptainTeamSelections() {
     for (const p of approvedPlayers) {
       const select = document.getElementById(`captain-team-select-${p.id}`);
       if (!select) continue;
+      if (!select.value) {
+        alert(`Select a team for ${p.name}.`);
+        return;
+      }
+    }
 
-      const nextTeam = select.value ? parseInt(select.value, 10) : null;
+    for (const p of approvedPlayers) {
+      const select = document.getElementById(`captain-team-select-${p.id}`);
+      if (!select) continue;
+
+      const nextTeam = parseInt(select.value, 10);
 
       await db(
         window.supabaseClient
@@ -1310,18 +1323,10 @@ async function submitCaptainTeamSelections() {
           .eq('id', p.id),
         'Captain assign player team'
       );
-
-      appState.players = appState.players.map(player =>
-        String(player.id) === String(p.id)
-          ? { ...player, team: nextTeam }
-          : player
-      );
     }
 
     persistTeamsSubmitted(true);
-    renderHome();
-    renderAdminTeams();
-    loadGameView();
+    await loadAllData();
     updateAutoRefreshMode();
 
     alert('Teams submitted successfully!');
