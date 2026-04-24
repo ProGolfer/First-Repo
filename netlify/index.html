@@ -483,6 +483,19 @@
 
   <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
 
+  <div id="captain-team-selection" class="players-section hidden">
+  <div class="players-header">
+    <h3>👑 Captain Team Selection</h3>
+  </div>
+  <div class="muted" style="margin:8px 0 12px;">
+    Captains can assign approved players to teams.
+  </div>
+  <div id="captain-team-selection-list"></div>
+  <button class="btn btn-success" onclick="submitCaptainTeamSelections()">
+    Submit Teams
+  </button>
+</div>
+
   <div id="pending-approval-bar" style="background:#1e293b;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
     <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
     <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
@@ -1228,6 +1241,97 @@ let isTypingScores = false;
       return `${h12}:${minutes} ${ampm}`;
     }
 
+function isCurrentUserAnyCaptain() {
+  return appState.teams.some(team => {
+    const captain = getCaptainForTeam(team.id);
+    return captain && isCurrentPlayer(captain);
+  });
+}
+
+function renderCaptainTeamSelection() {
+  const box = document.getElementById('captain-team-selection');
+  const list = document.getElementById('captain-team-selection-list');
+  if (!box || !list) return;
+
+  if (!isCurrentUserAnyCaptain()) {
+    box.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+
+  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+  const teams = getActiveTeams();
+
+  if (!approvedPlayers.length || !teams.length) {
+    box.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+
+  box.classList.remove('hidden');
+
+  list.innerHTML = approvedPlayers.map(p => `
+    <div style="display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
+      <div>
+        <div style="font-weight:900;color:#ffffff;">${p.name}${isCurrentPlayer(p) ? ' <span class="you-badge">YOU</span>' : ''}</div>
+        <div style="font-size:12px;color:#dbeafe;">${p.course || 'Cliffside Golf Club'}</div>
+      </div>
+      <select id="captain-team-select-${p.id}" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px;">
+        <option value="">No Team</option>
+        ${teams.map(t => `
+          <option value="${t.id}" ${String(p.team || '') === String(t.id) ? 'selected' : ''}>
+            ${getTeamName(t.id)}
+          </option>
+        `).join('')}
+      </select>
+    </div>
+  `).join('');
+}
+
+async function submitCaptainTeamSelections() {
+  try {
+    if (!isCurrentUserAnyCaptain()) {
+      alert('Only captains can submit teams.');
+      return;
+    }
+
+    const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+
+    for (const p of approvedPlayers) {
+      const select = document.getElementById(`captain-team-select-${p.id}`);
+      if (!select) continue;
+
+      const nextTeam = select.value ? parseInt(select.value, 10) : null;
+
+      await db(
+        window.supabaseClient
+          .from('players')
+          .update({ team: nextTeam })
+          .eq('id', p.id),
+        'Captain assign player team'
+      );
+
+      appState.players = appState.players.map(player =>
+        String(player.id) === String(p.id)
+          ? { ...player, team: nextTeam }
+          : player
+      );
+    }
+
+    persistTeamsSubmitted(true);
+    renderHome();
+    renderAdminTeams();
+    loadGameView();
+    updateAutoRefreshMode();
+
+    alert('Teams submitted successfully!');
+  } catch (err) {
+    alert(`Could not submit teams: ${formatError(err)}`);
+  }
+}
+
+  
+    
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
@@ -1293,7 +1397,8 @@ let isTypingScores = false;
 if (teamSelectionStatus) {
   teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(appState.settings.cutoff_time || '09:30')}.`;
 }
-
+renderCaptainTeamSelection();
+      
       const registrationState = getRegistrationState();
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
       if (registerBtn) {
