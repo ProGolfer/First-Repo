@@ -557,7 +557,7 @@
 
   <div class="tabs" style="grid-template-columns: 1fr 1fr;">
     <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
-    <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
+    <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Final Results</button>
   </div>
 
   <div id="tab-myteam">
@@ -618,11 +618,11 @@
 
       <div id="admin-teams" class="hidden">
         <div class="approval-note" id="team-selection-notice" 
-     style="background:linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);border:1px solid rgba(89,125,158,0.26);color:#eef6ff;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
+     style="background:#22c55e;color:#000000;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
   
   ⏰ REGISTRATION IS STILL OPEN<br>
 
-  <span style="font-weight:700;font-size:14px;color:#dbeafe;">
+  <span style="font-weight:700;font-size:14px;">
     Team selection is available now and registration closes at 9:30 AM.
   </span>
 
@@ -668,11 +668,11 @@
           <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
         </div>
 
-        <div class="admin-section" style="background:rgba(15,23,42,0.85); border:1px solid rgba(255,255,255,0.08);">
+        <div class="admin-section" style="background:linear-gradient(180deg, rgba(36,11,16,0.92) 0%, rgba(24,8,12,0.98) 100%);border:1px solid rgba(248,113,113,0.26);">
           <h3 style="margin-bottom:10px;color:#ffffff;font-weight:900;text-transform:uppercase;letter-spacing:.03em;">🗑️ Clear Team Score</h3>
           <div class="form-group">
             <label style="color:#dbeafe;font-weight:800;text-transform:uppercase;letter-spacing:.03em;">Select Team to Clear</label>
-            <select id="clear-team-select" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;">
+            <select id="clear-team-select" style="background:rgba(255,255,255,0.04);color:#eef6ff;border:1px solid rgba(121,151,178,.26);">
               <option value="">-- Select Team --</option>
             </select>
           </div>
@@ -792,6 +792,7 @@ async function sendScoresToSheet(players) {
     throw err;
   }
 }
+
 
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1006,15 +1007,12 @@ let isTypingScores = false;
       if (!teamsResult.data || teamsResult.data.length === 0) {
         try {
           await db(window.supabaseClient.from('teams').insert([
-  { team_number: 1, team_name: 'Team 1' },
-  { team_number: 2, team_name: 'Team 2' },
-  { team_number: 3, team_name: 'Team 3' },
-  { team_number: 4, team_name: 'Team 4' },
-  { team_number: 5, team_name: 'Team 5' },
-  { team_number: 6, team_name: 'Team 6' },
-  { team_number: 7, team_name: 'Team 7' },
-  { team_number: 8, team_name: 'Team 8' }
-]), 'Seed teams');
+            { team_number: 1, team_name: 'Team 1' },
+            { team_number: 2, team_name: 'Team 2' },
+            { team_number: 3, team_name: 'Team 3' },
+            { team_number: 4, team_name: 'Team 4' },
+            { team_number: 5, team_name: 'Team 5' }
+          ]), 'Seed teams');
         } catch (err) {
         }
       }
@@ -1282,7 +1280,7 @@ let isTypingScores = false;
             return `
               <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="flex-direction:column;align-items:flex-start;gap:4px;">
                 <div class="name-row" style="font-weight:800;font-size:16px;color:#ffffff;">${p.name}${getYouBadge(p.name)}</div>
-                <div style="font-size:13px;color:#ffffff;font-weight:500;">${teamText}</div>
+                <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
               </li>
             `;
           }).join('') || '<li style="color:#999;">No approved players</li>';
@@ -1319,6 +1317,160 @@ if (teamSelectionStatus) {
       document.getElementById('tab-myteam').classList.add('hidden');
       document.getElementById('tab-otherteams').classList.add('hidden');
       document.getElementById('tab-'+t).classList.remove('hidden');
+    }
+
+
+    function moneyFormat(amount) {
+      const rounded = Math.round((Number(amount) || 0) * 100) / 100;
+      return `$${rounded.toFixed(2).replace(/\.00$/, '')}`;
+    }
+
+    function getHighestScoreResult(teams, scoreGetter, potName, perPlayerEntry) {
+      const scored = teams
+        .map(team => ({ team, score: scoreGetter(team) }))
+        .filter(entry => entry.score !== null && entry.score !== undefined && !Number.isNaN(Number(entry.score)))
+        .map(entry => ({ team: entry.team, score: Number(entry.score) }));
+
+      if (!scored.length) {
+        return { potName, status: 'pending', winners: [], winningScore: null, perPlayerEntry };
+      }
+
+      const highest = Math.max(...scored.map(entry => entry.score));
+      const winners = scored.filter(entry => entry.score === highest);
+
+      return {
+        potName,
+        status: winners.length > 1 ? 'push' : 'winner',
+        winners,
+        winningScore: highest,
+        perPlayerEntry
+      };
+    }
+
+    function calculateMoneyGameResults(teams) {
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+      const totalPlayers = approvedPlayers.length;
+      const frontPot = totalPlayers * 5;
+      const backPot = totalPlayers * 5;
+      const totalPot = totalPlayers * 10;
+
+      const results = [
+        { key: 'front', label: 'Front 9', pot: frontPot, perPlayerEntry: 5, result: getHighestScoreResult(teams, getTeamFrontScore, 'Front 9', 5) },
+        { key: 'back', label: 'Back 9', pot: backPot, perPlayerEntry: 5, result: getHighestScoreResult(teams, getTeamBackScore, 'Back 9', 5) },
+        { key: 'total', label: 'Total', pot: totalPot, perPlayerEntry: 10, result: getHighestScoreResult(teams, getTeamScoreValue, 'Total', 10) }
+      ];
+
+      const playerPayouts = new Map();
+      approvedPlayers.forEach(p => {
+        playerPayouts.set(String(p.id), {
+          player: p,
+          payout: 0,
+          refundOnly: 0,
+          wins: []
+        });
+      });
+
+      results.forEach(part => {
+        if (part.result.status === 'push') {
+          approvedPlayers.forEach(p => {
+            const item = playerPayouts.get(String(p.id));
+            if (item) {
+              item.payout += part.perPlayerEntry;
+              item.refundOnly += part.perPlayerEntry;
+            }
+          });
+        } else if (part.result.status === 'winner') {
+          const winningTeam = part.result.winners[0].team;
+          const winningTeamPlayers = getApprovedPlayersForTeam(winningTeam.id);
+          const perWinningPlayer = winningTeamPlayers.length ? part.pot / winningTeamPlayers.length : 0;
+
+          winningTeamPlayers.forEach(p => {
+            const item = playerPayouts.get(String(p.id));
+            if (item) {
+              item.payout += perWinningPlayer;
+              item.wins.push(part.label);
+            }
+          });
+        }
+      });
+
+      return {
+        totalPlayers,
+        totalPot: totalPlayers * 20,
+        results,
+        playerPayouts: Array.from(playerPayouts.values()).sort((a, b) => {
+          if (b.payout !== a.payout) return b.payout - a.payout;
+          return (a.player.name || '').localeCompare(b.player.name || '');
+        })
+      };
+    }
+
+    function renderMoneyGameResults(teams) {
+      const money = calculateMoneyGameResults(teams);
+
+      function renderPotCard(part) {
+        const result = part.result;
+
+        if (result.status === 'push') {
+          const tiedTeams = result.winners.map(w => getTeamName(w.team.id)).join(', ');
+          return `
+            <div class="team-card" style="border-color:rgba(245,158,11,.35);">
+              <div style="font-size:16px;font-weight:900;color:#ffffff;margin-bottom:6px;">${part.label} — ${moneyFormat(part.pot)}</div>
+              <div style="font-size:22px;font-weight:900;color:#fbbf24;">PUSH</div>
+              <div class="muted" style="margin-top:6px;color:#e5edf5;">${moneyFormat(part.perPlayerEntry)} returned per player</div>
+              <div class="muted" style="margin-top:6px;color:#e5edf5;">Tie at ${result.winningScore}: ${tiedTeams}</div>
+            </div>
+          `;
+        }
+
+        if (result.status === 'winner') {
+          const winningTeam = result.winners[0].team;
+          const winningTeamPlayers = getApprovedPlayersForTeam(winningTeam.id);
+          const perWinningPlayer = winningTeamPlayers.length ? part.pot / winningTeamPlayers.length : 0;
+          return `
+            <div class="team-card current-team">
+              <div style="font-size:16px;font-weight:900;color:#ffffff;margin-bottom:6px;">${part.label} — ${moneyFormat(part.pot)}</div>
+              <div style="font-size:22px;font-weight:900;color:#7dff9f;">🏆 ${getTeamName(winningTeam.id)} wins</div>
+              <div class="muted" style="margin-top:6px;color:#e5edf5;">Score: ${result.winningScore}</div>
+              <div style="margin-top:8px;color:#ffffff;font-weight:900;">Team: ${moneyFormat(part.pot)} | Per Player: ${moneyFormat(perWinningPlayer)}</div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="team-card">
+            <div style="font-size:16px;font-weight:900;color:#ffffff;">${part.label} — ${moneyFormat(part.pot)}</div>
+            <div class="muted" style="margin-top:6px;">Waiting on scores</div>
+          </div>
+        `;
+      }
+
+      const payoutRows = money.playerPayouts.map(item => {
+        const teamName = item.player.team ? getTeamName(item.player.team) : 'No Team';
+        const emoji = item.payout > item.refundOnly ? '💰' : (item.payout > 0 ? '💵' : '😢');
+        const label = item.payout > item.refundOnly
+          ? moneyFormat(item.payout)
+          : (item.payout > 0 ? `${moneyFormat(item.payout)} back` : '$0');
+
+        return `
+          <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#eef6ff;">
+            <div style="font-weight:800;">${emoji} ${item.player.name} <span class="muted" style="color:#9eb6c9;">(${teamName})</span></div>
+            <div style="font-weight:900;color:#ffffff;">${label}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="admin-section" style="max-width:600px;margin:0 auto 18px auto;background:linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);border:1px solid rgba(99,222,131,.28);">
+          <div style="font-size:22px;font-weight:900;color:#ffffff;margin-bottom:8px;">💰 MONEY GAME RESULTS</div>
+          <div class="muted" style="margin-bottom:14px;color:#e5edf5;">Players: ${money.totalPlayers} | Total Pot: ${moneyFormat(money.totalPot)}</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:10px;">
+            ${money.results.map(renderPotCard).join('')}
+          </div>
+          <div style="margin-top:16px;font-size:17px;font-weight:900;color:#ffffff;">Player Payouts</div>
+          <div style="margin-top:6px;">${payoutRows || '<div class="muted">No player payouts yet</div>'}</div>
+        </div>
+      `;
     }
 
     function loadGameView() {
@@ -1410,23 +1562,14 @@ if (teamSelectionStatus) {
         }
       }
 
-    const otherTeamsContainer = document.getElementById('tab-otherteams');
-const teamsToShow = getScoringTeams();
-
-if (!myTeamSubmitted) {
-  otherTeamsContainer.innerHTML = `
-    <div class="admin-section" style="max-width:600px;margin:20px auto;">
-      <strong>Scores are locked.</strong>
-      <div class="muted" style="margin-top:8px;">
-        Submit your team score first to unlock other team scores.
-      </div>
-    </div>
-  `;
-} else {
-  const rankedTeams = teamsToShow
-    .filter(team => hasTeamSubmittedToday(team))
-    .map(team => ({ team, score: getTeamScoreValue(team) ?? 999999 }))
-    .sort((a, b) => a.score - b.score);
+      const otherTeamsContainer = document.getElementById('tab-otherteams');
+      const teamsToShow = getScoringTeams();
+      if (!allSubmitted) {
+        otherTeamsContainer.innerHTML = '<div class="admin-section" style="max-width:600px;margin:20px auto;"><strong>Final Results are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before money game results appear here.</div></div>';
+      } else {
+        const rankedTeams = teamsToShow
+          .map(team => ({ team, score: getTeamScoreValue(team) ?? -999999 }))
+          .sort((a, b) => b.score - a.score);
 
         function getPlaceMeta(index, total) {
           if (index === 0) return '🥇 1st Place';
@@ -1435,6 +1578,8 @@ if (!myTeamSubmitted) {
           if (index === total - 1) return '💩 Last Place';
           return `#${index + 1}`;
         }
+
+        const moneyResults = renderMoneyGameResults(teamsToShow);
 
         const others = rankedTeams.map((entry, index) => {
           const team = entry.team;
@@ -1450,23 +1595,23 @@ if (!myTeamSubmitted) {
             </div>
             <div class="muted" style="margin-bottom:10px;">Captain: ${captain ? `${captain.name}${isCurrentPlayer(captain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Front</div>
-                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamFrontScore(team) ?? '-'}</div>
+              <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
+                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Front</div>
+                <div style="font-size:22px;font-weight:800;color:#ffffff;">${getTeamFrontScore(team) ?? '-'}</div>
               </div>
-              <div style="background:#f4f4f4;border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Back</div>
-                <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamBackScore(team) ?? '-'}</div>
+              <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
+                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Back</div>
+                <div style="font-size:22px;font-weight:800;color:#ffffff;">${getTeamBackScore(team) ?? '-'}</div>
               </div>
-              <div style="background:#eef7ee;border-radius:10px;padding:10px;border:2px solid #cfe3d0;">
-                <div style="font-size:12px;font-weight:800;color:#666;margin-bottom:4px;">Total</div>
-                <div style="font-size:24px;font-weight:900;color:#143b2f;">${teamScore ?? '-'}</div>
+              <div style="background:rgba(34,197,94,0.12);border-radius:10px;padding:10px;border:1px solid rgba(99,222,131,.28);">
+                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Total</div>
+                <div style="font-size:24px;font-weight:900;color:#ffffff;">${teamScore ?? '-'}</div>
               </div>
             </div>
             <div>${players.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div>
           </div>`;
         }).join('');
-        otherTeamsContainer.innerHTML = others || '<div class="muted">No teams yet</div>';
+        otherTeamsContainer.innerHTML = moneyResults + (others || '<div class="muted">No teams yet</div>');
       }
     }
 function getScoreDraftKey(teamId, playerId) {
@@ -1709,20 +1854,6 @@ await loadAllData();
           cardEl.querySelector('div').textContent = 'Registration is manually closed.';
         } else {
           cardEl.querySelector('div').textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
-        }
-      }
-
-      const teamNotice = document.getElementById('team-selection-notice');
-      if (teamNotice) {
-        const noticeText = teamNotice.querySelector('span');
-        if (registrationState.isOpen) {
-          teamNotice.innerHTML = `⏰ REGISTRATION IS STILL OPEN<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.</span>`;
-        } else if (registrationState.beforeOpen) {
-          teamNotice.innerHTML = `⏰ REGISTRATION NOT OPEN YET<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection will be available when registration opens at ${formatTime12(registrationState.openTime)}.</span>`;
-        } else if (registrationState.manuallyClosed) {
-          teamNotice.innerHTML = `⏰ REGISTRATION MANUALLY CLOSED<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection is unavailable until registration is reopened.</span>`;
-        } else {
-          teamNotice.innerHTML = `⏰ REGISTRATION CLOSED<br><span style="font-weight:700;font-size:14px;color:#dbeafe;">Team selection closed at ${formatTime12(registrationState.cutoffTime)}.</span>`;
         }
       }
     }
@@ -1993,34 +2124,22 @@ await loadAllData();
       try {
         const openTime = document.getElementById('open-time').value;
         const cutoffTime = document.getElementById('cutoff-time').value;
-
-        const now = new Date();
-        const openDate = new Date(now);
-        const cutoffDate = new Date(now);
-        const [openH, openM] = openTime.split(':').map(Number);
-        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-        openDate.setHours(openH, openM, 0, 0);
-        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-        const shouldBeClosed = now < openDate || now > cutoffDate;
-
         appState.settings.open_time = openTime;
         appState.settings.cutoff_time = cutoffTime;
-        appState.settings.registration_closed = shouldBeClosed;
 
         if (!appState.settingsLiveEnabled) {
           renderHome();
           renderAdminPlayers();
           renderAdminTeams();
           updateSettingsView();
-          updateAutoRefreshMode();
-          alert('Saved locally. Registration status updated from the new times.');
+          alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
           return;
         }
 
         const updateResult = await db(
           window.supabaseClient
             .from('settings')
-            .update({ open_time: openTime, cutoff_time: cutoffTime, registration_closed: shouldBeClosed })
+            .update({ open_time: openTime, cutoff_time: cutoffTime })
             .eq('key', SETTINGS_KEY)
             .select(),
           'Save settings'
@@ -2042,7 +2161,7 @@ await loadAllData();
         renderAdminTeams();
         updateSettingsView();
         updateAutoRefreshMode();
-        alert(shouldBeClosed ? 'Saved! Registration is now closed based on the new times.' : 'Saved! Registration is now open based on the new times.');
+        alert('Saved!');
       } catch (err) {
         alert(`Could not save settings: ${formatError(err)}`);
       }
