@@ -685,7 +685,7 @@
           <h3 style="margin-bottom:10px;color:#ffffff;font-weight:900;text-transform:uppercase;letter-spacing:.03em;">🗑️ Clear Team Score</h3>
           <div class="form-group">
             <label style="color:#dbeafe;font-weight:800;text-transform:uppercase;letter-spacing:.03em;">Select Team to Clear</label>
-            <select id="clear-team-select" style="background:rgba(255,255,255,0.04);color:#eef6ff;border:1px solid rgba(121,151,178,.26);">
+            <select id="clear-team-select" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px;">
               <option value="">-- Select Team --</option>
             </select>
           </div>
@@ -1017,18 +1017,18 @@ let isTypingScores = false;
 
     async function ensureBaseData() {
       const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
-      const existingTeamNumbers = new Set((teamsResult.data || [])
-        .map(t => Number(t.team_number || t.id))
-        .filter(n => !Number.isNaN(n)));
-      const missingTeams = [1,2,3,4,5,6,7,8]
-        .filter(n => !existingTeamNumbers.has(n))
-        .map(n => ({ team_number: n, team_name: `Team ${n}` }));
-
-      if (missingTeams.length) {
-        try {
-          await db(window.supabaseClient.from('teams').insert(missingTeams), 'Seed missing teams');
-        } catch (err) {
+      try {
+        const existingTeamNumbers = new Set((teamsResult.data || []).map(t => Number(t.team_number || t.id)));
+        const missingTeams = [];
+        for (let n = 1; n <= 8; n++) {
+          if (!existingTeamNumbers.has(n)) {
+            missingTeams.push({ team_number: n, team_name: `Team ${n}` });
+          }
         }
+        if (missingTeams.length) {
+          await db(window.supabaseClient.from('teams').insert(missingTeams), 'Seed missing teams');
+        }
+      } catch (err) {
       }
 
       const settingsResult = await db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings');
@@ -1271,9 +1271,7 @@ function renderCaptainTeamSelection() {
 
   box.classList.remove('hidden');
 
-  list.innerHTML = `
-    <div style="font-size:13px;color:#dbeafe;font-weight:800;margin-bottom:10px;">Teams available: ${teams.length}</div>
-    ${approvedPlayers.map(p => `
+  list.innerHTML = approvedPlayers.map(p => `
     <div style="display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
       <div>
         <div style="font-weight:900;color:#ffffff;">${p.name}${isCurrentPlayer(p) ? ' <span class="you-badge">YOU</span>' : ''}</div>
@@ -1288,8 +1286,7 @@ function renderCaptainTeamSelection() {
         `).join('')}
       </select>
     </div>
-  `).join('')}
-  `;
+  `).join('');
 }
 
 async function submitCaptainTeamSelections() {
@@ -1300,21 +1297,21 @@ async function submitCaptainTeamSelections() {
     }
 
     const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-
-    for (const p of approvedPlayers) {
+    const missingTeamPlayers = approvedPlayers.filter(p => {
       const select = document.getElementById(`captain-team-select-${p.id}`);
-      if (!select) continue;
-      if (!select.value) {
-        alert(`Select a team for ${p.name}.`);
-        return;
-      }
+      return select && !select.value;
+    });
+
+    if (missingTeamPlayers.length) {
+      alert(`Select a team for: ${missingTeamPlayers.map(p => p.name).join(', ')}`);
+      return;
     }
 
     for (const p of approvedPlayers) {
       const select = document.getElementById(`captain-team-select-${p.id}`);
       if (!select) continue;
 
-      const nextTeam = parseInt(select.value, 10);
+      const nextTeam = select.value ? parseInt(select.value, 10) : null;
 
       await db(
         window.supabaseClient
@@ -1323,10 +1320,18 @@ async function submitCaptainTeamSelections() {
           .eq('id', p.id),
         'Captain assign player team'
       );
+
+      appState.players = appState.players.map(player =>
+        String(player.id) === String(p.id)
+          ? { ...player, team: nextTeam }
+          : player
+      );
     }
 
     persistTeamsSubmitted(true);
-    await loadAllData();
+    renderHome();
+    renderAdminTeams();
+    loadGameView();
     updateAutoRefreshMode();
 
     alert('Teams submitted successfully!');
@@ -2051,13 +2056,13 @@ await loadAllData();
           const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
           const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
           return `
-            <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
+            <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:rgba(15,23,42,0.85);padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;border:1px solid rgba(255,255,255,0.08);">
               <div style="min-width:110px;">
-                <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
-                <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
+                <div class="name-row" style="font-weight:900;color:#ffffff;">${p.name}${getYouBadge(p.name)}</div>
+                <div style="color:#ffffff;font-size:13px;">${p.course || 'Cliffside Golf Club'}</div>
               </div>
               <div style="flex:1;min-width:140px;">
-                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
+                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);width:100%;background:#0f172a;color:#ffffff;">
                   <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
                   ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
                 </select>
