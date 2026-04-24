@@ -1726,15 +1726,23 @@ async function submitTeamScore(){
       'Submit team score'
     );
 
+    // Save each player's submitted score so the Leaderboard updates immediately.
+    for (const p of playerScores) {
+      await db(
+        window.supabaseClient
+          .from('players')
+          .update({ score: p.score })
+          .eq('id', p.id),
+        `Update player score for ${p.name}`
+      );
+    }
+
    const sheetPlayersPayload = playerScores
   .map(p => ({
     name: String(p.name || '').trim(),
     score: p.score
   }))
   .filter(p => p.name !== '' && p.score !== null && !Number.isNaN(p.score));
-
-console.log('sheetPlayersPayload:', sheetPlayersPayload);
-alert('Sending to sheet: ' + JSON.stringify(sheetPlayersPayload));
 
 if (!sheetPlayersPayload.length) {
   alert('No valid player scores were built for Google Sheets.');
@@ -1757,31 +1765,48 @@ await loadAllData();
   }
 }
     
-    function renderLeaderboard() {
-  const ranked = appState.players
-    .filter(p => p.status === 'approved')
-    .map(p => {
-      const avg = p.avg !== null && p.avg !== undefined && p.avg !== '' ? parseFloat(p.avg) : null;
-      const last = p.score !== null && p.score !== undefined && p.score !== '' ? parseFloat(p.score) : null;
-      return { ...p, avg, last };
-    })
-    .sort((a, b) => {
-      if (a.avg === null && b.avg === null) return (a.name || '').localeCompare(b.name || '');
-      if (a.avg === null) return 1;
-      if (b.avg === null) return -1;
-      return a.avg - b.avg;
-    });
+    function getLeaderboardEmoji(place, score, avg) {
+      if (avg !== null && score !== null && score >= avg + 5) return '💩';
+      if (place === 1) return '🥇';
+      if (place === 2) return '🥈';
+      if (place === 3) return '🥉';
+      return '';
+    }
 
-       document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
-    <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
-      <span>
-        ${idx + 1}. ${p.name}
-        ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}
-      </span>
-      <span>${p.avg !== null ? p.avg.toFixed(2) : '-'}</span>
-    </li>
-  `).join('') || '<li style="color:#999;">No approved players yet</li>';
-}
+    function renderLeaderboard() {
+      const ranked = appState.players
+        .filter(p => p.status === 'approved')
+        .map(p => {
+          const score = p.score !== null && p.score !== undefined && p.score !== '' ? parseFloat(p.score) : null;
+          const avg = p.avg !== null && p.avg !== undefined && p.avg !== '' ? parseFloat(p.avg) : null;
+          return { ...p, score, avg };
+        })
+        .filter(p => p.score !== null && !Number.isNaN(p.score))
+        .sort((a, b) => {
+          if (a.score === b.score) return (a.name || '').localeCompare(b.name || '');
+          return a.score - b.score;
+        });
+
+      const leaderboardList = document.getElementById('leaderboard-list');
+      if (!leaderboardList) return;
+
+      leaderboardList.innerHTML = ranked.map((p, idx) => {
+        const place = idx + 1;
+        const emoji = getLeaderboardEmoji(place, p.score, p.avg);
+        const avgText = p.avg !== null && !Number.isNaN(p.avg) ? `Avg ${p.avg.toFixed(2)}` : 'Avg -';
+
+        return `
+          <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
+            <span>
+              ${emoji ? `${emoji} ` : ''}${place}. ${p.name}
+              ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}
+              ${p.avg !== null && p.score >= p.avg + 5 ? '<span style="font-size:12px;color:#fbbf24;font-weight:900;margin-left:6px;">5+ over avg</span>' : ''}
+            </span>
+            <span style="font-weight:900;">${p.score.toFixed(0)} <small style="display:block;color:#9eb6c9;font-weight:700;">${avgText}</small></span>
+          </li>
+        `;
+      }).join('') || '<li style="color:#999;">No player scores submitted yet</li>';
+    }
 
 
 
