@@ -2070,7 +2070,7 @@ await loadAllData();
               <div style="flex:1;min-width:180px;">
                 <div class="captain-select-wrap">
                   <label>👑 Captain Control</label>
-                  <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)" ${!playerTeam ? 'disabled' : ''}>
+                <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)">
                     <option value="">-- Choose Role --</option>
                     <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>👑 Make Captain</option>
                     <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Player Only</option>
