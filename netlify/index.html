@@ -523,7 +523,7 @@
       6:00 AM - 9:30 AM
     </div>
 
-<div id="registration-status-banner" style="margin-top:10px;background:#22c55e;color:#000000;font-weight:900;font-size:16px;padding:10px;border-radius:10px;">
+<div id="registration-open-status" style="margin-top:10px;background:#22c55e;color:#000000;font-weight:900;font-size:16px;padding:10px;border-radius:10px;">
   ⏰ Registration is OPEN
 </div>
 
@@ -648,7 +648,7 @@
               <option value="1">1 Team</option>
               <option value="2">2 Teams</option>
               <option value="3">3 Teams</option>
-              <option value="4" selected>4 Teams</option>
+              <option value="4">4 Teams</option>
               <option value="5">5 Teams</option>
               <option value="6">6 Teams</option>
               <option value="7">7 Teams</option>
@@ -662,6 +662,10 @@
         <div id="team-assignment-list"></div>
 
         <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
+
+        <div id="teams-submitted-status" class="admin-section hidden" style="background:linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);border:1px solid rgba(34,197,94,0.28);color:#ffffff;font-weight:900;text-align:center;">
+          ✅ Teams have been submitted.
+        </div>
 
         <div class="section-title">Teams</div>
         <div id="teams-container"></div>
@@ -710,123 +714,56 @@ const scoreDraft = {};
     const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
+    const TEAMS_COUNT_KEY = 'golf_money_game_num_teams';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
- function parseCsvRows(csvText) {
-  const rows = [];
-  let row = [];
-  let cell = '';
-  let inQuotes = false;
 
-  for (let i = 0; i < csvText.length; i++) {
-    const char = csvText[i];
-    const next = csvText[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        cell += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      row.push(cell.trim());
-      cell = '';
-    } else if ((char === '\n' || char === '\r') && !inQuotes) {
-      if (char === '\r' && next === '\n') i++;
-      row.push(cell.trim());
-      if (row.some(value => value !== '')) rows.push(row);
-      row = [];
-      cell = '';
-    } else {
-      cell += char;
-    }
-  }
-
-  row.push(cell.trim());
-  if (row.some(value => value !== '')) rows.push(row);
-  return rows;
-}
-
-function normalizePlayerNameForSheet(name) {
-  return String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-async function loadPlayerHistory() {
+ async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
-  if (!mount) return [];
+  if (!mount) return;
 
   try {
-    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`Sheet CSV failed: ${res.status}`);
-
+    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
     const csv = await res.text();
-    const rows = parseCsvRows(csv);
+
+    const rows = csv
+      .trim()
+      .split('\n')
+      .map(r => r.split(',').map(cell => (cell || '').trim()));
 
     if (!rows.length || rows.length < 2) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return [];
+      return;
     }
 
-    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
-    let avgIndex = header.findIndex(h => {
-      const clean = String(h || '').replace(/[^a-z]/gi, '').toLowerCase();
-      return clean === 'avg' || clean === 'average' || clean === 'averages';
-    });
+    const header = rows[0];
+    const avgIndex = header.findIndex(h => h === 'Avg');
 
-    // Fallback: if Google Sheets exports the Avg header weird or blank,
-    // use the last column as Avg. Your sheet layout keeps Avg at the far right.
     if (avgIndex === -1) {
-      avgIndex = header.length - 1;
+      mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
+      return;
     }
 
-    if (avgIndex < 2) {
-      mount.innerHTML = '<div style="padding:8px 0;">Player averages unavailable</div>';
-      return [];
-    }
-
-    const sheetPlayers = rows.slice(1).map(r => {
+    const players = rows.slice(1).map(r => {
       const name = (r[0] || '').trim();
-      const avgRaw = (r[avgIndex] || '').trim();
-      const avgNumber = avgRaw !== '' && !Number.isNaN(parseFloat(avgRaw)) ? parseFloat(avgRaw) : null;
+      const avg = (r[avgIndex] || '').trim();
 
       let last = '';
       for (let i = avgIndex - 1; i >= 2; i--) {
-        const value = (r[i] || '').trim();
-        if (value !== '' && !Number.isNaN(parseFloat(value))) {
-          last = value;
+        if ((r[i] || '').trim() !== '') {
+          last = (r[i] || '').trim();
           break;
         }
       }
 
-      return {
-        name,
-        key: normalizePlayerNameForSheet(name),
-        avg: avgNumber,
-        avgText: avgNumber !== null ? avgNumber.toFixed(2) : '',
-        last
-      };
+      return { name, avg, last };
     }).filter(p => p.name);
 
-    const sheetByName = new Map(sheetPlayers.map(p => [p.key, p]));
-    appState.players = appState.players.map(p => {
-      const match = sheetByName.get(normalizePlayerNameForSheet(p.name));
-      if (!match) return { ...p, avg: null, sheetLast: '' };
-      return { ...p, avg: match.avg, sheetLast: match.last };
-    });
-
-    if (!sheetPlayers.length) {
+    if (!players.length) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return [];
+      return;
     }
-
-    sheetPlayers.sort((a, b) => {
-      if (a.avg === null && b.avg === null) return a.name.localeCompare(b.name);
-      if (a.avg === null) return 1;
-      if (b.avg === null) return -1;
-      return a.avg - b.avg;
-    });
 
     mount.innerHTML = `
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
@@ -835,20 +772,17 @@ async function loadPlayerHistory() {
         <div style="width:60px;text-align:center;">Last</div>
       </div>
 
-      ${sheetPlayers.map(p => `
+      ${players.map(p => `
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
           <div style="flex:1;font-weight:800;">${p.name}</div>
-          <div style="width:60px;text-align:center;font-weight:900;">${p.avgText || '-'}</div>
+          <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
           <div style="width:60px;text-align:center;">${p.last || '-'}</div>
         </div>
       `).join('')}
     `;
-
-    return sheetPlayers;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
-    return [];
   }
 }
 
@@ -1020,6 +954,11 @@ let isTypingScores = false;
     function loadDeviceState() {
       appState.myPlayerName = localStorage.getItem(DEVICE_PLAYER_KEY) || '';
       appState.teamsSubmitted = localStorage.getItem(TEAMS_SUBMITTED_KEY) === 'true';
+      const savedNumTeams = parseInt(localStorage.getItem(TEAMS_COUNT_KEY) || '', 10);
+      if (!Number.isNaN(savedNumTeams) && savedNumTeams >= 1) {
+        appState.numTeams = savedNumTeams;
+        appState.selectedNumTeams = savedNumTeams;
+      }
       ensureDeviceId();
     }
 
@@ -1149,7 +1088,6 @@ let isTypingScores = false;
         };
       }
 
-      await loadPlayerHistory();
       renderHome();
       renderAdminPlayers();
       renderAdminTeams();
@@ -1477,43 +1415,34 @@ async function submitCaptainTeamSelections() {
       if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
 
       const registrationState = getRegistrationState();
-      const registrationBanner = document.getElementById('registration-status-banner');
       const teamSelectionStatus = document.getElementById('team-selection-status');
+      const registrationOpenBox = document.getElementById('registration-open-status');
 
-      if (registrationBanner) {
+      if (registrationOpenBox && teamSelectionStatus) {
         if (registrationState.manuallyClosed) {
-          registrationBanner.textContent = '⛔ Registration is CLOSED';
-          registrationBanner.style.background = '#ef4444';
-          registrationBanner.style.color = '#ffffff';
-        } else if (registrationState.beforeOpen) {
-          registrationBanner.textContent = `⏳ Registration opens at ${formatTime12(registrationState.openTime)}`;
-          registrationBanner.style.background = '#facc15';
-          registrationBanner.style.color = '#000000';
-        } else if (registrationState.afterCutoff) {
-          registrationBanner.textContent = '⛔ Registration is CLOSED';
-          registrationBanner.style.background = '#ef4444';
-          registrationBanner.style.color = '#ffffff';
-        } else {
-          registrationBanner.textContent = '⏰ Registration is OPEN';
-          registrationBanner.style.background = '#22c55e';
-          registrationBanner.style.color = '#000000';
-        }
-      }
-
-      if (teamSelectionStatus) {
-        if (registrationState.manuallyClosed) {
+          registrationOpenBox.textContent = '⛔ Registration is CLOSED';
+          registrationOpenBox.style.background = '#ef4444';
+          registrationOpenBox.style.color = '#ffffff';
           teamSelectionStatus.textContent = 'Registration is manually closed.';
         } else if (registrationState.beforeOpen) {
+          registrationOpenBox.textContent = `⏳ Opens at ${formatTime12(registrationState.openTime)}`;
+          registrationOpenBox.style.background = '#facc15';
+          registrationOpenBox.style.color = '#000000';
           teamSelectionStatus.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
         } else if (registrationState.afterCutoff) {
+          registrationOpenBox.textContent = '⛔ Registration is CLOSED';
+          registrationOpenBox.style.background = '#ef4444';
+          registrationOpenBox.style.color = '#ffffff';
           teamSelectionStatus.textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
         } else {
+          registrationOpenBox.textContent = '⏰ Registration is OPEN';
+          registrationOpenBox.style.background = '#22c55e';
+          registrationOpenBox.style.color = '#000000';
           teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
         }
       }
 
       renderCaptainTeamSelection();
-      if (typeof updatePersonalPlayerStatus === 'function') updatePersonalPlayerStatus();
 
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
       if (registerBtn) {
@@ -1538,7 +1467,6 @@ async function submitCaptainTeamSelections() {
       document.getElementById('tab-otherteams').classList.add('hidden');
       document.getElementById('tab-'+t).classList.remove('hidden');
     }
-
 
     function moneyFormat(amount) {
       const rounded = Math.round((Number(amount) || 0) * 100) / 100;
@@ -2105,9 +2033,26 @@ await loadAllData();
 
     async function changeTeam(id, teamId){
       try {
+        const player = appState.players.find(p => String(p.id) === String(id));
+        const oldTeam = player?.team ?? null;
         const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
+
         await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', id), 'Change team');
         appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, team: nextTeam } : p);
+
+        if (oldTeam && String(oldTeam) !== String(nextTeam)) {
+          const oldTeamRow = appState.teams.find(t => String(t.id) === String(oldTeam));
+          if (oldTeamRow && String(oldTeamRow.captain_id) === String(id)) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', oldTeam), 'Clear old captain');
+            appState.teams = appState.teams.map(t => String(t.id) === String(oldTeam) ? { ...t, captain_id: null } : t);
+          }
+        }
+
+        if (nextTeam && player?.is_captain) {
+          await db(window.supabaseClient.from('teams').update({ captain_id: id }).eq('id', nextTeam), 'Set captain after team change');
+          appState.teams = appState.teams.map(t => String(t.id) === String(nextTeam) ? { ...t, captain_id: id } : t);
+        }
+
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -2154,6 +2099,14 @@ await loadAllData();
       const numTeamsSelect = document.getElementById('num-teams');
       if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
 
+      const teamsSubmittedStatus = document.getElementById('teams-submitted-status');
+      if (teamsSubmittedStatus) {
+        teamsSubmittedStatus.classList.toggle('hidden', !appState.teamsSubmitted);
+        teamsSubmittedStatus.innerHTML = appState.teamsSubmitted
+          ? `✅ Teams have been submitted. Current setup: ${appState.numTeams || 4} teams.`
+          : '';
+      }
+
       const teamAssignmentList = document.getElementById('team-assignment-list');
       if (teamAssignmentList) {
         teamAssignmentList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
@@ -2177,8 +2130,8 @@ await loadAllData();
                   <label>👑 Captain Control</label>
                 <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)">
                     <option value="">-- Choose Role --</option>
-                    <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>👑 Make Captain</option>
-                    <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Player Only</option>
+                    <option value="yes" ${(currentCaptainId === String(p.id) || p.is_captain) ? 'selected' : ''}>👑 Make Captain</option>
+                    <option value="no" ${(currentCaptainId !== String(p.id) && !p.is_captain) ? 'selected' : ''}>Player Only</option>
                   </select>
                 </div>
               </div>
@@ -2249,6 +2202,9 @@ await loadAllData();
 
     function submitNumTeams() {
       appState.numTeams = appState.selectedNumTeams || 4;
+      appState.selectedNumTeams = appState.numTeams;
+      localStorage.setItem(TEAMS_COUNT_KEY, String(appState.numTeams));
+
       const allowedTeamIds = new Set(
         appState.teams
           .slice()
@@ -2256,9 +2212,11 @@ await loadAllData();
           .slice(0, appState.numTeams)
           .map(t => String(t.id))
       );
+
       appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
       appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
       renderAdminTeams();
+      alert(`Number of teams set to ${appState.numTeams}.`);
     }
 
     function submitTeams() {
@@ -2272,18 +2230,37 @@ await loadAllData();
     async function setCaptainFromPlayerRow(playerId, value) {
       try {
         const player = appState.players.find(p => String(p.id) === String(playerId));
-        if (!player || !player.team) return;
-        const teamId = player.team;
-        if (value === 'yes') {
-          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
-          appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
-        } else {
-          const team = appState.teams.find(t => String(t.id) === String(teamId));
-          if (team && String(team.captain_id) === String(playerId)) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
+        if (!player) return;
+
+        const makeCaptain = value === 'yes';
+
+        await db(
+          window.supabaseClient
+            .from('players')
+            .update({ is_captain: makeCaptain })
+            .eq('id', playerId),
+          'Update player captain flag'
+        );
+
+        appState.players = appState.players.map(p =>
+          String(p.id) === String(playerId) ? { ...p, is_captain: makeCaptain } : p
+        );
+
+        if (player.team) {
+          const teamId = player.team;
+
+          if (makeCaptain) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
+            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
+          } else {
+            const team = appState.teams.find(t => String(t.id) === String(teamId));
+            if (team && String(team.captain_id) === String(playerId)) {
+              await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
+              appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
+            }
           }
         }
+
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
