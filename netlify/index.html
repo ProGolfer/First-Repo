@@ -737,11 +737,18 @@ const scoreDraft = {};
       return;
     }
 
-    const header = rows[0];
-    const avgIndex = header.findIndex(h => h === 'Avg');
+    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
+    let avgIndex = header.findIndex(h => {
+      const clean = String(h || '').replace(/[^a-z]/gi, '').toLowerCase();
+      return clean === 'avg' || clean === 'average' || clean === 'averages';
+    });
 
     if (avgIndex === -1) {
-      mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
+      avgIndex = header.length - 1;
+    }
+
+    if (avgIndex < 2) {
+      mount.innerHTML = '<div style="padding:8px 0;">Player averages unavailable</div>';
       return;
     }
 
@@ -1114,8 +1121,11 @@ let isTypingScores = false;
 
     function getCaptainForTeam(teamId) {
       const team = appState.teams.find(t => String(t.id) === String(teamId));
-      if (!team?.captain_id) return null;
-      return appState.players.find(p => String(p.id) === String(team.captain_id)) || null;
+      if (team?.captain_id) {
+        const captainByTeam = appState.players.find(p => String(p.id) === String(team.captain_id));
+        if (captainByTeam) return captainByTeam;
+      }
+      return appState.players.find(p => String(p.team) === String(teamId) && p.is_captain) || null;
     }
 
     function isTodayDateString(value) {
@@ -1253,6 +1263,9 @@ let isTypingScores = false;
     }
 
 function isCurrentUserAnyCaptain() {
+  const currentPlayer = appState.players.find(p => isCurrentPlayer(p));
+  if (currentPlayer && currentPlayer.is_captain) return true;
+
   return appState.teams.some(team => {
     const captain = getCaptainForTeam(team.id);
     return captain && isCurrentPlayer(captain);
@@ -2113,6 +2126,7 @@ await loadAllData();
           const playerTeam = p.team ?? '';
           const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
           const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
+          const isCaptainSelected = !!p.is_captain || currentCaptainId === String(p.id);
           return `
             <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:rgba(15,23,42,0.85);padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;border:1px solid rgba(255,255,255,0.08);">
               <div style="min-width:110px;">
@@ -2272,8 +2286,17 @@ await loadAllData();
     async function assignPlayerToTeam(playerId, teamId) {
       if (!playerId) return;
       try {
-        await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
-        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
+        const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
+        const player = appState.players.find(p => String(p.id) === String(playerId));
+
+        await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', playerId), 'Assign player to team');
+        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: nextTeam } : p);
+
+        if (nextTeam && player?.is_captain) {
+          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', nextTeam), 'Set captain after assignment');
+          appState.teams = appState.teams.map(t => String(t.id) === String(nextTeam) ? { ...t, captain_id: playerId } : t);
+        }
+
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
