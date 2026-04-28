@@ -770,10 +770,19 @@ async function loadPlayerHistory() {
     }
 
     const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
-    const avgIndex = header.findIndex(h => h.trim().toLowerCase() === 'avg');
+    let avgIndex = header.findIndex(h => {
+      const clean = String(h || '').replace(/[^a-z]/gi, '').toLowerCase();
+      return clean === 'avg' || clean === 'average' || clean === 'averages';
+    });
 
+    // Fallback: if Google Sheets exports the Avg header weird or blank,
+    // use the last column as Avg. Your sheet layout keeps Avg at the far right.
     if (avgIndex === -1) {
-      mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
+      avgIndex = header.length - 1;
+    }
+
+    if (avgIndex < 2) {
+      mount.innerHTML = '<div style="padding:8px 0;">Player averages unavailable</div>';
       return [];
     }
 
