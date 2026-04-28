@@ -1403,9 +1403,41 @@ async function submitCaptainTeamSelections() {
 
       const hoursDisplay = document.getElementById('registration-hours-display');
       if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
-      const teamSelectionStatus = document.getElementById('team-selection-status');
-if (teamSelectionStatus) {
-  teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(appState.settings.cutoff_time || '09:30')}.`;
+  const registrationState = getRegistrationState();
+
+const teamSelectionStatus = document.getElementById('team-selection-status');
+const openBox = document.querySelector('#view-home div[style*="Registration is OPEN"]');
+
+if (teamSelectionStatus && openBox) {
+
+  if (registrationState.manuallyClosed) {
+    openBox.textContent = '⛔ Registration is CLOSED';
+    openBox.style.background = '#ef4444';
+    openBox.style.color = '#ffffff';
+
+    teamSelectionStatus.textContent = 'Registration is manually closed.';
+
+  } else if (registrationState.beforeOpen) {
+    openBox.textContent = `⏳ Opens at ${formatTime12(registrationState.openTime)}`;
+    openBox.style.background = '#facc15';
+    openBox.style.color = '#000000';
+
+    teamSelectionStatus.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
+
+  } else if (registrationState.afterCutoff) {
+    openBox.textContent = '⛔ Registration is CLOSED';
+    openBox.style.background = '#ef4444';
+    openBox.style.color = '#ffffff';
+
+    teamSelectionStatus.textContent = `Closed at ${formatTime12(registrationState.cutoffTime)}.`;
+
+  } else {
+    openBox.textContent = '⏰ Registration is OPEN';
+    openBox.style.background = '#22c55e';
+    openBox.style.color = '#000000';
+
+    teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
+  }
 }
 renderCaptainTeamSelection();
       
