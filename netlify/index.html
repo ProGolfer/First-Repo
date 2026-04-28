@@ -713,52 +713,111 @@ const scoreDraft = {};
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
+ function parseCsvRows(csvText) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
 
- async function loadPlayerHistory() {
+  for (let i = 0; i < csvText.length; i++) {
+    const char = csvText[i];
+    const next = csvText[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell.trim());
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i++;
+      row.push(cell.trim());
+      if (row.some(value => value !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell.trim());
+  if (row.some(value => value !== '')) rows.push(row);
+  return rows;
+}
+
+function normalizePlayerNameForSheet(name) {
+  return String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
-  if (!mount) return;
+  if (!mount) return [];
 
   try {
-    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
-    const csv = await res.text();
+    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Sheet CSV failed: ${res.status}`);
 
-    const rows = csv
-      .trim()
-      .split('\n')
-      .map(r => r.split(',').map(cell => (cell || '').trim()));
+    const csv = await res.text();
+    const rows = parseCsvRows(csv);
 
     if (!rows.length || rows.length < 2) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
+      return [];
     }
 
-    const header = rows[0];
-    const avgIndex = header.findIndex(h => h === 'Avg');
+    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
+    const avgIndex = header.findIndex(h => h.trim().toLowerCase() === 'avg');
 
     if (avgIndex === -1) {
       mount.innerHTML = '<div style="padding:8px 0;">Avg column not found</div>';
-      return;
+      return [];
     }
 
-    const players = rows.slice(1).map(r => {
+    const sheetPlayers = rows.slice(1).map(r => {
       const name = (r[0] || '').trim();
-      const avg = (r[avgIndex] || '').trim();
+      const avgRaw = (r[avgIndex] || '').trim();
+      const avgNumber = avgRaw !== '' && !Number.isNaN(parseFloat(avgRaw)) ? parseFloat(avgRaw) : null;
 
       let last = '';
       for (let i = avgIndex - 1; i >= 2; i--) {
-        if ((r[i] || '').trim() !== '') {
-          last = (r[i] || '').trim();
+        const value = (r[i] || '').trim();
+        if (value !== '' && !Number.isNaN(parseFloat(value))) {
+          last = value;
           break;
         }
       }
 
-      return { name, avg, last };
+      return {
+        name,
+        key: normalizePlayerNameForSheet(name),
+        avg: avgNumber,
+        avgText: avgNumber !== null ? avgNumber.toFixed(2) : '',
+        last
+      };
     }).filter(p => p.name);
 
-    if (!players.length) {
+    const sheetByName = new Map(sheetPlayers.map(p => [p.key, p]));
+    appState.players = appState.players.map(p => {
+      const match = sheetByName.get(normalizePlayerNameForSheet(p.name));
+      if (!match) return { ...p, avg: null, sheetLast: '' };
+      return { ...p, avg: match.avg, sheetLast: match.last };
+    });
+
+    if (!sheetPlayers.length) {
       mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
+      return [];
     }
+
+    sheetPlayers.sort((a, b) => {
+      if (a.avg === null && b.avg === null) return a.name.localeCompare(b.name);
+      if (a.avg === null) return 1;
+      if (b.avg === null) return -1;
+      return a.avg - b.avg;
+    });
 
     mount.innerHTML = `
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
@@ -767,17 +826,20 @@ const scoreDraft = {};
         <div style="width:60px;text-align:center;">Last</div>
       </div>
 
-      ${players.map(p => `
+      ${sheetPlayers.map(p => `
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
           <div style="flex:1;font-weight:800;">${p.name}</div>
-          <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
+          <div style="width:60px;text-align:center;font-weight:900;">${p.avgText || '-'}</div>
           <div style="width:60px;text-align:center;">${p.last || '-'}</div>
         </div>
       `).join('')}
     `;
+
+    return sheetPlayers;
   } catch (err) {
     console.error('loadPlayerHistory error', err);
     mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
+    return [];
   }
 }
 
@@ -1078,6 +1140,7 @@ let isTypingScores = false;
         };
       }
 
+      await loadPlayerHistory();
       renderHome();
       renderAdminPlayers();
       renderAdminTeams();
