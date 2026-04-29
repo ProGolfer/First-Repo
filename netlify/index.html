@@ -479,10 +479,7 @@
     <input type="text" id="reg-name" placeholder="Enter your name">
   </div>
 
-  <div class="form-group">
-    <label>Email (optional)</label>
-    <input type="email" id="reg-phone" placeholder="name@example.com">
-  </div>
+
 
   <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
 
@@ -1213,7 +1210,6 @@ let isTypingScores = false;
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
-        const phone = document.getElementById('reg-phone').value.trim();
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
 
