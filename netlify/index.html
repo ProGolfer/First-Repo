@@ -1233,7 +1233,7 @@ let isTypingScores = false;
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
-          phone: phone || null,
+  
           course: course || 'Cliffside Golf Club',
           status: 'pending',
           team: null,
