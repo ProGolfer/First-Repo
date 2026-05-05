@@ -211,6 +211,33 @@
       margin-left:4px;
       box-shadow: 0 6px 14px rgba(255,74,69,.28);
     }
+
+    .home-pill-btn {
+      width:100%;
+      min-height:58px;
+      border:none;
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
+      border:1px solid rgba(121,151,178,.16);
+      color:#eef6ff;
+      font-weight:900;
+      font-size:13px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
+      cursor:pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .home-pill-btn:hover {
+      background: linear-gradient(135deg, rgba(77,210,103,0.18) 0%, rgba(29,122,60,0.16) 100%);
+      color:#7dff9f;
+    }
+    @media (max-width: 430px) {
+      .home-pill-tabs { gap:6px !important; }
+      .home-pill-btn { min-height:52px; font-size:12px; padding:8px 4px; }
+    }
     .approval-note {
       background: linear-gradient(180deg, rgba(73,212,102,0.1) 0%, rgba(73,212,102,0.05) 100%);
       border:1px solid rgba(99,222,131,.32);
@@ -522,17 +549,28 @@
     <div id="home-teams-list"></div>
   </div>
 
-  <div id="player-averages-card" class="players-section" style="margin-top:16px;">
-    <details id="playerAveragesBox">
-      <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:10px;border-radius:10px;font-weight:800;text-align:center;">
-        📊 Player Averages
-      </summary>
-      <div id="player-history" style="margin-top:10px;padding:10px;background:#111827;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
-    </details>
+  <div class="home-pill-tabs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px;">
+    <button class="home-pill-btn" onclick="togglePlayerAverages()">
+      <span>📊</span>
+      <span>Player Avg</span>
+    </button>
+    <button class="home-pill-btn" onclick="showView('view-game'); loadGameView();">
+      <span>🏆</span>
+      <span>Scores</span>
+    </button>
+    <button class="home-pill-btn" onclick="showLeaderboard()">
+      <span>🏅</span>
+      <span>Leaderboard</span>
+    </button>
   </div>
 
-  <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
-  <button class="btn btn-secondary" onclick="showLeaderboard()">Leaderboard</button>
+  <div id="player-averages-card" class="players-section hidden" style="margin-top:10px;">
+    <div class="players-header" style="margin-bottom:8px;">
+      <h3>📊 Player Averages</h3>
+      <button class="btn btn-small btn-secondary" onclick="togglePlayerAverages()">Close</button>
+    </div>
+    <div id="player-history" style="margin-top:10px;padding:10px;background:#111827;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
+  </div>
   <div style="text-align:center;margin-top:15px;">
     <a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a>
   </div>
@@ -1177,6 +1215,45 @@ let isTypingScores = false;
       return !!captain && isCurrentPlayer(captain);
     }
 
+    function todayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    async function resetDailyGameIfNeeded() {
+      const hasOldPlayers = appState.players.some(p => p.registered_at && !isTodayDateString(p.registered_at));
+      const hasOldScores = appState.teams.some(t => t.score_submitted_at && !isTodayDateString(t.score_submitted_at));
+      if (!hasOldPlayers && !hasOldScores) return;
+
+      await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Daily reset players');
+      await db(
+        window.supabaseClient
+          .from('teams')
+          .update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null })
+          .not('id', 'is', null),
+        'Daily reset teams'
+      );
+
+      if (appState.settingsLiveEnabled) {
+        await db(
+          window.supabaseClient
+            .from('settings')
+            .update({ game_started: false, open_time: '06:00', cutoff_time: '09:30', registration_closed: false })
+            .eq('key', SETTINGS_KEY),
+          'Daily reset settings'
+        );
+      }
+
+      appState.players = [];
+      appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
+      appState.settings = { ...appState.settings, open_time: '06:00', cutoff_time: '09:30', registration_closed: false, game_started: false };
+      appState.numTeams = 4;
+      appState.selectedNumTeams = 4;
+      persistTeamsSubmitted(false);
+      localStorage.setItem(TEAMS_COUNT_KEY, '4');
+      localStorage.setItem('golf_money_game_last_daily_reset', todayKey());
+    }
+
     async function clearExpiredTeamScoresIfNeeded() {
       const expiredTeams = appState.teams.filter(team => {
         const hasAnySavedScore = team.team_score !== null && team.team_score !== undefined;
@@ -1248,6 +1325,14 @@ let isTypingScores = false;
       const ampm = h >= 12 ? 'PM' : 'AM';
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
+    }
+
+    async function togglePlayerAverages() {
+      const card = document.getElementById('player-averages-card');
+      if (!card) return;
+      const willShow = card.classList.contains('hidden');
+      card.classList.toggle('hidden', !willShow);
+      if (willShow) await loadPlayerHistory();
     }
 
 function isCurrentUserAnyCaptain() {
@@ -2511,6 +2596,7 @@ await loadAllData();
         setStatus('Connecting...');
         await ensureBaseData();
         await loadAllData();
+        await resetDailyGameIfNeeded();
         await clearExpiredTeamScoresIfNeeded();
         await loadAllData();
         await loadWeather();
