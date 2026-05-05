@@ -1384,7 +1384,7 @@ function areTeamsSubmitted() {
       const homeTeamsList = document.getElementById('home-teams-list');
       const homePlayersDisplay = document.getElementById('home-players-display');
 
-     if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
+   if (appState.teams.length && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
         if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
         if (playerList) playerList.innerHTML = '';
