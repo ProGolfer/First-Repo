@@ -483,6 +483,14 @@
 
   <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
 
+  <div id="registration-quick-status" class="players-section" style="padding:12px 14px;margin-top:12px;text-align:center;">
+    <div style="font-size:13px;color:#9eb6c9;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Registration Hours</div>
+    <div id="registration-hours-display" style="font-size:18px;font-weight:900;color:#ffffff;margin-top:4px;">6:00 AM - 9:30 AM</div>
+    <div id="registration-open-status" style="margin-top:8px;background:#22c55e;color:#000000;font-weight:900;font-size:14px;padding:8px;border-radius:10px;">
+      ⏰ Registration is OPEN
+    </div>
+  </div>
+
   <div id="captain-team-selection" class="players-section hidden">
   <div class="players-header">
     <h3>👑 Captain Team Selection</h3>
@@ -514,31 +522,13 @@
     <div id="home-teams-list"></div>
   </div>
 
-  <div style="background:#0f172a;border:2px solid #ef8b00;border-radius:14px;padding:16px;text-align:center;margin-top:16px;">
-    <div style="color:#b45309;font-weight:900;margin-bottom:6px;">
-      ⏰ Registration Hours
-    </div>
-
-    <div id="registration-hours-display" style="font-size:20px;font-weight:900;color:#ffffff;">
-      6:00 AM - 9:30 AM
-    </div>
-
-<div id="registration-open-status" style="margin-top:10px;background:#22c55e;color:#000000;font-weight:900;font-size:16px;padding:10px;border-radius:10px;">
-  ⏰ Registration is OPEN
-</div>
-
-<div id="team-selection-status" style="background:#22c55e;color:#000000;margin-top:6px;font-size:14px;font-weight:700;padding:10px;border-radius:10px;">
-  Team selection is available now and registration closes at 9:30 PM.
-</div>
-
-    <div style="margin-top:14px;">
-      <details id="playerAveragesBox">
-        <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:10px;border-radius:10px;font-weight:800;">
-          📊 Player Averages
-        </summary>
-        <div id="player-history" style="margin-top:10px;padding:10px;background:#111827;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
-      </details>
-    </div>
+  <div id="player-averages-card" class="players-section" style="margin-top:16px;">
+    <details id="playerAveragesBox">
+      <summary style="cursor:pointer;background:#16a34a;color:#fff;padding:10px;border-radius:10px;font-weight:800;text-align:center;">
+        📊 Player Averages
+      </summary>
+      <div id="player-history" style="margin-top:10px;padding:10px;background:#111827;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
+    </details>
   </div>
 
   <button class="btn btn-secondary" onclick="showView('view-game'); loadGameView();">My Team Scores</button>
@@ -1436,30 +1426,25 @@ if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
       if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
 
       const registrationState = getRegistrationState();
-      const teamSelectionStatus = document.getElementById('team-selection-status');
       const registrationOpenBox = document.getElementById('registration-open-status');
 
-      if (registrationOpenBox && teamSelectionStatus) {
+      if (registrationOpenBox) {
         if (registrationState.manuallyClosed) {
           registrationOpenBox.textContent = '⛔ Registration is CLOSED';
           registrationOpenBox.style.background = '#ef4444';
           registrationOpenBox.style.color = '#ffffff';
-          teamSelectionStatus.textContent = 'Registration is manually closed.';
         } else if (registrationState.beforeOpen) {
           registrationOpenBox.textContent = `⏳ Opens at ${formatTime12(registrationState.openTime)}`;
           registrationOpenBox.style.background = '#facc15';
           registrationOpenBox.style.color = '#000000';
-          teamSelectionStatus.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
         } else if (registrationState.afterCutoff) {
           registrationOpenBox.textContent = '⛔ Registration is CLOSED';
           registrationOpenBox.style.background = '#ef4444';
           registrationOpenBox.style.color = '#ffffff';
-          teamSelectionStatus.textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
         } else {
           registrationOpenBox.textContent = '⏰ Registration is OPEN';
           registrationOpenBox.style.background = '#22c55e';
           registrationOpenBox.style.color = '#000000';
-          teamSelectionStatus.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
         }
       }
 
