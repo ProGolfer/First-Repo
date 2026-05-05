@@ -6,7 +6,7 @@
   <title>Golf Money Game</title>
   <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#041a2e">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1244,7 +1244,6 @@ let isTypingScores = false;
 
         persistDevicePlayerName(name);
         document.getElementById('reg-name').value = '';
-        document.getElementById('reg-phone').value = '';
         showView('view-confirm');
         await loadAllData();
       } catch (err) {
@@ -1362,8 +1361,11 @@ async function submitCaptainTeamSelections() {
   }
 }
 function areTeamsSubmitted() {
-  return appState.players.some(p =>
-    p.status === 'approved' &&
+  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+
+  if (!approvedPlayers.length) return false;
+
+  return approvedPlayers.every(p =>
     p.team !== null &&
     p.team !== undefined &&
     p.team !== ''
@@ -1384,7 +1386,7 @@ function areTeamsSubmitted() {
       const homeTeamsList = document.getElementById('home-teams-list');
       const homePlayersDisplay = document.getElementById('home-players-display');
 
-if (appState.teams.length && homeTeamsDisplay && homeTeamsList) {
+if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
         if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
         if (playerList) playerList.innerHTML = '';
@@ -1399,8 +1401,8 @@ if (appState.teams.length && homeTeamsDisplay && homeTeamsList) {
 
         homeTeamsList.innerHTML = availableTeams.map(t => {
           const teamPlayers = approved.filter(p => String(p.team) === String(t.id));
-          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
-          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
+          const captain = getCaptainForTeam(t.id);
+          const others = teamPlayers.filter(p => !captain || String(p.id) !== String(captain.id));
           const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
 
           return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
@@ -2167,8 +2169,8 @@ await loadAllData();
 
         teamsContainer.innerHTML = availableTeams.map(t => {
           const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
-          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
-          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
+          const captain = getCaptainForTeam(t.id);
+          const others = teamPlayers.filter(p => !captain || String(p.id) !== String(captain.id));
           const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
           return `
             <div class="team-card ${isMyTeam ? 'current-team' : ''}">
