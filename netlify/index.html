@@ -1361,7 +1361,14 @@ async function submitCaptainTeamSelections() {
     alert(`Could not submit teams: ${formatError(err)}`);
   }
 }
-
+function areTeamsSubmitted() {
+  return appState.players.some(p =>
+    p.status === 'approved' &&
+    p.team !== null &&
+    p.team !== undefined &&
+    p.team !== ''
+  );
+}
   
     
     function renderHome() {
@@ -1377,7 +1384,7 @@ async function submitCaptainTeamSelections() {
       const homeTeamsList = document.getElementById('home-teams-list');
       const homePlayersDisplay = document.getElementById('home-players-display');
 
-      if (appState.teamsSubmitted && homeTeamsDisplay && homeTeamsList) {
+     if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
         homeTeamsDisplay.classList.remove('hidden');
         if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
         if (playerList) playerList.innerHTML = '';
