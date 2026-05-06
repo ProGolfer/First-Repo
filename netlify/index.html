@@ -1929,21 +1929,22 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
-  alert("Button works");
-
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
-    alert("OneSignal works");
+    try {
+      const permission = await Notification.requestPermission();
+      alert("Browser permission: " + permission);
 
-    const permission = OneSignal.Notifications.permission;
-
-    if (permission) {
-      alert("Notifications are already enabled");
-      return;
+      if (permission === "granted") {
+        await OneSignal.Notifications.requestPermission();
+        alert("OneSignal subscribed");
+      } else {
+        alert("Permission denied or dismissed");
+      }
+    } catch (e) {
+      alert("Error: " + e.message);
     }
-
-    await OneSignal.Notifications.requestPermission();
   });
 }
 async function submitTeamScore(){
