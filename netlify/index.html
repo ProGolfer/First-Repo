@@ -1920,18 +1920,14 @@ scoreDraftObserver.observe(document.body, {
 });
 
 function enableNotifications() {
-  if (!window.OneSignal && !window.OneSignalDeferred) {
-    alert("Notifications not ready yet — refresh and try again");
-    return;
-  }
+  alert("Button clicked");
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
+    alert("OneSignal loaded");
     await OneSignal.Notifications.requestPermission();
   });
 }
-    
-
 async function submitTeamScore(){
   if (isSubmittingScores) return;
   isSubmittingScores = true;
