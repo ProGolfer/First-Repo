@@ -1929,9 +1929,13 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
+  alert("Button clicked");
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
+    alert("Inside OneSignal");
+
     try {
       const permission = await Notification.requestPermission();
       alert("Browser permission: " + permission);
@@ -1939,8 +1943,6 @@ async function enableNotifications() {
       if (permission === "granted") {
         await OneSignal.Notifications.requestPermission();
         alert("OneSignal subscribed");
-      } else {
-        alert("Permission denied or dismissed");
       }
     } catch (e) {
       alert("Error: " + e.message);
