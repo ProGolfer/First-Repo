@@ -473,11 +473,11 @@
 
     </style>
 
-<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" defer></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
-  window.OneSignal = window.OneSignal || [];
-  OneSignal.push(function() {
-    OneSignal.init({
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
       appId: "b900f042-451f-4939-8d8f-995e7b6f867d"
     });
   });
@@ -1919,9 +1919,10 @@ scoreDraftObserver.observe(document.body, {
   subtree: true
 });
 
-    function enableNotifications() {
-  OneSignal.push(function() {
-    OneSignal.showSlidedownPrompt();
+function enableNotifications() {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.Slidedown.promptPush();
   });
 }
     
