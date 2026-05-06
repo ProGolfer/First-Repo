@@ -1920,9 +1920,14 @@ scoreDraftObserver.observe(document.body, {
 });
 
 function enableNotifications() {
+  if (!window.OneSignal && !window.OneSignalDeferred) {
+    alert("Notifications not ready yet — refresh and try again");
+    return;
+  }
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.Slidedown.promptPush();
+    await OneSignal.Notifications.requestPermission();
   });
 }
     
