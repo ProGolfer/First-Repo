@@ -1928,14 +1928,18 @@ scoreDraftObserver.observe(document.body, {
   subtree: true
 });
 
-function enableNotifications() {
+async function enableNotifications() {
+  alert("Button works");
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
-    const permission = await OneSignal.Notifications.permission;
+    alert("OneSignal works");
+
+    const permission = OneSignal.Notifications.permission;
 
     if (permission) {
-      alert("Notifications are already enabled.");
+      alert("Notifications are already enabled");
       return;
     }
 
