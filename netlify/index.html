@@ -471,7 +471,18 @@
       }
     }
 
-  </style>
+    </style>
+
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" defer></script>
+<script>
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+    OneSignal.init({
+      appId: "b900f042-451f-4939-8d8f-995e7b6f867d"
+    });
+  });
+</script>
+
 </head>
 <body>
   <div class="container">
@@ -484,6 +495,17 @@
       <h1>Golf Money Game</h1>
     </div>
   </div>
+
+  <button onclick="enableNotifications()" style="
+  margin-top:10px;
+  padding:10px 14px;
+  background:#22c55e;
+  color:black;
+  font-weight:800;
+  border-radius:8px;
+">
+  🔔 Enable Notifications
+</button>
 
   <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
     <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
@@ -1896,6 +1918,12 @@ scoreDraftObserver.observe(document.body, {
   childList: true,
   subtree: true
 });
+
+    function enableNotifications() {
+  OneSignal.push(function() {
+    OneSignal.showSlidedownPrompt();
+  });
+}
     
 
 async function submitTeamScore(){
