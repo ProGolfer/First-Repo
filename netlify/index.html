@@ -1929,11 +1929,16 @@ scoreDraftObserver.observe(document.body, {
 });
 
 function enableNotifications() {
-  alert("Button clicked");
-
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+
   OneSignalDeferred.push(async function(OneSignal) {
-    alert("OneSignal loaded");
+    const permission = await OneSignal.Notifications.permission;
+
+    if (permission) {
+      alert("Notifications are already enabled.");
+      return;
+    }
+
     await OneSignal.Notifications.requestPermission();
   });
 }
