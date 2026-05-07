@@ -1929,19 +1929,20 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
+  alert("Button clicked");
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
     try {
-      const permission = await Notification.requestPermission();
-      alert("Browser permission: " + permission);
+      alert("Inside OneSignal");
 
-      if (permission !== "granted") return;
+      await OneSignal.Notifications.requestPermission();
 
-      // 🔥 THIS IS THE KEY PART
-      await OneSignal.login("player_" + Date.now());
+      setTimeout(function() {
+        alert("Permission: " + OneSignal.Notifications.permission);
+      }, 2000);
 
-      alert("Subscribed to OneSignal");
     } catch (e) {
       alert("Error: " + e.message);
     }
