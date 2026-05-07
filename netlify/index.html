@@ -1937,25 +1937,14 @@ async function enableNotifications() {
     try {
       alert("Inside OneSignal");
 
-      // Step 1: Request browser permission
-      const permission = await Notification.requestPermission();
-      alert("Browser permission: " + permission);
+      const supported = OneSignal.Notifications.isPushSupported();
+      alert("Push supported: " + supported);
 
-      if (permission !== "granted") return;
+      if (!supported) return;
 
-      // Step 2: Force OneSignal subscription
-      const isSubscribed = await OneSignal.Notifications.isSubscribed();
-      alert("Already subscribed: " + isSubscribed);
+      await OneSignal.Notifications.requestPermission();
 
-      if (!isSubscribed) {
-        await OneSignal.Notifications.requestPermission();
-      }
-
-      // Step 3: Confirm
-      setTimeout(async function() {
-        const final = await OneSignal.Notifications.isSubscribed();
-        alert("Final subscribed: " + final);
-      }, 3000);
+      alert("Permission now: " + OneSignal.Notifications.permission);
 
     } catch (e) {
       alert("Error: " + e.message);
