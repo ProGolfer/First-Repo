@@ -1937,11 +1937,25 @@ async function enableNotifications() {
     try {
       alert("Inside OneSignal");
 
-      await OneSignal.Notifications.requestPermission();
+      // Step 1: Request browser permission
+      const permission = await Notification.requestPermission();
+      alert("Browser permission: " + permission);
 
-      setTimeout(function() {
-        alert("Permission: " + OneSignal.Notifications.permission);
-      }, 2000);
+      if (permission !== "granted") return;
+
+      // Step 2: Force OneSignal subscription
+      const isSubscribed = await OneSignal.Notifications.isSubscribed();
+      alert("Already subscribed: " + isSubscribed);
+
+      if (!isSubscribed) {
+        await OneSignal.Notifications.requestPermission();
+      }
+
+      // Step 3: Confirm
+      setTimeout(async function() {
+        const final = await OneSignal.Notifications.isSubscribed();
+        alert("Final subscribed: " + final);
+      }, 3000);
 
     } catch (e) {
       alert("Error: " + e.message);
