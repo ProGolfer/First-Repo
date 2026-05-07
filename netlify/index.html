@@ -1929,24 +1929,22 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
-  alert("Button clicked");
-
-  if (!("Notification" in window)) {
-    alert("This browser does not support notifications.");
-    return;
-  }
-
-  alert("Current browser permission: " + Notification.permission);
-
-  if (Notification.permission !== "granted") {
-    const result = await Notification.requestPermission();
-    alert("New browser permission: " + result);
-  }
-
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+
   OneSignalDeferred.push(async function(OneSignal) {
-    alert("Inside OneSignal");
-    await OneSignal.Notifications.requestPermission();
+    try {
+      const permission = await Notification.requestPermission();
+      alert("Browser permission: " + permission);
+
+      if (permission !== "granted") return;
+
+      // 🔥 THIS IS THE KEY PART
+      await OneSignal.login("player_" + Date.now());
+
+      alert("Subscribed to OneSignal");
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
   });
 }
 async function submitTeamScore(){
