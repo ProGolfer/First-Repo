@@ -1937,13 +1937,18 @@ async function enableNotifications() {
     try {
       alert("Inside OneSignal");
 
+      const supported = OneSignal.Notifications.isPushSupported();
+      alert("Push supported: " + supported);
+
       await OneSignal.Notifications.requestPermission();
 
-      setTimeout(function() {
-        const subId = OneSignal.User.PushSubscription.id;
-        const optedIn = OneSignal.User.PushSubscription.optedIn;
+      alert("Permission now: " + OneSignal.Notifications.permission);
 
-        alert("Sub ID: " + subId + "\nOpted in: " + optedIn);
+      setTimeout(function() {
+        alert(
+          "Sub ID: " + OneSignal.User.PushSubscription.id +
+          "\nOpted in: " + OneSignal.User.PushSubscription.optedIn
+        );
       }, 3000);
 
     } catch (e) {
