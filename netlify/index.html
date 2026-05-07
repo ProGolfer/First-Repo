@@ -1943,10 +1943,6 @@ async function enableNotifications() {
       const browserPermission = await Notification.requestPermission();
       alert("Browser permission: " + browserPermission);
 
-      await OneSignal.Notifications.requestPermission();
-
-      alert("OneSignal permission: " + OneSignal.Notifications.permission);
-
       setTimeout(function() {
         alert(
           "Sub ID: " + OneSignal.User.PushSubscription.id +
