@@ -1940,9 +1940,12 @@ async function enableNotifications() {
       const supported = OneSignal.Notifications.isPushSupported();
       alert("Push supported: " + supported);
 
+      const browserPermission = await Notification.requestPermission();
+      alert("Browser permission: " + browserPermission);
+
       await OneSignal.Notifications.requestPermission();
 
-      alert("Permission now: " + OneSignal.Notifications.permission);
+      alert("OneSignal permission: " + OneSignal.Notifications.permission);
 
       setTimeout(function() {
         alert(
