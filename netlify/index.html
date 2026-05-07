@@ -1937,11 +1937,9 @@ async function enableNotifications() {
     try {
       alert("Inside OneSignal");
 
-      const supported = OneSignal.Notifications.isPushSupported();
-      alert("Push supported: " + supported);
+      await Notification.requestPermission();
 
-      const browserPermission = await Notification.requestPermission();
-      alert("Browser permission: " + browserPermission);
+      await OneSignal.User.PushSubscription.optIn();
 
       setTimeout(function() {
         alert(
