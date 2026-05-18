@@ -1929,36 +1929,21 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
-  alert("Button clicked");
-
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
     try {
-      alert("OneSignal loaded");
-
-      const supported = OneSignal.Notifications.isPushSupported();
-      alert("Push supported: " + supported);
-
-      if (!supported) return;
-
-      alert("Opening OneSignal prompt now");
-
       await OneSignal.Slidedown.promptPush({ force: true });
-
-      alert("Prompt finished");
 
       setTimeout(function() {
         alert(
-          "Permission: " + OneSignal.Notifications.permission +
-          "\nSub ID: " + OneSignal.User.PushSubscription.id +
-          "\nToken: " + OneSignal.User.PushSubscription.token +
+          "Sub ID: " + OneSignal.User.PushSubscription.id +
           "\nOpted in: " + OneSignal.User.PushSubscription.optedIn
         );
       }, 4000);
 
     } catch (e) {
-      alert("Notification error: " + e.message);
+      alert("Error: " + e.message);
     }
   });
 }
