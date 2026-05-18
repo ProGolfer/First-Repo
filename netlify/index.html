@@ -496,16 +496,20 @@
     </div>
   </div>
 
-  <button onclick="enableNotifications()" style="
-  margin-top:10px;
-  padding:10px 14px;
-  background:#22c55e;
-  color:black;
-  font-weight:800;
-  border-radius:8px;
-">
-  🔔 Enable Notifications
-</button>
+  <div class="players-section" style="margin-top:10px;">
+  <div class="players-header" style="margin-bottom:8px;">
+    <h3>🔔 Notifications</h3>
+  </div>
+  <div class="muted" style="margin-bottom:12px;">
+    Turn on notifications for team updates, approvals, scores, and game messages.
+  </div>
+  <button class="btn btn-success" onclick="enablePlayerNotifications()">
+    🔔 Turn On Notifications
+  </button>
+  <button class="btn btn-secondary" onclick="disableNotifications()">
+    🔕 Turn Off Notifications
+  </button>
+</div>
 
   <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
     <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
@@ -739,12 +743,19 @@
   <h3 style="margin-bottom:10px;">🔔 Admin Notifications</h3>
 
   <div class="muted" style="margin-bottom:12px;">
-    Receive notifications when players register.
+    Admin alerts are only for players waiting on approval. Everyone can still receive normal game notifications.
   </div>
 
-  <button class="btn btn-success"
-          onclick="enableAdminNotifications()">
-    🔔 Enable Admin Notifications
+  <button class="btn btn-success" onclick="enableAdminNotifications()">
+    🔔 Turn On Admin Alerts
+  </button>
+
+  <button class="btn btn-secondary" onclick="disableAdminNotifications()">
+    🔕 Turn Off Admin Alerts
+  </button>
+
+  <button class="btn btn-danger" onclick="disableNotifications()">
+    🔕 Turn Off All Notifications
   </button>
 </div>
 
@@ -913,7 +924,19 @@ let isTypingScores = false;
       document.getElementById('live-status').textContent = text;
     }
 
+    function isAdminTeamsOpen() {
+      const dashboard = document.getElementById('view-admin-dashboard');
+      const teamsTab = document.getElementById('admin-teams');
+
+      return dashboard &&
+             teamsTab &&
+             !dashboard.classList.contains('hidden') &&
+             !teamsTab.classList.contains('hidden');
+    }
+
     function shouldAutoRefresh() {
+      if (isAdminTeamsOpen()) return false;
+
       const registrationState = getRegistrationState();
       if (registrationState.isOpen) return true;
       if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
@@ -1932,27 +1955,71 @@ scoreDraftObserver.observe(document.body, {
   subtree: true
 });
 
-async function enableAdminNotifications() {
+async function runOneSignal(callback) {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(callback);
+}
 
-  OneSignalDeferred.push(async function(OneSignal) {
+async function enablePlayerNotifications() {
+  runOneSignal(async function(OneSignal) {
     try {
-      await Notification.requestPermission();
+      await OneSignal.Slidedown.promptPush({ force: true });
 
-      await OneSignal.User.addTag(
-        "role",
-        "admin"
-      );
+      await OneSignal.User.addTag("general_notifications", "true");
+      await OneSignal.User.addTag("app", "golf_money_game");
 
-      alert("Admin notifications enabled");
-
+      alert("Notifications are on");
     } catch (e) {
-      alert("Notification setup failed");
       console.error(e);
+      alert("Notifications failed: " + e.message);
     }
   });
 }
-    
+
+async function enableAdminNotifications() {
+  runOneSignal(async function(OneSignal) {
+    try {
+      await OneSignal.Slidedown.promptPush({ force: true });
+
+      await OneSignal.User.addTag("general_notifications", "true");
+      await OneSignal.User.addTag("is_admin", "true");
+      await OneSignal.User.addTag("app", "golf_money_game");
+
+      alert("Admin alerts are on");
+    } catch (e) {
+      console.error(e);
+      alert("Admin alerts failed: " + e.message);
+    }
+  });
+}
+
+async function disableAdminNotifications() {
+  runOneSignal(async function(OneSignal) {
+    try {
+      await OneSignal.User.removeTag("is_admin");
+      alert("Admin alerts are off");
+    } catch (e) {
+      console.error(e);
+      alert("Could not turn off admin alerts: " + e.message);
+    }
+  });
+}
+
+async function disableNotifications() {
+  runOneSignal(async function(OneSignal) {
+    try {
+      await OneSignal.User.PushSubscription.optOut();
+      await OneSignal.User.removeTag("general_notifications");
+      await OneSignal.User.removeTag("is_admin");
+
+      alert("Notifications are off");
+    } catch (e) {
+      console.error(e);
+      alert("Could not turn off notifications: " + e.message);
+    }
+  });
+}
+
 async function submitTeamScore(){
   if (isSubmittingScores) return;
   isSubmittingScores = true;
@@ -2612,19 +2679,44 @@ await loadAllData();
       }
     }
 
-    async function clearAllPlayers() {
+    async async function clearAllPlayers() {
       if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
+
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
+
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({
+              captain_id: null,
+              front_score: null,
+              back_score: null,
+              team_score: null,
+              score_submitted_at: null
+            })
+            .not('id', 'is', null),
+          'Clear all captains'
+        );
+
         appState.players = [];
-        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
+        appState.teams = appState.teams.map(t => ({
+          ...t,
+          captain_id: null,
+          front_score: null,
+          back_score: null,
+          team_score: null,
+          score_submitted_at: null
+        }));
+
         persistTeamsSubmitted(false);
         updateAutoRefreshMode();
-        await db(window.supabaseClient.from('teams').update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }).not('id', 'is', null), 'Clear all captains');
+
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
         renderLeaderboard();
+
         alert('All players cleared');
       } catch (err) {
         alert(`Could not clear all players: ${formatError(err)}`);
@@ -2632,15 +2724,31 @@ await loadAllData();
     }
 
     function switchAdminTab(t, ev){
-      document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
-      if (ev?.target) ev.target.classList.add('active');
+      document.querySelectorAll('.admin-pill-btn').forEach(b => b.classList.remove('active'));
+
+      const clickedBtn = ev?.target?.closest('.admin-pill-btn');
+      if (clickedBtn) clickedBtn.classList.add('active');
+
       document.getElementById('admin-players').classList.add('hidden');
       document.getElementById('admin-teams').classList.add('hidden');
       document.getElementById('admin-settings').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
-      if(t==='players') renderAdminPlayers();
-      if(t==='teams') renderAdminTeams();
-      if(t==='settings') updateSettingsView();
+      document.getElementById('admin-' + t).classList.remove('hidden');
+
+      if (t === 'players') {
+        renderAdminPlayers();
+        updateAutoRefreshMode();
+      }
+
+      if (t === 'teams') {
+        stopAutoRefresh();
+        renderAdminTeams();
+        setStatus('Team editing mode - auto refresh paused');
+      }
+
+      if (t === 'settings') {
+        updateSettingsView();
+        updateAutoRefreshMode();
+      }
     }
 
     function logout(){ showView('view-home'); }
@@ -2663,14 +2771,29 @@ await loadAllData();
         window.supabaseClient
           .channel('players-live')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
+            if (isAdminTeamsOpen()) {
+              setStatus('Live update paused while editing teams');
+              return;
+            }
+
             setStatus('Live: players updated');
             await loadAllData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+            if (isAdminTeamsOpen()) {
+              setStatus('Live update paused while editing teams');
+              return;
+            }
+
             setStatus('Live: teams updated');
             await loadAllData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+            if (isAdminTeamsOpen()) {
+              setStatus('Live update paused while editing teams');
+              return;
+            }
+
             setStatus('Live: settings updated');
             await loadAllData();
           })
