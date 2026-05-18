@@ -1931,10 +1931,9 @@ async function enableNotifications() {
       const browserPermission = await Notification.requestPermission();
       alert("Browser permission: " + browserPermission);
 
-      if (browserPermission !== "granted") {
-        alert("Notifications were not granted.");
-        return;
-      }
+      if (browserPermission !== "granted") return;
+
+      await OneSignal.User.PushSubscription.optIn();
 
       setTimeout(function() {
         alert(
