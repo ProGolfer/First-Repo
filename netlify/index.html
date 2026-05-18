@@ -1928,9 +1928,13 @@ async function enableNotifications() {
     try {
       alert("OneSignal loaded");
 
-      await OneSignal.Slidedown.promptPush({ force: true });
+      const browserPermission = await Notification.requestPermission();
+      alert("Browser permission: " + browserPermission);
 
-      alert("Prompt finished");
+      if (browserPermission !== "granted") {
+        alert("Notifications were not granted.");
+        return;
+      }
 
       setTimeout(function() {
         alert(
