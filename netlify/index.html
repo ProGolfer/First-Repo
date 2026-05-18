@@ -1920,18 +1920,26 @@ scoreDraftObserver.observe(document.body, {
 });
 
 async function enableNotifications() {
+  alert("Button clicked");
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async function(OneSignal) {
     try {
+      alert("OneSignal loaded");
+
       await OneSignal.Slidedown.promptPush({ force: true });
+
+      alert("Prompt finished");
 
       setTimeout(function() {
         alert(
-          "Sub ID: " + OneSignal.User.PushSubscription.id +
+          "Permission: " + OneSignal.Notifications.permission +
+          "\nSub ID: " + OneSignal.User.PushSubscription.id +
+          "\nToken: " + OneSignal.User.PushSubscription.token +
           "\nOpted in: " + OneSignal.User.PushSubscription.optedIn
         );
-      }, 4000);
+      }, 5000);
 
     } catch (e) {
       alert("Error: " + e.message);
