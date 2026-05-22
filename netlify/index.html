@@ -934,14 +934,18 @@ let isTypingScores = false;
              !teamsTab.classList.contains('hidden');
     }
 
-    function shouldAutoRefresh() {
-      if (isAdminTeamsOpen()) return false;
+function shouldAutoRefresh() {
+  if (isAdminTeamsOpen()) return false;
+  if (isTeamViewOpen()) return false;
 
-      const registrationState = getRegistrationState();
-      if (registrationState.isOpen) return true;
-      if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
-      return false;
-    }
+  const captainBox = document.getElementById('captain-team-selection');
+  if (captainBox && !captainBox.classList.contains('hidden')) return false;
+
+  const registrationState = getRegistrationState();
+  if (registrationState.isOpen) return true;
+  if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
+  return false;
+}
 
     function stopAutoRefresh() {
       if (appState.autoRefreshIntervalId) {
