@@ -1371,7 +1371,6 @@ async function notifyAdminsPlayerRegistered(playerName) {
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
-  
           course: course || 'Cliffside Golf Club',
           status: 'pending',
           team: null,
@@ -1379,21 +1378,43 @@ async function notifyAdminsPlayerRegistered(playerName) {
           is_captain: false,
           device_token: ensureDeviceId()
         }]), 'Register player');
+
         await notifyAdminsPlayerRegistered(name);
         persistDevicePlayerName(name);
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-  try {
-    await OneSignal.User.removeTag("role");
 
-    await OneSignal.User.addTag("player_name", name);
-    await OneSignal.User.addTag("role", "player");
+        // Tag this browser as the player who just registered.
+        // This lets approve / deny notifications go only to this player.
+        await new Promise((resolve) => {
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-    console.log("Player tagged:", name);
-  } catch (e) {
-    console.error("Player tag failed:", e);
-  }
-});
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+
+          OneSignalDeferred.push(async function(OneSignal) {
+            try {
+              await OneSignal.User.addTag("player_name", name);
+              await OneSignal.User.addTag("role", "player");
+              console.log("Player tagged:", name);
+            } catch (e) {
+              console.error("Player tag failed:", e);
+            }
+            finish();
+          });
+
+          setTimeout(finish, 3000);
+        });
+
+        document.getElementById('reg-name').value = '';
+        showView('view-confirm');
+        await loadAllData();
+      } catch (err) {
+        alert(`Could not register player: ${formatError(err)}`);
+      }
+    }
 
     function formatTime12(time24) {
       if (!time24 || !time24.includes(':')) return time24 || '';
