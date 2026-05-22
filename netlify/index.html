@@ -1423,7 +1423,6 @@ async function notifyAdminsPlayerRegistered(playerName) {
             done = true;
             resolve();
           };
-
 OneSignalDeferred.push(async function(OneSignal) {
   try {
     const cleanName = name.trim().toLowerCase();
@@ -1433,8 +1432,11 @@ OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.User.removeTag("role");
     await OneSignal.User.addTag("role", "player");
 
+    alert("Player notification tag saved for: " + cleanName);
+
     console.log("Player tagged:", cleanName);
   } catch (e) {
+    alert("Player tag failed: " + e.message);
     console.error("Player tag failed:", e);
   }
   finish();
