@@ -2293,6 +2293,23 @@ await loadAllData();
       }
     }
 
+async function notifyPlayer(playerName, message) {
+  try {
+    await fetch('/.netlify/functions/send-player-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        playerName,
+        message
+      })
+    });
+  } catch (err) {
+    console.error('Player notification failed:', err);
+  }
+}
+    
 async function approve(id){
   try {
     const player = appState.players.find(
