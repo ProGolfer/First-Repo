@@ -1424,11 +1424,13 @@ async function notifyAdminsPlayerRegistered(playerName) {
             resolve();
           };
 
- OneSignalDeferred.push(async function(OneSignal) {
+OneSignalDeferred.push(async function(OneSignal) {
   try {
     const cleanName = name.trim().toLowerCase();
 
     await OneSignal.User.addTag("player_name", cleanName);
+
+    await OneSignal.User.removeTag("role");
     await OneSignal.User.addTag("role", "player");
 
     console.log("Player tagged:", cleanName);
@@ -1438,8 +1440,7 @@ async function notifyAdminsPlayerRegistered(playerName) {
   finish();
 });
 
-          setTimeout(finish, 3000);
-        });
+setTimeout(finish, 3000);
 
         document.getElementById('reg-name').value = '';
         showView('view-confirm');
