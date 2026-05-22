@@ -1331,7 +1331,20 @@ let isTypingScores = false;
         );
       }
     }
-
+async function notifyAdminsPlayerRegistered(playerName) {
+  try {
+    await fetch('/.netlify/functions/send-admin-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playerName })
+    });
+  } catch (err) {
+    console.error('Admin notification failed:', err);
+  }
+}
+    
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
@@ -1366,7 +1379,7 @@ let isTypingScores = false;
           is_captain: false,
           device_token: ensureDeviceId()
         }]), 'Register player');
-
+        await notifyAdminsPlayerRegistered(name);
         persistDevicePlayerName(name);
         document.getElementById('reg-name').value = '';
         showView('view-confirm');
