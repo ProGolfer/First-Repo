@@ -2293,32 +2293,77 @@ await loadAllData();
       }
     }
 
-    async function approve(id){
-      try {
-        await db(window.supabaseClient.from('players').update({ status: 'approved' }).eq('id', id), 'Approve player');
-        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, status: 'approved' } : p);
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not approve player: ${formatError(err)}`);
-      }
+async function approve(id){
+  try {
+    const player = appState.players.find(
+      p => String(p.id) === String(id)
+    );
+
+    await db(
+      window.supabaseClient
+        .from('players')
+        .update({ status: 'approved' })
+        .eq('id', id),
+      'Approve player'
+    );
+
+    appState.players = appState.players.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, status: 'approved' }
+        : p
+    );
+
+    if (player) {
+      await notifyPlayer(
+        player.name,
+        "You have been approved for today's game."
+      );
     }
 
-    async function deleteP(id){
-      if(!confirm('Delete?')) return;
-      try {
-        await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
-        appState.players = appState.players.filter(p => String(p.id) !== String(id));
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
-      } catch (err) {
-        alert(`Could not delete player: ${formatError(err)}`);
-      }
+    renderHome();
+    renderAdminPlayers();
+    renderAdminTeams();
+    renderLeaderboard();
+  } catch (err) {
+    alert(`Could not approve player: ${formatError(err)}`);
+  }
+}
+
+async function deleteP(id){
+  if(!confirm('Delete?')) return;
+
+  try {
+    const player = appState.players.find(
+      p => String(p.id) === String(id)
+    );
+
+    if (player) {
+      await notifyPlayer(
+        player.name,
+        "Your registration was denied."
+      );
     }
+
+    await db(
+      window.supabaseClient
+        .from('players')
+        .delete()
+        .eq('id', id),
+      'Delete player'
+    );
+
+    appState.players = appState.players.filter(
+      p => String(p.id) !== String(id)
+    );
+
+    renderHome();
+    renderAdminPlayers();
+    renderAdminTeams();
+    renderLeaderboard();
+  } catch (err) {
+    alert(`Could not delete player: ${formatError(err)}`);
+  }
+}
 
     function renderAdminTeams(){
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
