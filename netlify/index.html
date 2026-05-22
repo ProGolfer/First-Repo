@@ -1381,6 +1381,11 @@ async function notifyAdminsPlayerRegistered(playerName) {
         }]), 'Register player');
         await notifyAdminsPlayerRegistered(name);
         persistDevicePlayerName(name);
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.User.addTag("player_name", name);
+  await OneSignal.User.addTag("role", "player");
+});
         document.getElementById('reg-name').value = '';
         showView('view-confirm');
         await loadAllData();
