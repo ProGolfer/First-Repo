@@ -2896,53 +2896,42 @@ async function deleteP(id){
        
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
-        window.supabaseClient
-          .channel('players-live')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
-            if (isAdminTeamsOpen()) {
-              setStatus('Live update paused while editing teams');
-              return;
-            }
+      window.supabaseClient
+  .channel('players-live')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
+    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+      setStatus('Live update paused to protect teams/scores');
+      return;
+    }
 
-   if (isTeamViewOpen() || isSubmittingScores) {
-  setStatus('Live update paused to protect teams/scores');
-  return;
-}
+    setStatus('Live: players updated');
+    await loadAllData();
+  })
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+      setStatus('Live update paused to protect teams/scores');
+      return;
+    }
 
-setStatus('Live: players updated');
-await loadAllData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
-            if (isAdminTeamsOpen()) {
-              setStatus('Live update paused while editing teams');
-              return;
-            }
+    setStatus('Live: teams updated');
+    await loadAllData();
+  })
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+      setStatus('Live update paused to protect teams/scores');
+      return;
+    }
 
-         if (isTeamViewOpen() || isSubmittingScores) {
-  setStatus('Live update paused to protect teams/scores');
-  return;
-}
-if (isTeamViewOpen() || isSubmittingScores) {
-  setStatus('Live update paused to protect teams/scores');
-  return;
-}
+    setStatus('Live: settings updated');
+    await loadAllData();
+  })
+  .subscribe((status) => {
+    setStatus('Status: ' + status);
 
-setStatus('Live: teams updated');
-await loadAllData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
-            if (isAdminTeamsOpen()) {
-              setStatus('Live update paused while editing teams');
-              return;
-            }
-
-            setStatus('Live: settings updated');
-            await loadAllData();
-          })
-          .subscribe((status) => {
-            setStatus('Status: ' + status);
-            updateAutoRefreshMode();
-          });
+    if (!isAdminTeamsOpen() && !isTeamViewOpen() && !isSubmittingScores && !isTypingScores) {
+      updateAutoRefreshMode();
+    }
+  });
               await loadPlayerHistory();
         
       } catch (err) {
