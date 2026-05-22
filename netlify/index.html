@@ -950,22 +950,48 @@ let isTypingScores = false;
       }
     }
 
-    function updateAutoRefreshMode() {
-      const needsAutoRefresh = shouldAutoRefresh();
-      if (needsAutoRefresh && !appState.autoRefreshIntervalId) {
-        appState.autoRefreshIntervalId = setInterval(async () => {
-          try {
-            await loadAllData();
-            setStatus('Auto refreshed');
-          } catch (err) {
-            setStatus('Auto refresh error');
-          }
-        }, 15000);
-      } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
-        stopAutoRefresh();
-        setStatus('Manual refresh mode');
+ function isTeamViewOpen() {
+  const view = document.getElementById('view-game');
+
+  return view &&
+         !view.classList.contains('hidden');
+}
+
+function updateAutoRefreshMode() {
+
+  const needsAutoRefresh = shouldAutoRefresh();
+
+  if (needsAutoRefresh && !appState.autoRefreshIntervalId) {
+
+    appState.autoRefreshIntervalId = setInterval(async () => {
+
+      try {
+
+        if (isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+          setStatus('Auto refresh paused for scoring');
+          return;
+        }
+
+        await loadAllData();
+
+        setStatus('Auto refreshed');
+
+      } catch (err) {
+
+        setStatus('Auto refresh error');
+
       }
-    }
+
+    }, 15000);
+
+  } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
+
+    stopAutoRefresh();
+
+    setStatus('Manual refresh mode');
+
+  }
+}
 
     function weatherCodeToText(code) {
       const map = {
@@ -2878,8 +2904,13 @@ async function deleteP(id){
               return;
             }
 
-            setStatus('Live: players updated');
-            await loadAllData();
+   if (isTeamViewOpen() || isSubmittingScores) {
+  setStatus('Live update paused to protect teams/scores');
+  return;
+}
+
+setStatus('Live: players updated');
+await loadAllData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
             if (isAdminTeamsOpen()) {
@@ -2887,8 +2918,17 @@ async function deleteP(id){
               return;
             }
 
-            setStatus('Live: teams updated');
-            await loadAllData();
+         if (isTeamViewOpen() || isSubmittingScores) {
+  setStatus('Live update paused to protect teams/scores');
+  return;
+}
+if (isTeamViewOpen() || isSubmittingScores) {
+  setStatus('Live update paused to protect teams/scores');
+  return;
+}
+
+setStatus('Live: teams updated');
+await loadAllData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
             if (isAdminTeamsOpen()) {
