@@ -1424,16 +1424,19 @@ async function notifyAdminsPlayerRegistered(playerName) {
             resolve();
           };
 
-          OneSignalDeferred.push(async function(OneSignal) {
-            try {
-              await OneSignal.User.addTag("player_name", name);
-              await OneSignal.User.addTag("role", "player");
-              console.log("Player tagged:", name);
-            } catch (e) {
-              console.error("Player tag failed:", e);
-            }
-            finish();
-          });
+ OneSignalDeferred.push(async function(OneSignal) {
+  try {
+    const cleanName = name.trim().toLowerCase();
+
+    await OneSignal.User.addTag("player_name", cleanName);
+    await OneSignal.User.addTag("role", "player");
+
+    console.log("Player tagged:", cleanName);
+  } catch (e) {
+    console.error("Player tag failed:", e);
+  }
+  finish();
+});
 
           setTimeout(finish, 3000);
         });
