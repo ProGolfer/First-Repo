@@ -1383,16 +1383,17 @@ async function notifyAdminsPlayerRegistered(playerName) {
         persistDevicePlayerName(name);
         window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.User.addTag("player_name", name);
-  await OneSignal.User.addTag("role", "player");
+  try {
+    await OneSignal.User.removeTag("role");
+
+    await OneSignal.User.addTag("player_name", name);
+    await OneSignal.User.addTag("role", "player");
+
+    console.log("Player tagged:", name);
+  } catch (e) {
+    console.error("Player tag failed:", e);
+  }
 });
-        document.getElementById('reg-name').value = '';
-        showView('view-confirm');
-        await loadAllData();
-      } catch (err) {
-        alert(`Could not register player: ${formatError(err)}`);
-      }
-    }
 
     function formatTime12(time24) {
       if (!time24 || !time24.includes(':')) return time24 || '';
