@@ -2365,20 +2365,30 @@ await loadAllData();
 
 async function notifyPlayer(playerName, message) {
   try {
+
+    const cleanName = (playerName || '').trim().toLowerCase();
+
+    console.log(
+      'Sending player notification:',
+      cleanName,
+      message
+    );
+
     await fetch('/.netlify/functions/send-player-notification', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        playerName,
+        playerName: cleanName,
         message
       })
     });
+
   } catch (err) {
     console.error('Player notification failed:', err);
   }
-}
+  }
     
 async function approve(id){
   try {
