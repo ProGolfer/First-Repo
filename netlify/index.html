@@ -2040,12 +2040,23 @@ async function runOneSignal(callback) {
 async function enablePlayerNotifications() {
   runOneSignal(async function(OneSignal) {
     try {
-      await OneSignal.Slidedown.promptPush({ force: true });
+      await OneSignal.Notifications.requestPermission();
 
+      const permission = OneSignal.Notifications.permission;
+
+      if (!permission) {
+        alert("Notifications are still blocked. Turn them on in browser/site settings.");
+        return;
+      }
+
+      await OneSignal.User.PushSubscription.optIn();
+
+      await OneSignal.User.removeTag("role");
+      await OneSignal.User.addTag("role", "player");
       await OneSignal.User.addTag("general_notifications", "true");
       await OneSignal.User.addTag("app", "golf_money_game");
 
-      alert("Notifications are on");
+      alert("Player notifications are on");
     } catch (e) {
       console.error(e);
       alert("Notifications failed: " + e.message);
