@@ -2891,66 +2891,79 @@ async function deleteP(id){
 
     function logout(){ showView('view-home'); }
 
-    async function initApp() {
-      try {
-        loadDeviceState();
-        setStatus('Connecting...');
-        await ensureBaseData();
+async function initApp() {
+  try {
+    loadDeviceState();
+    setStatus('Connecting... step 1');
+
+    await ensureBaseData();
+    setStatus('Connecting... step 2');
+
+    await loadAllData();
+    setStatus('Connecting... step 3');
+
+    await resetDailyGameIfNeeded();
+    setStatus('Connecting... step 4');
+
+    await clearExpiredTeamScoresIfNeeded();
+    setStatus('Connecting... step 5');
+
+    await loadAllData();
+    setStatus('Connecting... step 6');
+
+    await loadWeather();
+    setStatus('Connecting... step 7');
+
+    setInterval(loadWeather, 600000);
+    updateAutoRefreshMode();
+
+    setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
+
+    window.supabaseClient
+      .channel('players-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
+        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+          setStatus('Live update paused to protect teams/scores');
+          return;
+        }
+
+        setStatus('Live: players updated');
         await loadAllData();
-        await resetDailyGameIfNeeded();
-        await clearExpiredTeamScoresIfNeeded();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+          setStatus('Live update paused to protect teams/scores');
+          return;
+        }
+
+        setStatus('Live: teams updated');
         await loadAllData();
-        await loadWeather();
-        setInterval(loadWeather, 600000);
-        updateAutoRefreshMode();
-       
-        setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
+          setStatus('Live update paused to protect teams/scores');
+          return;
+        }
 
-      window.supabaseClient
-  .channel('players-live')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
-    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-      setStatus('Live update paused to protect teams/scores');
-      return;
-    }
+        setStatus('Live: settings updated');
+        await loadAllData();
+      })
+      .subscribe((status) => {
+        setStatus('Status: ' + status);
 
-    setStatus('Live: players updated');
-    await loadAllData();
-  })
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
-    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-      setStatus('Live update paused to protect teams/scores');
-      return;
-    }
+        if (!isAdminTeamsOpen() && !isTeamViewOpen() && !isSubmittingScores && !isTypingScores) {
+          updateAutoRefreshMode();
+        }
+      });
 
-    setStatus('Live: teams updated');
-    await loadAllData();
-  })
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
-    if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-      setStatus('Live update paused to protect teams/scores');
-      return;
-    }
+    await loadPlayerHistory();
 
-    setStatus('Live: settings updated');
-    await loadAllData();
-  })
-  .subscribe((status) => {
-    setStatus('Status: ' + status);
-
-    if (!isAdminTeamsOpen() && !isTeamViewOpen() && !isSubmittingScores && !isTypingScores) {
-      updateAutoRefreshMode();
-    }
-  });
-              await loadPlayerHistory();
-        
-      } catch (err) {
-        const msg = formatError(err);
-        setStatus('Startup error');
-        alert(`Startup failed: ${msg}`);
-      }
-    }
-
+  } catch (err) {
+    const msg = formatError(err);
+    setStatus('Startup error: ' + msg);
+    alert('Startup failed: ' + msg);
+  }
+}
     window.addEventListener('load', initApp);
   </script>
 </body>
