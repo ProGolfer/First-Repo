@@ -1223,19 +1223,57 @@ function showTeamsPage() {
     p => p.status === 'approved'
   );
 
-  const teamCount = Math.max(1, Math.ceil(approved.length / 4));
+  const assignedPlayers = approved.filter(p => p.team);
+
   const list = document.getElementById('teams-page-list');
   const count = document.getElementById('teams-page-count');
 
-  if (count) count.textContent = teamCount + ' Teams';
-
   if (!list) return;
 
-  if (!approved.length) {
-    list.innerHTML = '<div class="empty-state">No approved players yet</div>';
+  if (!assignedPlayers.length) {
+    if (count) count.textContent = '0 Teams';
+
+    list.innerHTML = `
+      <div class="empty-state">
+        No teams are available at this time.<br>
+        Teams will show here after they are selected by admin.
+      </div>
+    `;
+
     showView('view-teams');
     return;
   }
+
+  const teamIds = [
+    ...new Set(assignedPlayers.map(p => String(p.team)))
+  ];
+
+  if (count) count.textContent = teamIds.length + ' Teams';
+
+  list.innerHTML = teamIds.map(teamId => {
+    const teamPlayers = assignedPlayers.filter(
+      p => String(p.team) === String(teamId)
+    );
+
+    return `
+      <div class="dashboard-panel">
+        <div class="players-header">
+          <h3>${getTeamName(teamId)}</h3>
+          <span class="players-count">${teamPlayers.length}</span>
+        </div>
+
+        ${teamPlayers.map(p => `
+          <div class="player-item">
+            <span>${p.name}</span>
+            <span>${p.is_captain ? 'Captain' : 'Player'}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+
+  showView('view-teams');
+}
 
   let html = '';
 
