@@ -1024,6 +1024,16 @@ onclick="showView('view-stats'); loadPlayerHistory();">
         appState.settingsLiveEnabled = false;
       }
 
+
+      
+      renderHome();
+      renderAdminPlayers();
+      renderAdminTeams();
+      renderLeaderboard();
+      loadGameView();
+      updateSettingsView();
+    }
+
 async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
   if (!mount) return;
@@ -1039,7 +1049,7 @@ async function loadPlayerHistory() {
       .map(r => r.split(',').map(cell => (cell || '').trim()));
 
     if (!rows.length || rows.length < 2) {
-      mount.innerHTML = 'No player history yet'; ' + err.message;
+      mount.innerHTML = 'No player history yet';
       return;
     }
 
@@ -1080,14 +1090,6 @@ async function loadPlayerHistory() {
     mount.innerHTML = 'Player averages unavailable';
   }
 }
-      
-      renderHome();
-      renderAdminPlayers();
-      renderAdminTeams();
-      renderLeaderboard();
-      loadGameView();
-      updateSettingsView();
-    }
 
     function getTeamName(teamId) {
       const team = appState.teams.find(t => String(t.id) === String(teamId));
