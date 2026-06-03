@@ -1029,7 +1029,7 @@ async function loadPlayerHistory() {
   if (!mount) return;
 
   try {
-    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
+   const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
     const csv = await res.text();
 
@@ -1039,7 +1039,7 @@ async function loadPlayerHistory() {
       .map(r => r.split(',').map(cell => (cell || '').trim()));
 
     if (!rows.length || rows.length < 2) {
-      mount.innerHTML = 'No player history yet';
+      mount.innerHTML = 'No player history yet'; ' + err.message;
       return;
     }
 
