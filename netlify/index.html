@@ -591,7 +591,7 @@
             <small class="orange">Pending <span id="overview-pending-count">0</span></small>
           </button>
 
-          <button class="home-pill-btn" onclick="document.getElementById('teams-dashboard-card').scrollIntoView({behavior:'smooth'})">
+          <button class="home-pill-btn" onclick="showTeamsPage()">
             <div class="tile-icon">🚩</div>
             <span>TEAMS</span>
             <strong id="overview-team-count" style="font-size:28px;line-height:1;">4</strong>
@@ -737,35 +737,6 @@
       </div>
     </div>
 
-    </div>
-
-<div id="view-players" class="card hidden">
-
-  <div class="header">
-    <div class="header-logo">
-      <div class="logo-mark">👥</div>
-      <h1>PLAYERS <span>REGISTERED</span></h1>
-    </div>
-  </div>
-
-  <div class="players-section">
-    <div class="players-header">
-      <h3>Registered Players</h3>
-      <span class="players-count" id="players-page-count">0</span>
-    </div>
-
-    <ul id="players-page-list" class="player-list"></ul>
-  </div>
-
-  <button class="btn btn-back"
-          onclick="showView('view-home')">
-    ← Back
-  </button>
-
-</div>
-
-<div id="view-stats" class="card hidden">
-
     <div id="view-register" class="card hidden">
       <div class="header">
         <div class="header-logo">
@@ -785,6 +756,46 @@
         <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
         <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
       </div>
+    </div>
+
+    <div id="view-players" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">👥</div>
+          <h1>PLAYERS <span>REGISTERED</span></h1>
+        </div>
+      </div>
+
+      <div class="players-section">
+        <div class="players-header">
+          <h3>Registered Players</h3>
+          <span class="players-count" id="players-page-count">0</span>
+        </div>
+
+        <ul id="players-page-list" class="player-list"></ul>
+      </div>
+
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+    <div id="view-teams" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">🚩</div>
+          <h1>TEAMS <span>TODAY</span></h1>
+        </div>
+      </div>
+
+      <div class="players-section">
+        <div class="players-header">
+          <h3>Team Preview</h3>
+          <span class="players-count" id="teams-page-count">0</span>
+        </div>
+
+        <div id="teams-page-list"></div>
+      </div>
+
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
     <div id="view-stats" class="card hidden">
@@ -1206,7 +1217,53 @@ function showPlayersPage() {
 
   showView('view-players');
 }
-  
+
+function showTeamsPage() {
+  const approved = appState.players.filter(
+    p => p.status === 'approved'
+  );
+
+  const teamCount = Math.max(1, Math.ceil(approved.length / 4));
+  const list = document.getElementById('teams-page-list');
+  const count = document.getElementById('teams-page-count');
+
+  if (count) count.textContent = teamCount + ' Teams';
+
+  if (!list) return;
+
+  if (!approved.length) {
+    list.innerHTML = '<div class="empty-state">No approved players yet</div>';
+    showView('view-teams');
+    return;
+  }
+
+  let html = '';
+
+  for (let i = 1; i <= teamCount; i++) {
+    const start = (i - 1) * 4;
+    const teamPlayers = approved.slice(start, start + 4);
+
+    html += `
+      <div class="dashboard-panel">
+        <div class="players-header">
+          <h3>Team ${i}</h3>
+          <span class="players-count">${teamPlayers.length}/4</span>
+        </div>
+
+        ${teamPlayers.map(p => `
+          <div class="player-item">
+            <span>${p.name}</span>
+            <span>${p.team ? getTeamName(p.team) : 'Preview'}</span>
+          </div>
+        `).join('') || '<div class="empty-state">No players</div>'}
+      </div>
+    `;
+  }
+
+  list.innerHTML = html;
+  showView('view-teams');
+}
+
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
