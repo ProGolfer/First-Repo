@@ -1167,7 +1167,7 @@ async function loadPlayerHistory() {
       const pendingCount = document.getElementById('pending-count');
       if (pendingCount) pendingCount.textContent = pending.length;
 
-      const teamCount = appState.numTeams || 4;
+      const teamCount = Math.max(1, Math.ceil(approved.length / 4));
       const setText = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
