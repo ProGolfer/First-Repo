@@ -1392,7 +1392,31 @@ function submitCaptainNumTeams() {
   showCaptainTeamsPage();
   renderHome();
 }
+function showCaptainTeamsPage() {
 
+  const myName = (appState.myPlayerName || '')
+    .trim()
+    .toLowerCase();
+
+  const myPlayer = appState.players.find(p =>
+    (p.name || '').trim().toLowerCase() === myName
+  );
+
+  if (!myPlayer) {
+    alert('Register on this device first.');
+    return;
+  }
+
+  if (myPlayer.is_captain !== true) {
+    alert('🔒 Captains only. Admin must assign you as captain.');
+    return;
+  }
+
+  showView('view-captain-teams');
+}
+
+function renderHome() {
+  const approved = appState.players.filter(p => p.status === 'approved');
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
