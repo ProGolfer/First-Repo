@@ -1029,8 +1029,7 @@ async function loadPlayerHistory() {
   if (!mount) return;
 
   try {
-    const PLAYER_SHEET_URL = "PASTE_YOUR_GOOGLE_SHEET_CSV_LINK_HERE";
-
+    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
     const csv = await res.text();
 
