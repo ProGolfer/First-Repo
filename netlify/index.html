@@ -577,29 +577,7 @@
             <span>TODAY</span>
             <small class="green">━━━━</small>
           </button>
-<div id="view-stats" class="card hidden">
-<div id="view-register" class="card hidden">
-  <div class="header">
-    <h1>⛳ Register</h1>
-  </div>
 
-  <div class="dashboard-panel">
-    <div class="form-group">
-      <label>Your Name</label>
-      <input type="text" id="reg-name" placeholder="Enter your name">
-    </div>
-
-    <button class="btn btn-primary" onclick="registerPlayer()">
-      Register for Today's Game
-    </button>
-
-    <button class="btn btn-back" onclick="showView('view-home')">
-      ← Back
-    </button>
-  </div>
-</div>
-
-  
           <button class="home-pill-btn" onclick="showView('view-register')">
             <div class="tile-icon">👤➕</div>
             <span>REGISTER</span>
@@ -625,11 +603,11 @@
             <small class="orange">Live scoring</small>
           </button>
 
-          <button class="home-pill-btn"
-onclick="showView('view-stats'); loadPlayerHistory();">
-  📊
-  <span>STATS</span>
-</button>
+          <button class="home-pill-btn" onclick="showView('view-stats'); loadPlayerHistory();">
+            <div class="tile-icon">📊</div>
+            <span>STATS</span>
+            <small>Player avg</small>
+          </button>
 
           <button class="home-pill-btn" onclick="showAdminLogin();">
             <div class="tile-icon">⚙️🔒</div>
@@ -738,29 +716,6 @@ onclick="showView('view-stats'); loadPlayerHistory();">
         <div><strong id="money-team-count">4</strong><small>Teams</small></div>
       </div>
 
-      <div class="dashboard-panel" id="register-dashboard-card">
-        <div class="players-header">
-          <h3>REGISTER</h3>
-          <span class="players-count">Join Game</span>
-        </div>
-
-        <div class="form-group">
-          <label>Select Course</label>
-          <select id="reg-course">
-            <option>Cliffside Golf Club</option>
-            <option>Pebble Beach</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Your Name</label>
-          <input type="text" id="reg-name" placeholder="Enter your name">
-        </div>
-
-      
-        <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
-      </div>
-
       <div id="pending-approval-bar" class="dashboard-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <span style="color:#ffb020;font-weight:900;">⏳ Players Waiting for Approval</span>
         <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:900;min-width:36px;text-align:center;">0</span>
@@ -779,24 +734,41 @@ onclick="showView('view-stats'); loadPlayerHistory();">
       </div>
     </div>
 
-    <div id="view-stats" class="card hidden">
+    <div id="view-register" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">⛳</div>
+          <h1>REGISTER <span>TODAY'S GAME</span></h1>
+        </div>
+      </div>
 
-  <div class="header">
-    <h1>📊 Player Averages</h1>
-  </div>
+      <div class="dashboard-panel">
+        <input type="hidden" id="reg-course" value="Cliffside Golf Club">
 
-  <div class="players-section">
-    <div id="player-history">
-      Loading averages...
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="reg-name" placeholder="Enter your name">
+        </div>
+
+        <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+        <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+      </div>
     </div>
-  </div>
 
-  <button class="btn btn-back"
-          onclick="showView('view-home')">
-    ← Back
-  </button>
+    <div id="view-stats" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">📊</div>
+          <h1>PLAYER <span>AVERAGES</span></h1>
+        </div>
+      </div>
 
-</div>
+      <div class="players-section">
+        <div id="player-history">Loading averages...</div>
+      </div>
+
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
 
     <div id="view-confirm" class="card hidden">
       <div class="header"><h1>✅ Registration Complete!</h1></div>
@@ -1264,7 +1236,7 @@ async function loadPlayerHistory() {
         `).join('') : '<div class="avg-line"><span>1</span><span>No scores yet</span><strong>-</strong></div>';
       }
 
-      const registerBtn = document.querySelector('#view-home .btn.btn-primary');
+      const registerBtn = document.querySelector('#view-register .btn.btn-primary');
       if (registerBtn) {
         if (appState.settings.registration_closed) {
           registerBtn.disabled = true;
