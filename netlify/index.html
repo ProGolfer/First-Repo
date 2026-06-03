@@ -1275,33 +1275,6 @@ function showTeamsPage() {
   showView('view-teams');
 }
 
-  let html = '';
-
-  for (let i = 1; i <= teamCount; i++) {
-    const start = (i - 1) * 4;
-    const teamPlayers = approved.slice(start, start + 4);
-
-    html += `
-      <div class="dashboard-panel">
-        <div class="players-header">
-          <h3>Team ${i}</h3>
-          <span class="players-count">${teamPlayers.length}/4</span>
-        </div>
-
-        ${teamPlayers.map(p => `
-          <div class="player-item">
-            <span>${p.name}</span>
-            <span>${p.team ? getTeamName(p.team) : 'Preview'}</span>
-          </div>
-        `).join('') || '<div class="empty-state">No players</div>'}
-      </div>
-    `;
-  }
-
-  list.innerHTML = html;
-  showView('view-teams');
-}
-
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
