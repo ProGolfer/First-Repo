@@ -1024,6 +1024,64 @@ onclick="showView('view-stats'); loadPlayerHistory();">
         appState.settingsLiveEnabled = false;
       }
 
+async function loadPlayerHistory() {
+  const mount = document.getElementById('player-history');
+  if (!mount) return;
+
+  try {
+    const PLAYER_SHEET_URL = "PASTE_YOUR_GOOGLE_SHEET_CSV_LINK_HERE";
+
+    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
+    const csv = await res.text();
+
+    const rows = csv
+      .trim()
+      .split('\n')
+      .map(r => r.split(',').map(cell => (cell || '').trim()));
+
+    if (!rows.length || rows.length < 2) {
+      mount.innerHTML = 'No player history yet';
+      return;
+    }
+
+    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
+
+    let avgIndex = header.findIndex(h => {
+      const clean = String(h || '').replace(/[^a-z]/gi, '').toLowerCase();
+      return clean === 'avg' || clean === 'average' || clean === 'averages';
+    });
+
+    if (avgIndex === -1) avgIndex = header.length - 1;
+
+    const players = rows.slice(1).map(r => {
+      const name = (r[0] || '').trim();
+      const avg = (r[avgIndex] || '').trim();
+
+      let last = '';
+      for (let i = avgIndex - 1; i >= 2; i--) {
+        if ((r[i] || '').trim() !== '') {
+          last = (r[i] || '').trim();
+          break;
+        }
+      }
+
+      return { name, avg, last };
+    }).filter(p => p.name);
+
+    mount.innerHTML = players.map(p => `
+      <div style="display:grid;grid-template-columns:1fr 70px 70px;gap:10px;padding:10px 0;border-bottom:1px solid #374151;">
+        <div style="font-weight:800;">${p.name}</div>
+        <div style="text-align:center;color:#63de83;font-weight:900;">${p.avg || '-'}</div>
+        <div style="text-align:center;">${p.last || '-'}</div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('loadPlayerHistory error', err);
+    mount.innerHTML = 'Player averages unavailable';
+  }
+}
+      
       renderHome();
       renderAdminPlayers();
       renderAdminTeams();
