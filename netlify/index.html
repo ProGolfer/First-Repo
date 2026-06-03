@@ -577,8 +577,30 @@
             <span>TODAY</span>
             <small class="green">━━━━</small>
           </button>
+<div id="view-stats" class="card hidden">
+<div id="view-register" class="card hidden">
+  <div class="header">
+    <h1>⛳ Register</h1>
+  </div>
 
-          <button class="home-pill-btn" onclick="document.getElementById('reg-name').focus()">
+  <div class="dashboard-panel">
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="reg-name" placeholder="Enter your name">
+    </div>
+
+    <button class="btn btn-primary" onclick="registerPlayer()">
+      Register for Today's Game
+    </button>
+
+    <button class="btn btn-back" onclick="showView('view-home')">
+      ← Back
+    </button>
+  </div>
+</div>
+
+  
+          <button class="home-pill-btn" onclick="showView('view-register')">
             <div class="tile-icon">👤➕</div>
             <span>REGISTER</span>
             <small>Join the game</small>
