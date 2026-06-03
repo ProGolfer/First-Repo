@@ -645,13 +645,15 @@
           </div>
         </div>
 
-        <div class="dashboard-panel weather-card">
-          <div class="weather-icon">🌤️</div>
-          <div class="weather-temp">72°</div>
-          <div class="weather-meta">16 mph</div>
-          <div class="weather-label">WIND</div>
-        </div>
-      </div>
+      <div class="dashboard-panel weather-card">
+  <div class="weather-icon" id="weather-icon">🌤️</div>
+  <div class="weather-temp" id="weather-temp">--°</div>
+  <div class="weather-meta"><span id="weather-wind">--</span> mph</div>
+  <div class="weather-label" id="weather-condition">WIND</div>
+  <div style="margin-top:6px;color:#a8b4c5;font-weight:800;">
+    Humidity <span id="weather-humidity">--%</span>
+  </div>
+</div>
 
       <div class="action-grid">
         <div class="action-card highlight" onclick="showAdminLogin();">
@@ -1142,6 +1144,7 @@ async function loadPlayerHistory() {
         
         showView('view-confirm');
         await loadAllData();
+        setInterval(loadWeather, 600000);
       } catch (err) {
         alert(`Could not register player: ${formatError(err)}`);
       }
