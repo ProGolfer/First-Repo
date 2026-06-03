@@ -4,636 +4,782 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#041a2e">
-<link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(46, 178, 84, 0.16), transparent 30%),
-        radial-gradient(circle at top right, rgba(81, 143, 255, 0.12), transparent 28%),
-        linear-gradient(180deg, #02101d 0%, #041a2e 48%, #02111f 100%);
+        radial-gradient(circle at top left, rgba(34,197,94,.16), transparent 30%),
+        radial-gradient(circle at top right, rgba(59,130,246,.12), transparent 28%),
+        linear-gradient(180deg, #02070d 0%, #071421 45%, #02070d 100%);
       min-height: 100vh;
-      padding: 20px;
-      color: #eef6ff;
-    }
-    .container { max-width: 650px; margin: 0 auto; width: 100%; }
-    .card {
-      background: linear-gradient(180deg, rgba(7,24,40,0.96) 0%, rgba(5,20,34,0.98) 100%);
-      border: 1px solid rgba(117, 153, 188, 0.18);
-      border-radius: 24px;
       padding: 18px;
-      margin-bottom: 16px;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.38);
-      width: 100%;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
+      color: #f8fafc;
     }
-    .header {
-      background:
-        linear-gradient(180deg, rgba(8,31,54,0.96) 0%, rgba(4,18,31,0.96) 100%),
-        linear-gradient(135deg, #0a2f1a 0%, #103b22 100%);
-      color: white;
-      padding: 28px 24px;
-      text-align: center;
-      border-radius: 22px 22px 18px 18px;
-      margin: -18px -18px 18px -18px;
-      border-bottom: 1px solid rgba(108, 214, 126, 0.22);
-      position: relative;
-    }
-    .header::after {
-      content: "";
-      position: absolute;
-      inset: auto 22px 0 22px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(122,255,153,.45), transparent);
-    }
-    .header h1 { font-size: 30px; line-height: 1.1; font-weight: 900; letter-spacing: -.03em; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #dff0ff; }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 14px;
-      border: 1px solid rgba(113, 139, 167, 0.24);
-      border-radius: 14px;
-      background: rgba(244,248,252,0.06);
-      color: #f4fbff;
-      outline: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .form-group input::placeholder { color: #8fa7bb; }
-    .btn {
-      width: 100%;
-      padding: 16px 14px;
-      min-height: 48px;
-      border: none;
-      border-radius: 14px;
-      font-size: 16px;
-      font-weight: 800;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color:transparent;
-      margin-bottom: 8px;
-      transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary {
-      background: linear-gradient(135deg, #44d05f 0%, #1ea54f 100%);
-      color: #041510;
-      box-shadow: 0 10px 20px rgba(53, 193, 95, 0.28);
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06);
-      color: #eef6ff;
-      border: 1px solid rgba(121, 151, 178, 0.18);
-    }
-    .btn-success {
-      background: linear-gradient(135deg, #55d572 0%, #2fb85c 100%);
-      color: #062012;
-      box-shadow: 0 10px 20px rgba(56, 194, 101, 0.26);
-    }
-    .btn-danger { background: linear-gradient(135deg, #ff6860 0%, #ef3d39 100%); color: white; }
-    .btn-warning { background: linear-gradient(135deg, #ffbd47 0%, #ff9a1f 100%); color: #2a1900; }
-    .btn-small { padding: 8px 12px; font-size: 12px; width: auto; min-height: auto; margin-bottom: 0; }
-    .btn-back { background: rgba(255,255,255,0.08); color: #eef6ff; margin-top: 10px; }
-    .players-section {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border: 1px solid rgba(120, 152, 181, 0.14);
-      border-radius: 18px;
-      padding: 16px;
-      margin-top: 15px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .players-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .players-header h3, .section-title { color: #f4fbff; }
-    .players-count {
-      background: linear-gradient(135deg, #52d46f 0%, #20984a 100%);
-      color: #04150e;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-weight: 900;
-    }
-    .player-list { list-style: none; }
-    .player-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; }
-    .table-container { overflow-x: auto; max-width:100%; -webkit-overflow-scrolling:touch; border-radius: 12px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); color: #eef6ff; }
-    .status-approved { color: #63de83; font-weight: bold; }
-    .status-pending { color: #ffc55c; font-weight: bold; }
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 15px;
-      background: rgba(255,255,255,0.04);
-      padding: 6px;
-      border-radius: 16px;
-      border: 1px solid rgba(120,152,181,.14);
-    }
-    .tab-btn {
-      width: 100%;
-      padding: 12px;
+
+    .container { max-width: 760px; margin: 0 auto; width: 100%; }
+
+    .card {
       background: transparent;
-      color: #c9ddee;
+      color: #f8fafc;
+      border-radius: 0;
+      padding: 0;
+      margin-bottom: 16px;
+      box-shadow: none;
       border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color:transparent;
-      font-weight: 800;
+      width: 100%;
+      overflow: visible;
     }
-    .tab-btn.active {
-      background: linear-gradient(135deg, #49d466 0%, #279f4e 100%);
-      color: #04140e;
-      box-shadow: 0 8px 18px rgba(44,173,82,.24);
+
+    .header {
+      background: transparent;
+      color: white;
+      padding: 8px 2px 18px;
+      text-align: left;
+      border-radius: 0;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .admin-section {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border: 1px solid rgba(121,151,178,.16);
-      border-radius: 18px;
-      padding: 15px;
-      margin: 15px 0;
+
+    .header h1 {
+      font-size: 34px;
+      line-height: .95;
+      letter-spacing: .02em;
+      font-weight: 950;
+      text-transform: uppercase;
     }
-    .admin-top-status {
-      background: linear-gradient(180deg, rgba(53,120,255,.12) 0%, rgba(53,120,255,.06) 100%);
-      border: 1px solid rgba(76, 152, 255, 0.35);
-      border-radius:16px;
-      padding:16px;
-      text-align:center;
-      margin-bottom:18px;
+
+    .header h1 span {
+      display:block;
+      color:#54e86f;
+      font-size:24px;
+      letter-spacing:.09em;
+      margin-top:6px;
     }
-    .admin-top-status strong { font-size: 16px; }
-    .admin-top-status .closed { color:#ff897f; font-weight:800; }
-    .admin-top-status .open { color:#70e08d; font-weight:800; }
-    .admin-pill-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
-    .admin-pill-btn {
-      background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-      border:1px solid rgba(121,151,178,.16);
-      border-radius:18px;
-      padding:16px 14px;
-      font-weight:800;
-      font-size:16px;
-      color:#eaf5ff;
-      cursor:pointer;
+
+    .header-logo {
       display:flex;
-      flex-direction:column;
+      align-items:center;
+      gap:14px;
+    }
+
+    .logo-mark {
+      width:58px;
+      height:58px;
+      border-radius:18px;
+      background: linear-gradient(135deg, #4ade80, #15803d);
+      display:flex;
       align-items:center;
       justify-content:center;
-      gap:2px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-      transition: all .15s ease;
+      font-size:32px;
+      box-shadow:0 0 28px rgba(74,222,128,.28);
     }
-    .admin-pill-btn:hover { background: rgba(255,255,255,0.1); }
-    .admin-pill-btn.active {
-      background: linear-gradient(135deg, rgba(77,210,103,0.22) 0%, rgba(29,122,60,0.22) 100%);
-      color:#7dff9f;
-      border-color: rgba(99, 222, 131, 0.32);
+
+    .header-actions {
+      display:flex;
+      gap:10px;
+      align-items:center;
     }
-    .pill-line { display:block; line-height:1.1; }
-    .pill-line-bottom { display:flex; align-items:center; gap:6px; }
-    .admin-pill-btn.has-badge { display:flex; align-items:center; justify-content:center; gap:6px; }
-    .admin-pill-badge {
-      min-width:20px;
-      height:20px;
-      padding:0 6px;
-      border-radius:999px;
-      background:#ff4a45;
+
+    .icon-btn {
+      width:52px;
+      height:52px;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,.25);
+      background:rgba(15,23,42,.82);
       color:#fff;
-      display:inline-flex;
+      font-size:24px;
+      display:flex;
       align-items:center;
       justify-content:center;
-      font-size:12px;
+      position:relative;
+    }
+
+    .notify-badge {
+      position:absolute;
+      top:-8px;
+      right:-8px;
+      background:#ef4444;
+      color:white;
+      width:24px;
+      height:24px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
       font-weight:900;
-      line-height:1;
-      margin-left:4px;
-      box-shadow: 0 6px 14px rgba(255,74,69,.28);
+    }
+
+    .status-line {
+      background: linear-gradient(90deg, rgba(34,197,94,.20), rgba(59,130,246,.14));
+      color:#eafff0;
+      border:1px solid rgba(34,197,94,.28);
+      border-radius:14px;
+      padding:10px 12px;
+      margin-bottom:14px;
+      font-weight:800;
+      width:100%;
+    }
+
+    .dashboard-panel,
+    .players-section,
+    .admin-section,
+    .approval-note,
+    .stat-card,
+    .action-card,
+    .money-footer {
+      background: linear-gradient(180deg, rgba(15,30,44,.94), rgba(5,16,28,.96));
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:20px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .dashboard-panel {
+      padding:16px;
+      margin-bottom:14px;
+    }
+
+    .section-title,
+    .players-header h3 {
+      font-size:18px;
+      font-weight:950;
+      letter-spacing:.04em;
+      color:#f8fafc;
+      text-transform:uppercase;
+    }
+
+    .overview-grid {
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:10px;
+      margin-top:14px;
     }
 
     .home-pill-btn {
-      width:100%;
-      min-height:58px;
-      border:none;
+      background: linear-gradient(180deg, rgba(15,31,45,.96), rgba(7,19,33,.98));
+      border:1px solid rgba(148,163,184,.25);
+      color:white;
       border-radius:16px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-      border:1px solid rgba(121,151,178,.16);
-      color:#eef6ff;
-      font-weight:900;
-      font-size:13px;
+      min-height:118px;
+      padding:14px 8px;
       display:flex;
       flex-direction:column;
       align-items:center;
       justify-content:center;
-      gap:3px;
+      gap:8px;
       cursor:pointer;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-    }
-    .home-pill-btn:hover {
-      background: linear-gradient(135deg, rgba(77,210,103,0.18) 0%, rgba(29,122,60,0.16) 100%);
-      color:#7dff9f;
-    }
-    @media (max-width: 430px) {
-      .home-pill-tabs { gap:6px !important; }
-      .home-pill-btn { min-height:52px; font-size:12px; padding:8px 4px; }
-    }
-    .approval-note {
-      background: linear-gradient(180deg, rgba(73,212,102,0.1) 0%, rgba(73,212,102,0.05) 100%);
-      border:1px solid rgba(99,222,131,.32);
-      border-radius:16px;
-      padding:16px;
+      font-weight:900;
       text-align:center;
-      margin-bottom:18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
-    .approval-note .title { font-size:16px; font-weight:800; margin-bottom:6px; color: #f4fbff; }
-    .section-title { font-size:18px; font-weight:800; margin:18px 0 10px; }
-    .empty-state { color:#8ea8bc; text-align:center; padding:18px 0; }
-    .logout-soft { background: rgba(255,255,255,0.06); color:#eef6ff; border:1px solid rgba(121,151,178,.16); }
-    .hidden { display: none; }
-    .status-line {
-      background: linear-gradient(90deg, rgba(73,212,102,0.18) 0%, rgba(67,137,255,0.14) 100%);
-      color:#dff7ea;
-      border:1px solid rgba(94, 211, 119, 0.2);
-      border-radius:14px;
-      padding:10px 12px;
-      margin-bottom:15px;
-      font-weight:700;
-      width: 100%;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+
+    .home-pill-btn.active,
+    .home-pill-btn:hover {
+      border-color:#63de83;
+      box-shadow:0 0 24px rgba(34,197,94,.22), inset 0 1px 0 rgba(255,255,255,.08);
+      background: radial-gradient(circle at top, rgba(34,197,94,.20), rgba(7,19,33,.98) 68%);
     }
-    .muted { color:#9eb6c9; }
-    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
-    .btn-row .btn { margin-bottom:0; }
-    .name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .you-badge {
-      background: linear-gradient(135deg, #52d46f 0%, #22974a 100%);
-      color:#03120b;
-      font-size:11px;
-      font-weight:900;
-      padding:4px 8px;
-      border-radius:999px;
-      letter-spacing:0.3px;
+
+    .home-pill-btn .tile-icon {
+      font-size:32px;
+      line-height:1;
     }
-    .current-player-card {
-      background: linear-gradient(180deg, rgba(74,212,102,0.16) 0%, rgba(74,212,102,0.08) 100%) !important;
-      border-radius:14px;
-      padding:12px !important;
-      border:1px solid rgba(99,222,131,.36) !important;
-      box-shadow: 0 0 0 1px rgba(99,222,131,.08), 0 10px 24px rgba(19,67,37,.18);
+
+    .home-pill-btn span {
+      font-size:14px;
+      letter-spacing:.03em;
     }
-    .team-card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.03) 100%);
-      border:1px solid rgba(121,151,178,.14);
-      border-radius:18px;
-      padding:14px;
-      margin-bottom:16px;
-      box-shadow:none;
+
+    .home-pill-btn small {
+      color:#a8b4c5;
+      font-size:12px;
+      line-height:1.2;
+      font-weight:800;
     }
-    .team-card.current-team {
-      background: linear-gradient(180deg, rgba(73,212,102,0.14) 0%, rgba(73,212,102,0.07) 100%);
-      border:1px solid rgba(99,222,131,.34);
+
+    .orange { color:#ffb020 !important; }
+    .green { color:#54e86f !important; }
+
+    .game-row {
+      display:grid;
+      grid-template-columns: 2fr 1fr;
+      gap:14px;
+      margin-bottom:14px;
     }
-    .team-card-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
-    .team-card-title h4 { font-size:18px; font-weight:800; color:#f4fbff; }
-    .captain-row { font-weight:800; font-size:16px; color:#ebf7ff; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-    .team-player-row { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-    .team-player-row:last-child { border-bottom:none; }
-    .hero-brand {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
+
+    .today-card {
+      min-height:220px;
+      padding:22px;
+      overflow:hidden;
+      position:relative;
+      background:
+        linear-gradient(90deg, rgba(2,8,14,.68), rgba(2,8,14,.72)),
+        radial-gradient(circle at 80% 20%, rgba(251,191,36,.18), transparent 40%),
+        linear-gradient(135deg, rgba(34,197,94,.18), rgba(15,23,42,.92));
+    }
+
+    .today-card::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      background: radial-gradient(circle at 70% 70%, rgba(34,197,94,.12), transparent 45%);
+      pointer-events:none;
+    }
+
+    .today-card > * { position:relative; z-index:1; }
+
+    .today-stats {
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
       gap:10px;
-      animation: fadeInBrand .7s ease;
+      margin:22px 0;
+      text-align:center;
     }
-    .hero-brand img {
-      width:100px;
-      height:100px;
-      border-radius:50%;
-      object-fit:cover;
-      border:3px solid #d4af37;
-      box-shadow:0 4px 10px rgba(0,0,0,0.2);
-      background:#fff;
-    }
-    .hero-brand h1 { margin:0; }
-    @keyframes fadeInBrand {
-      from { opacity:0; transform: translateY(-8px); }
-      to { opacity:1; transform: translateY(0); }
-    }
-    .captain-select-wrap {
-      background: linear-gradient(180deg, rgba(12,25,43,0.98) 0%, rgba(8,18,31,0.99) 100%);
-      border: 2px solid rgba(34,197,94,0.45);
-      border-radius:12px;
-      padding:10px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .captain-select-wrap label {
+
+    .today-stats strong {
       display:block;
-      font-size:11px;
+      font-size:42px;
+      line-height:1;
+      font-weight:950;
+      color:#fff;
+    }
+
+    .today-stats small {
+      font-size:13px;
       font-weight:900;
-      color:#bbf7d0;
-      letter-spacing:.06em;
-      margin-bottom:6px;
+      color:#e5e7eb;
       text-transform:uppercase;
     }
-    .captain-select {
-      width:100%;
-      padding:10px;
-      border-radius:10px;
-      border:2px solid rgba(34,197,94,0.45);
-      background:#071426;
-      color:#ffffff;
-      font-weight:900;
-    }
-    .place-badge {
-      display:inline-flex;
+
+    .registration-line {
+      border-top:1px solid rgba(255,255,255,.16);
+      padding-top:16px;
+      display:flex;
       align-items:center;
-      gap:6px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.08);
+      gap:12px;
+      font-weight:950;
+      font-size:18px;
+    }
+
+    .registration-line small {
+      display:block;
+      font-weight:700;
+      color:#e5e7eb;
+      margin-top:4px;
+    }
+
+    .weather-card {
+      min-height:220px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+      padding:22px;
+      background: linear-gradient(180deg, rgba(13,38,57,.96), rgba(5,16,28,.98));
+    }
+
+    .weather-card .weather-icon { font-size:54px; }
+    .weather-card .weather-temp { font-size:58px; font-weight:950; line-height:1; margin-top:8px; }
+    .weather-card .weather-meta { color:#e5e7eb; font-size:18px; margin-top:8px; }
+    .weather-card .weather-label { color:#54e86f; font-weight:950; font-size:20px; margin-top:4px; }
+
+    .action-grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .action-card {
+      min-height:190px;
+      padding:22px;
+      position:relative;
+      overflow:hidden;
+      cursor:pointer;
+      background:
+        linear-gradient(90deg, rgba(2,8,14,.78), rgba(2,8,14,.84)),
+        radial-gradient(circle at 80% 20%, rgba(34,197,94,.22), transparent 40%),
+        linear-gradient(135deg, rgba(22,101,52,.32), rgba(15,23,42,.96));
+    }
+
+    .action-card.highlight { border-color:rgba(34,197,94,.70); }
+    .action-card.gold { border-color:rgba(245,158,11,.50); }
+
+    .action-card .big-icon { font-size:38px; margin-bottom:16px; }
+    .action-card h3 {
+      font-size:24px;
+      line-height:1.05;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+    }
+
+    .action-card h3 span { display:block; color:#54e86f; }
+    .action-card p { margin-top:12px; font-size:16px; color:#f1f5f9; }
+    .arrow-circle {
+      margin-top:18px;
+      width:42px;
+      height:42px;
       border-radius:999px;
-      padding:6px 10px;
+      background:rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:24px;
+    }
+
+    .split-row {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .mini-panel {
+      padding:16px;
+      min-height:170px;
+    }
+
+    .activity-line,
+    .avg-line {
+      display:grid;
+      grid-template-columns: 28px 1fr auto;
+      gap:8px;
+      align-items:center;
+      padding:8px 0;
+      border-bottom:1px solid rgba(148,163,184,.12);
+      color:#e5e7eb;
+      font-weight:700;
+    }
+
+    .avg-line {
+      grid-template-columns: 24px 1fr auto;
+    }
+
+    .view-all {
+      color:#54e86f;
+      font-weight:950;
       font-size:13px;
+      text-decoration:none;
+    }
+
+    .money-footer {
+      padding:18px;
+      display:grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+      gap:10px;
+      align-items:center;
+      margin-bottom:16px;
+    }
+
+    .money-footer strong {
+      font-size:26px;
+      display:block;
+      text-align:center;
+    }
+
+    .money-footer small {
+      display:block;
+      text-align:center;
+      color:#54e86f;
+      font-weight:950;
+      text-transform:uppercase;
+    }
+
+    .players-section {
+      padding:16px;
+      margin-top:14px;
+    }
+
+    .players-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+
+    .players-count {
+      background:linear-gradient(135deg,#4ade80,#16a34a);
+      color:#03120b;
+      padding:5px 12px;
+      border-radius:999px;
+      font-weight:950;
+    }
+
+    .player-list { list-style:none; }
+    .player-item {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:12px 0;
+      border-bottom:1px solid rgba(148,163,184,.16);
+      flex-wrap:wrap;
+      color:#f8fafc;
+    }
+
+    .form-group { margin-bottom:16px; }
+    .form-group label {
+      display:block;
+      margin-bottom:8px;
       font-weight:800;
-      color:#eef6ff;
-    }
-    .weather-box {
-      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%) !important;
-      border: 1px solid rgba(121,151,178,.14);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-    }
-    select { max-width: 100%; }
-    td select { min-width: 110px; width: 100%; }
-    @media (max-width: 640px) {
-      body { padding: 12px; }
-      .container { max-width: 100%; }
-      .header { padding: 18px; margin: -18px -18px 16px -18px; }
-      .header h1 { font-size: 24px; }
-      .tabs { grid-template-columns: 1fr; }
-      .player-item { align-items: flex-start; }
-      .btn-row { flex-direction: column; }
-      th, td { font-size: 13px; }
-      .team-card-title { align-items:flex-start; flex-direction:column; }
-    }
-  
-    /* ADMIN POLISH */
-    #view-admin-dashboard {
-      max-width: 650px;
-      margin: 0 auto;
-    }
-    #view-admin-dashboard .header {
-      padding: 24px 20px;
-    }
-    #view-admin-dashboard .header h1 {
-      font-size: 28px;
-      letter-spacing: .02em;
-      text-transform: uppercase;
-    }
-    #view-admin-dashboard .admin-top-status,
-    #view-admin-dashboard .admin-pill-tabs,
-    #view-admin-dashboard #admin-players,
-    #view-admin-dashboard #admin-teams,
-    #view-admin-dashboard #admin-settings,
-    #view-admin-dashboard .approval-note,
-    #view-admin-dashboard .admin-section,
-    #view-admin-dashboard > .btn {
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    #view-admin-dashboard .admin-pill-tabs {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 22px;
-    }
-    #view-admin-dashboard .admin-pill-btn {
-      min-height: 72px;
-      border-radius: 18px;
-      font-weight: 900;
-      letter-spacing: .02em;
-    }
-    #view-admin-dashboard .admin-section {
-      background: linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);
-      border: 1px solid rgba(89, 125, 158, 0.26);
-      border-radius: 20px;
-      padding: 18px;
-      margin-top: 16px;
-      margin-bottom: 16px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-    }
-    #view-admin-dashboard .approval-note {
-      background: linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);
-      border: 1px solid rgba(34,197,94,0.28);
-      color: #eaf6ff;
-    }
-    #view-admin-dashboard .approval-note .title {
-      color: #ffffff;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
-    #view-admin-dashboard .section-title {
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      font-weight: 900;
-      margin-top: 22px;
-      margin-bottom: 10px;
-    }
-    #view-admin-dashboard .form-group label {
-      color: #dbeafe;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
-    #view-admin-dashboard input,
-    #view-admin-dashboard select {
-      background: rgba(255,255,255,0.04);
-      color: #eef6ff;
-      border: 1px solid rgba(121,151,178,.26);
-    }
-    #view-admin-dashboard option {
-      background: #071426;
-      color: #eef6ff;
-    }
-    #view-admin-dashboard .btn {
-      font-weight: 900;
-      letter-spacing: .02em;
-    }
-    #view-admin-dashboard .btn-danger {
-      max-width: 600px;
-    }
-    @media (max-width: 640px) {
-      #view-admin-dashboard .admin-pill-tabs {
-        grid-template-columns: 1fr;
-      }
+      color:#dbeafe;
     }
 
-    </style>
+    .form-group input,
+    .form-group select {
+      width:100%;
+      padding:14px;
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:14px;
+      background:#142232;
+      color:#f8fafc;
+      outline:none;
+    }
 
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "b900f042-451f-4939-8d8f-995e7b6f867d"
-    });
-  });
-</script>
+    .form-group input::placeholder { color:#91a3b7; }
 
+    .btn {
+      width:100%;
+      padding:16px 14px;
+      min-height:48px;
+      border:none;
+      border-radius:14px;
+      font-size:16px;
+      font-weight:900;
+      cursor:pointer;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+      margin-bottom:8px;
+    }
+
+    .btn-primary {
+      background:linear-gradient(135deg,#4ade80,#16a34a);
+      color:#03120b;
+      box-shadow:0 10px 24px rgba(34,197,94,.28);
+    }
+
+    .btn-secondary,
+    .logout-soft,
+    .btn-back {
+      background:#1f2937;
+      color:#f8fafc;
+      border:1px solid rgba(148,163,184,.20);
+    }
+
+    .btn-success { background:#22c55e; color:#03120b; }
+    .btn-danger { background:#ef4444; color:white; }
+    .btn-warning { background:#f59e0b; color:#111827; }
+    .btn-small { padding:8px 12px; font-size:12px; width:auto; min-height:auto; margin-bottom:0; }
+
+    .tabs {
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:8px;
+      margin-bottom:15px;
+    }
+
+    .tab-btn {
+      width:100%;
+      padding:12px;
+      background:#1f2937;
+      color:#f8fafc;
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:12px;
+      cursor:pointer;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+      font-weight:800;
+    }
+
+    .tab-btn.active { background:#22c55e; color:#03120b; }
+
+    .admin-section {
+      color:#111827;
+      padding:15px;
+      margin:15px 0;
+      background:#f8fafc;
+      border-radius:14px;
+    }
+
+    .admin-top-status { background:#eef5fb; border:2px solid #2f93ff; border-radius:16px; padding:16px; text-align:center; margin-bottom:18px; color:#111827; }
+    .admin-top-status .closed { color:#d63b30; font-weight:900; }
+    .admin-top-status .open { color:#1b8f3a; font-weight:900; }
+    .admin-pill-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
+    .admin-pill-btn { background:#1f2937; color:#f8fafc; border:1px solid rgba(148,163,184,.20); border-radius:14px; padding:14px 12px; font-weight:900; cursor:pointer; }
+    .admin-pill-btn.active { background:#22c55e; color:#03120b; }
+    .approval-note { padding:16px; text-align:center; margin-bottom:18px; color:#111827; }
+    .approval-note .title { font-size:16px; font-weight:900; margin-bottom:6px; }
+    .section-title { font-size:18px; font-weight:950; margin:18px 0 10px; }
+    .empty-state { color:#94a3b8; text-align:center; padding:18px 0; }
+    .hidden { display:none; }
+    .muted { color:#a8b4c5; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-row .btn { margin-bottom:0; }
+    .table-container { overflow-x:auto; max-width:100%; -webkit-overflow-scrolling:touch; border-radius:12px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:6px; text-align:left; border-bottom:1px solid rgba(148,163,184,.16); }
+    .status-approved { color:#22c55e; font-weight:bold; }
+    .status-pending { color:#f59e0b; font-weight:bold; }
+    select { max-width:100%; }
+    td select { min-width:110px; width:100%; }
+
+    @media (max-width: 760px) {
+      body { padding:12px; }
+      .container { max-width:100%; }
+      .header h1 { font-size:30px; }
+      .header h1 span { font-size:20px; }
+      .overview-grid { grid-template-columns: repeat(3, 1fr); }
+      .home-pill-btn { min-height:98px; }
+      .game-row,
+      .action-grid,
+      .split-row { grid-template-columns:1fr; }
+      .money-footer { grid-template-columns:1fr 1fr; }
+      .money-footer .money-title { grid-column:1 / -1; }
+      .tabs { grid-template-columns:1fr; }
+      .player-item { align-items:flex-start; }
+      .btn-row { flex-direction:column; }
+      th, td { font-size:13px; }
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-   <div class="status-line" id="live-status">Connecting...</div>
+    <div class="status-line" id="live-status">Connecting...</div>
 
-<div id="view-home" class="card">
-  <div class="header">
-    <div class="hero-brand">
-      <img src="cliffside-logo.png" alt="Cliffside Golf Club Logo">
-      <h1>Golf Money Game</h1>
+    <div id="view-home" class="card">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">⛳</div>
+          <h1>GOLF <span>MONEY GAME</span></h1>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" onclick="showAdminLogin(); return false;">🔔<span class="notify-badge" id="top-pending-badge">0</span></button>
+          <button class="icon-btn" onclick="showAdminLogin(); return false;">☰</button>
+        </div>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="section-title">GAME OVERVIEW</div>
+
+        <div class="overview-grid">
+          <button class="home-pill-btn active" onclick="showView('view-home')">
+            <div class="tile-icon">📅</div>
+            <span>TODAY</span>
+            <small class="green">━━━━</small>
+          </button>
+
+          <button class="home-pill-btn" onclick="document.getElementById('reg-name').focus()">
+            <div class="tile-icon">👤➕</div>
+            <span>REGISTER</span>
+            <small>Join the game</small>
+          </button>
+
+          <button class="home-pill-btn" onclick="document.getElementById('home-players-display').scrollIntoView({behavior:'smooth'})">
+            <div class="tile-icon">👥</div>
+            <span>PLAYERS</span>
+            <strong id="overview-player-count" style="font-size:28px;line-height:1;">0</strong>
+            <small class="orange">Pending <span id="overview-pending-count">0</span></small>
+          </button>
+
+          <button class="home-pill-btn" onclick="document.getElementById('teams-dashboard-card').scrollIntoView({behavior:'smooth'})">
+            <div class="tile-icon">🚩</div>
+            <span>TEAMS</span>
+            <strong id="overview-team-count" style="font-size:28px;line-height:1;">4</strong>
+          </button>
+
+          <button class="home-pill-btn" onclick="showView('view-game'); loadGameView();">
+            <div class="tile-icon">🏆</div>
+            <span>SCORES</span>
+            <small class="orange">Live scoring</small>
+          </button>
+
+          <button class="home-pill-btn" onclick="showAdminLogin();">
+            <div class="tile-icon">⚙️🔒</div>
+            <span>SETTINGS</span>
+            <small>Admin locked</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="game-row">
+        <div class="dashboard-panel today-card">
+          <div class="section-title green">TODAY'S GAME</div>
+
+          <div class="today-stats">
+            <div>
+              <strong id="today-player-count">0</strong>
+              <small>Players</small>
+            </div>
+            <div>
+              <strong id="today-team-count">4</strong>
+              <small>Teams</small>
+            </div>
+            <div>
+              <strong id="today-pending-count">0</strong>
+              <small>Pending</small>
+            </div>
+          </div>
+
+          <div class="registration-line">
+            <div style="font-size:34px;color:#54e86f;">♙</div>
+            <div>
+              REGISTRATION: <span id="registration-open-status" class="green">OPEN</span>
+              <small id="registration-hours-display">6:00 AM - 9:30 AM</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-panel weather-card">
+          <div class="weather-icon">🌤️</div>
+          <div class="weather-temp">72°</div>
+          <div class="weather-meta">16 mph</div>
+          <div class="weather-label">WIND</div>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <div class="action-card highlight" onclick="showAdminLogin();">
+          <div class="big-icon">👥</div>
+          <h3>MANAGE <span>PLAYERS</span></h3>
+          <p><span class="orange" id="manage-pending-count">0</span> pending approval</p>
+          <div class="arrow-circle">→</div>
+        </div>
+
+        <div class="action-card" id="teams-dashboard-card" onclick="showAdminLogin();">
+          <div class="big-icon">🏌️‍♂️</div>
+          <h3>SELECT <span>TEAMS</span></h3>
+          <p><span id="select-team-count">4</span> teams configured</p>
+          <div class="arrow-circle">→</div>
+        </div>
+
+        <div class="action-card gold" onclick="showView('view-game'); loadGameView();">
+          <div class="big-icon">🏆</div>
+          <h3>LIVE <span>SCORES</span></h3>
+          <p>Team scoring</p>
+          <div class="arrow-circle">→</div>
+        </div>
+
+        <div class="action-card" onclick="showAdminLogin();">
+          <div class="big-icon">⚙️</div>
+          <h3>SETTINGS</h3>
+          <p>Registration <span id="settings-registration-state" class="green">open</span></p>
+          <div class="arrow-circle">🔒</div>
+        </div>
+      </div>
+
+      <div class="split-row">
+        <div class="dashboard-panel mini-panel">
+          <div class="players-header">
+            <h3>TODAY'S ACTIVITY</h3>
+            <a href="#" class="view-all">VIEW ALL</a>
+          </div>
+          <div class="activity-line"><span>👤</span><span>Players loaded</span><span id="activity-player-count">0</span></div>
+          <div class="activity-line"><span>✅</span><span>Approved</span><span id="activity-approved-count">0</span></div>
+          <div class="activity-line"><span>⏳</span><span>Pending</span><span id="activity-pending-count">0</span></div>
+          <div class="activity-line"><span>🚩</span><span>Teams</span><span id="activity-team-count">4</span></div>
+        </div>
+
+        <div class="dashboard-panel mini-panel">
+          <div class="players-header">
+            <h3>TOP 5</h3>
+            <a href="#" onclick="showLeaderboard(); return false;" class="view-all">VIEW ALL</a>
+          </div>
+          <div id="home-top-five">
+            <div class="avg-line"><span>1</span><span>No scores yet</span><strong>-</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="money-footer">
+        <div class="money-title" style="display:flex;align-items:center;gap:12px;color:#54e86f;font-weight:950;font-size:22px;">
+          <span style="font-size:36px;">💰</span> MONEY GAME
+        </div>
+        <div><strong>$20</strong><small>Buy In</small></div>
+        <div><strong id="money-pot">$0</strong><small>Pot</small></div>
+        <div><strong id="money-player-count">0</strong><small>Players</small></div>
+        <div><strong id="money-team-count">4</strong><small>Teams</small></div>
+      </div>
+
+      <div class="dashboard-panel" id="register-dashboard-card">
+        <div class="players-header">
+          <h3>REGISTER</h3>
+          <span class="players-count">Join Game</span>
+        </div>
+
+        <div class="form-group">
+          <label>Select Course</label>
+          <select id="reg-course">
+            <option>Cliffside Golf Club</option>
+            <option>Pebble Beach</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="reg-name" placeholder="Enter your name">
+        </div>
+
+        <div class="form-group">
+          <label>Phone (optional)</label>
+          <input type="tel" id="reg-phone" placeholder="(555) 123-4567">
+        </div>
+
+        <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
+      </div>
+
+      <div id="pending-approval-bar" class="dashboard-panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <span style="color:#ffb020;font-weight:900;">⏳ Players Waiting for Approval</span>
+        <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:900;min-width:36px;text-align:center;">0</span>
+      </div>
+
+      <div id="home-players-display" class="players-section">
+        <div class="players-header">
+          <h3>Registered Players</h3>
+          <span class="players-count" id="player-count">0</span>
+        </div>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+
+      <div style="text-align:center;margin-top:15px;">
+        <a href="#" onclick="showAdminLogin(); return false;" style="color:#63de83;font-weight:900;text-decoration:none;">🔒 Admin Access</a>
+      </div>
     </div>
-  </div>
 
-  <div class="players-section" style="margin-top:10px;">
-  <div class="players-header" style="margin-bottom:8px;">
-    <h3>🔔 Notifications</h3>
-  </div>
-  <div class="muted" style="margin-bottom:12px;">
-    Turn on notifications for team updates, approvals, scores, and game messages.
-  </div>
-  <button class="btn btn-success" onclick="enablePlayerNotifications()">
-    🔔 Turn On Notifications
-  </button>
-  <button class="btn btn-secondary" onclick="disableNotifications()">
-    🔕 Turn Off Notifications
-  </button>
-</div>
+    
 
-  <div class="weather-box" style="background:#e8f5e9;padding:15px;border-radius:10px;margin-bottom:20px;">
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);text-align:center;">
-      <div><span id="weather-temp" style="font-size:20px;font-weight:bold;">--°F</span><br><small>Temp</small></div>
-      <div><span id="weather-wind" style="font-size:20px;font-weight:bold;">--</span><br><small>Wind mph</small></div>
-      <div><span id="weather-humidity" style="font-size:20px;font-weight:bold;">--%</span><br><small>Humidity</small></div>
-      <div><span id="weather-condition" style="font-size:20px;font-weight:bold;">--</span><br><small>Sky</small></div>
+    <div id="view-confirm" class="card hidden">
+      <div class="header"><h1>✅ Registration Complete!</h1></div>
+      <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
+        <h3 style="color:#2e7d32;">You're In!</h3>
+        <p>Your registration is pending approval.</p>
+      </div>
+      <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label>Select Course</label>
-    <select id="reg-course">
-      <option value="Cliffside Golf Club" selected>Cliffside Golf Club</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label>Your Name</label>
-    <input type="text" id="reg-name" placeholder="Enter your name">
-  </div>
-
-
-
-  <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
-
-  <div id="registration-quick-status" class="players-section" style="padding:12px 14px;margin-top:12px;text-align:center;">
-    <div style="font-size:13px;color:#9eb6c9;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Registration Hours</div>
-    <div id="registration-hours-display" style="font-size:18px;font-weight:900;color:#ffffff;margin-top:4px;">6:00 AM - 9:30 AM</div>
-    <div id="registration-open-status" style="margin-top:8px;background:#22c55e;color:#000000;font-weight:900;font-size:14px;padding:8px;border-radius:10px;">
-      ⏰ Registration is OPEN
+    <div id="view-game" class="card hidden">
+      <div class="header"><h1>🏆 My Team Scores</h1></div>
+      <div class="tabs" style="grid-template-columns: 1fr 1fr;">
+        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
+        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
+      </div>
+      <div id="tab-myteam">
+        <p class="muted" id="my-team-label">Your team: -</p>
+        <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
+        <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
+      </div>
+      <div id="tab-otherteams" class="hidden"></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
-  </div>
-
-  <div id="captain-team-selection" class="players-section hidden">
-  <div class="players-header">
-    <h3>👑 Captain Team Selection</h3>
-  </div>
-  <div class="muted" style="margin:8px 0 12px;">
-    Captains can assign approved players to teams.
-  </div>
-  <div id="captain-team-selection-list"></div>
-  <button class="btn btn-success" onclick="submitCaptainTeamSelections()">
-    Submit Teams
-  </button>
-</div>
-
-  <div id="pending-approval-bar" style="background:#1e293b;padding:12px 14px;border-radius:12px;margin:15px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-    <span style="color:#9c6b00;font-weight:700;">⏳ Players Waiting for Approval</span>
-    <span id="pending-count" style="background:#a87900;color:white;padding:4px 12px;border-radius:999px;font-weight:700;min-width:36px;text-align:center;">0</span>
-  </div>
-
-  <div id="home-players-display" class="players-section">
-    <div class="players-header">
-      <h3>Today's Registered Players</h3>
-      <span class="players-count" id="player-count">0</span>
-    </div>
-    <ul id="player-list" class="player-list"></ul>
-  </div>
-
-  <div id="home-teams-display" class="players-section hidden">
-    <div class="players-header"><h3>Teams</h3></div>
-    <div id="home-teams-list"></div>
-  </div>
-
-  <div class="home-pill-tabs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px;">
-    <button class="home-pill-btn" onclick="togglePlayerAverages()">
-      <span>📊</span>
-      <span>Player Avg</span>
-    </button>
-    <button class="home-pill-btn" onclick="showView('view-game'); loadGameView();">
-      <span>🏆</span>
-      <span>Scores</span>
-    </button>
-    <button class="home-pill-btn" onclick="showLeaderboard()">
-      <span>🏅</span>
-      <span>Leaderboard</span>
-    </button>
-  </div>
-
-  <div id="player-averages-card" class="players-section hidden" style="margin-top:10px;">
-    <div class="players-header" style="margin-bottom:8px;">
-      <h3>📊 Player Averages</h3>
-      <button class="btn btn-small btn-secondary" onclick="togglePlayerAverages()">Close</button>
-    </div>
-    <div id="player-history" style="margin-top:10px;padding:10px;background:#111827;border-radius:10px;border:1px solid rgba(255,255,255,.08);"></div>
-  </div>
-  <div style="text-align:center;margin-top:15px;">
-    <a href="#" onclick="showAdminLogin(); return false;" style="color:#2d5a27;">🔒 Admin Access</a>
-  </div>
-</div>
-
-<div id="view-confirm" class="card hidden">
-  <div class="header"><h1>✅ Registration Complete!</h1></div>
-  <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
-    <h3 style="color:#2e7d32;">You're In!</h3>
-    <p>Your registration is pending approval.</p>
-  </div>
-  <button class="btn btn-primary" onclick="showView('view-home')">Back to Home</button>
-</div>
-
-<div id="view-game" class="card hidden">
-
-  <div class="header">
-    <h1>🏆 My Team Scores</h1>
-  </div>
-
-  <!-- Back button -->
-  <button class="btn btn-back" onclick="showView('view-home')" style="margin-bottom:10px;">
-    ← Back
-  </button>
-
-  <div class="tabs" style="grid-template-columns: 1fr 1fr;">
-    <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
-    <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Final Results</button>
-  </div>
-
-  <div id="tab-myteam">
-    <div id="myteam-score-panel" class="admin-section"></div>
-  </div>
-
-  <div id="tab-otherteams" class="hidden"></div>
-
-</div>
 
     <div id="view-leaderboard" class="card hidden">
       <div class="header"><h1>🏅 Leaderboard</h1></div>
@@ -659,13 +805,7 @@
       </div>
 
       <div class="admin-pill-tabs">
-        <button class="admin-pill-btn active has-badge" id="manage-players-tab-btn" onclick="switchAdminTab('players', event)">
-          <span class="pill-line">Manage</span>
-          <span class="pill-line pill-line-bottom">
-            <span>Players</span>
-            <span class="admin-pill-badge hidden" id="manage-players-badge">0</span>
-          </span>
-        </button>
+        <button class="admin-pill-btn active" onclick="switchAdminTab('players', event)">Manage Players</button>
         <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
         <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
       </div>
@@ -684,25 +824,19 @@
       </div>
 
       <div id="admin-teams" class="hidden">
-        <div class="approval-note" id="team-selection-notice" 
-     style="background:#22c55e;color:#000000;padding:12px;border-radius:12px;text-align:center;font-weight:900;">
-  
-  ⏰ REGISTRATION IS STILL OPEN<br>
+        <div class="approval-note" style="background:#eef7ee;border-color:#4caf50;">
+          <div class="title">✅ Registration is now CLOSED</div>
+          <div>You can now assign players to teams:</div>
+        </div>
 
-  <span style="font-weight:700;font-size:14px;">
-    Team selection is available now and registration closes at 9:30 AM.
-  </span>
-
-</div>
-
-        <div class="admin-section" style="max-width:600px;margin:20px auto;">
+        <div class="admin-section">
           <div class="form-group" style="margin-bottom:0;">
             <label>🏌️ Number of Teams</label>
             <select id="num-teams" onchange="updateNumTeams()" style="padding:12px;border-radius:12px;border:2px solid #2d5a27;">
               <option value="1">1 Team</option>
               <option value="2">2 Teams</option>
               <option value="3">3 Teams</option>
-              <option value="4">4 Teams</option>
+              <option value="4" selected>4 Teams</option>
               <option value="5">5 Teams</option>
               <option value="6">6 Teams</option>
               <option value="7">7 Teams</option>
@@ -717,16 +851,12 @@
 
         <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
 
-        <div id="teams-submitted-status" class="admin-section hidden" style="background:linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.06) 100%);border:1px solid rgba(34,197,94,0.28);color:#ffffff;font-weight:900;text-align:center;">
-          ✅ Teams have been submitted.
-        </div>
-
         <div class="section-title">Teams</div>
         <div id="teams-container"></div>
       </div>
 
       <div id="admin-settings" class="hidden">
-        <div class="admin-section" style="max-width:600px;margin:20px auto;">
+        <div class="admin-section">
           <div class="form-group">
             <label>⏰ Registration Opens At</label>
             <input type="time" id="open-time" value="06:00">
@@ -739,31 +869,11 @@
           <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
         </div>
 
-        <div class="admin-section" style="max-width:600px;margin:20px auto;">
-  <h3 style="margin-bottom:10px;">🔔 Admin Notifications</h3>
-
-  <div class="muted" style="margin-bottom:12px;">
-    Admin alerts are only for players waiting on approval. Everyone can still receive normal game notifications.
-  </div>
-
-  <button class="btn btn-success" onclick="enableAdminNotifications()">
-    🔔 Turn On Admin Alerts
-  </button>
-
-  <button class="btn btn-secondary" onclick="disableAdminNotifications()">
-    🔕 Turn Off Admin Alerts
-  </button>
-
-  <button class="btn btn-danger" onclick="disableNotifications()">
-    🔕 Turn Off All Notifications
-  </button>
-</div>
-
-        <div class="admin-section" style="background:linear-gradient(180deg, rgba(36,11,16,0.92) 0%, rgba(24,8,12,0.98) 100%);border:1px solid rgba(248,113,113,0.26);">
-          <h3 style="margin-bottom:10px;color:#ffffff;font-weight:900;text-transform:uppercase;letter-spacing:.03em;">🗑️ Clear Team Score</h3>
+        <div class="admin-section" style="background:#f3e1e5;">
+          <h3 style="margin-bottom:10px;">🗑️ Clear Team Score</h3>
           <div class="form-group">
-            <label style="color:#dbeafe;font-weight:800;text-transform:uppercase;letter-spacing:.03em;">Select Team to Clear</label>
-            <select id="clear-team-select" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px;">
+            <label>Select Team to Clear</label>
+            <select id="clear-team-select">
               <option value="">-- Select Team --</option>
             </select>
           </div>
@@ -778,138 +888,24 @@
   </div>
 
   <script>
-    let isSubmittingScores = false;
-const scoreDraft = {};
-    
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
-    const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
-    const DEVICE_ID_KEY = 'golf_money_game_device_id';
-    const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
-    const TEAMS_COUNT_KEY = 'golf_money_game_num_teams';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
-    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
-    const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
-
- async function loadPlayerHistory() {
-  const mount = document.getElementById('player-history');
-  if (!mount) return;
-
-  try {
-   const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
-    const csv = await res.text();
-
-    const rows = csv
-      .trim()
-      .split('\n')
-      .map(r => r.split(',').map(cell => (cell || '').trim()));
-
-    if (!rows.length || rows.length < 2) {
-      mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
-    }
-
-    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
-    let avgIndex = header.findIndex(h => {
-      const clean = String(h || '').replace(/[^a-z]/gi, '').toLowerCase();
-      return clean === 'avg' || clean === 'average' || clean === 'averages';
-    });
-
-    if (avgIndex === -1) {
-      avgIndex = header.length - 1;
-    }
-
-    if (avgIndex < 2) {
-      mount.innerHTML = '<div style="padding:8px 0;">Player averages unavailable</div>';
-      return;
-    }
-
-    const players = rows.slice(1).map(r => {
-      const name = (r[0] || '').trim();
-      const avg = (r[avgIndex] || '').trim();
-
-      let last = '';
-      for (let i = avgIndex - 1; i >= 2; i--) {
-        if ((r[i] || '').trim() !== '') {
-          last = (r[i] || '').trim();
-          break;
-        }
-      }
-
-      return { name, avg, last };
-    }).filter(p => p.name);
-
-    if (!players.length) {
-      mount.innerHTML = '<div style="padding:8px 0;">No player history yet</div>';
-      return;
-    }
-
-    mount.innerHTML = `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-weight:900;color:#ffffff;">
-        <div style="flex:1;">Player</div>
-        <div style="width:60px;text-align:center;">Avg</div>
-        <div style="width:60px;text-align:center;">Last</div>
-      </div>
-
-      ${players.map(p => `
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#e5edf5;">
-          <div style="flex:1;font-weight:800;">${p.name}</div>
-          <div style="width:60px;text-align:center;font-weight:900;">${p.avg || '-'}</div>
-          <div style="width:60px;text-align:center;">${p.last || '-'}</div>
-        </div>
-      `).join('')}
-    `;
-  } catch (err) {
-    console.error('loadPlayerHistory error', err);
-    mount.innerHTML = '<div style="padding:8px 0;">Player history unavailable</div>';
-  }
-}
-
-async function sendScoresToSheet(players) {
-  try {
-    const payload = {
-      date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
-      players: Array.isArray(players) ? players : [],
-      ts: Date.now()
-    };
-
-    await fetch(APP_SCRIPT_URL + `?ts=${Date.now()}`, {
-      method: "POST",
-      mode: "no-cors",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    return true;
-  } catch (err) {
-    console.error("Sheet error:", err);
-    throw err;
-  }
-}
-
-
 
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let isTypingScores = false;
-    
     let appState = {
       players: [],
       teams: [],
       settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
       myTeam: null,
       myPlayerName: '',
-      myDeviceId: '',
       settingsLiveEnabled: false,
       numTeams: 4,
       selectedNumTeams: 4,
-      teamsSubmitted: false,
-      autoRefreshIntervalId: null
+      teamsSubmitted: false
     };
 
     function formatError(err) {
@@ -924,215 +920,12 @@ let isTypingScores = false;
       document.getElementById('live-status').textContent = text;
     }
 
-    function isAdminTeamsOpen() {
-      const dashboard = document.getElementById('view-admin-dashboard');
-      const teamsTab = document.getElementById('admin-teams');
-
-      return dashboard &&
-             teamsTab &&
-             !dashboard.classList.contains('hidden') &&
-             !teamsTab.classList.contains('hidden');
-    }
-
-function shouldAutoRefresh() {
-  if (isAdminTeamsOpen()) return false;
-  if (isTeamViewOpen()) return false;
-
-  const captainBox = document.getElementById('captain-team-selection');
-  if (captainBox && !captainBox.classList.contains('hidden')) return false;
-
-  const registrationState = getRegistrationState();
-  if (registrationState.isOpen) return true;
-  if (!registrationState.isOpen && !appState.teamsSubmitted) return true;
-  return false;
-}
-
-    function stopAutoRefresh() {
-      if (appState.autoRefreshIntervalId) {
-        clearInterval(appState.autoRefreshIntervalId);
-        appState.autoRefreshIntervalId = null;
-      }
-    }
-
- function isTeamViewOpen() {
-  const view = document.getElementById('view-game');
-
-  return view &&
-         !view.classList.contains('hidden');
-}
-
-function updateAutoRefreshMode() {
-
-  const needsAutoRefresh = shouldAutoRefresh();
-
-  if (needsAutoRefresh && !appState.autoRefreshIntervalId) {
-
-    appState.autoRefreshIntervalId = setInterval(async () => {
-
-      try {
-
-        if (isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-          setStatus('Auto refresh paused for scoring');
-          return;
-        }
-
-        await loadAllData();
-
-        setStatus('Auto refreshed');
-
-      } catch (err) {
-
-        setStatus('Auto refresh error');
-
-      }
-
-    }, 15000);
-
-  } else if (!needsAutoRefresh && appState.autoRefreshIntervalId) {
-
-    stopAutoRefresh();
-
-    setStatus('Manual refresh mode');
-
-  }
-}
-
-    function weatherCodeToText(code) {
-      const map = {
-        0: 'Clear',
-        1: 'Mostly Clear',
-        2: 'Partly Cloudy',
-        3: 'Cloudy',
-        45: 'Fog',
-        48: 'Fog',
-        51: 'Drizzle',
-        53: 'Drizzle',
-        55: 'Drizzle',
-        61: 'Rain',
-        63: 'Rain',
-        65: 'Heavy Rain',
-        71: 'Snow',
-        73: 'Snow',
-        75: 'Snow',
-        80: 'Rain Showers',
-        81: 'Rain Showers',
-        82: 'Heavy Showers',
-        95: 'Thunderstorm'
-      };
-      return map[code] || 'Weather';
-    }
-
-    async function loadWeather() {
-      try {
-        const lat = 39.2667;
-        const lon = -81.5615;
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const current = data?.current;
-        if (!current) return;
-
-        const tempEl = document.getElementById('weather-temp');
-        const windEl = document.getElementById('weather-wind');
-        const humidityEl = document.getElementById('weather-humidity');
-        const conditionEl = document.getElementById('weather-condition');
-
-        if (tempEl) tempEl.textContent = `${Math.round(current.temperature_2m)}°F`;
-        if (windEl) windEl.textContent = `${Math.round(current.wind_speed_10m)}`;
-        if (humidityEl) humidityEl.textContent = `${Math.round(current.relative_humidity_2m)}%`;
-        if (conditionEl) conditionEl.textContent = weatherCodeToText(current.weather_code);
-      } catch (err) {
-        console.log('Weather failed safely', err);
-      }
-    }
-
     function showView(v){
       document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
     }
 
     function showAdminLogin(){ showView('view-admin'); }
-
-    function persistDevicePlayerName(name) {
-      appState.myPlayerName = name || '';
-      if (name) localStorage.setItem(DEVICE_PLAYER_KEY, name);
-      else localStorage.removeItem(DEVICE_PLAYER_KEY);
-    }
-
-    function generateDeviceId() {
-      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-      return 'device_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    }
-
-    function ensureDeviceId() {
-      let id = localStorage.getItem(DEVICE_ID_KEY);
-      if (!id) {
-        id = generateDeviceId();
-        localStorage.setItem(DEVICE_ID_KEY, id);
-      }
-      appState.myDeviceId = id;
-      return id;
-    }
-
-    function loadDeviceState() {
-      appState.myPlayerName = localStorage.getItem(DEVICE_PLAYER_KEY) || '';
-      appState.teamsSubmitted = localStorage.getItem(TEAMS_SUBMITTED_KEY) === 'true';
-      const savedNumTeams = parseInt(localStorage.getItem(TEAMS_COUNT_KEY) || '', 10);
-      if (!Number.isNaN(savedNumTeams) && savedNumTeams >= 1) {
-        appState.numTeams = savedNumTeams;
-        appState.selectedNumTeams = savedNumTeams;
-      }
-      ensureDeviceId();
-    }
-
-    function persistTeamsSubmitted(value) {
-      appState.teamsSubmitted = !!value;
-      localStorage.setItem(TEAMS_SUBMITTED_KEY, String(!!value));
-    }
-
-    function isCurrentPlayer(player) {
-      if (!player) return false;
-      if (appState.myDeviceId && player.device_token && String(player.device_token) === String(appState.myDeviceId)) return true;
-      if (!player.device_token && player.name && appState.myPlayerName && player.name.trim().toLowerCase() === appState.myPlayerName.trim().toLowerCase()) return true;
-      return false;
-    }
-
-    function isCurrentPlayerName(name) {
-      return appState.players.some(p => (p.name || '') === name && isCurrentPlayer(p));
-    }
-
-    function getYouBadge(name) {
-      return isCurrentPlayerName(name) ? '<span class="you-badge">YOU</span>' : '';
-    }
-
-    function getRegistrationState() {
-      const now = new Date();
-      const openTime = appState.settings.open_time || '06:00';
-      const cutoffTime = appState.settings.cutoff_time || '09:30';
-      const openDate = new Date(now);
-      const cutoffDate = new Date(now);
-      const [openH, openM] = openTime.split(':').map(Number);
-      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-      openDate.setHours(openH, openM, 0, 0);
-      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
-
-      const manuallyClosed = !!appState.settings.registration_closed;
-      const beforeOpen = now < openDate;
-      const afterCutoff = now > cutoffDate;
-      const isOpen = !manuallyClosed && !beforeOpen && !afterCutoff;
-
-      return {
-        isOpen,
-        manuallyClosed,
-        beforeOpen,
-        afterCutoff,
-        openTime,
-        cutoffTime,
-        openDate,
-        cutoffDate,
-        now
-      };
-    }
 
     async function db(promise, label) {
       try {
@@ -1150,18 +943,17 @@ function updateAutoRefreshMode() {
 
     async function ensureBaseData() {
       const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
-      try {
-        const existingTeamNumbers = new Set((teamsResult.data || []).map(t => Number(t.team_number || t.id)));
-        const missingTeams = [];
-        for (let n = 1; n <= 8; n++) {
-          if (!existingTeamNumbers.has(n)) {
-            missingTeams.push({ team_number: n, team_name: `Team ${n}` });
-          }
+      if (!teamsResult.data || teamsResult.data.length === 0) {
+        try {
+          await db(window.supabaseClient.from('teams').insert([
+            { team_number: 1, team_name: 'Team 1' },
+            { team_number: 2, team_name: 'Team 2' },
+            { team_number: 3, team_name: 'Team 3' },
+            { team_number: 4, team_name: 'Team 4' },
+            { team_number: 5, team_name: 'Team 5' }
+          ]), 'Seed teams');
+        } catch (err) {
         }
-        if (missingTeams.length) {
-          await db(window.supabaseClient.from('teams').insert(missingTeams), 'Seed missing teams');
-        }
-      } catch (err) {
       }
 
       const settingsResult = await db(window.supabaseClient.from('settings').select('*').eq('key', SETTINGS_KEY).limit(1), 'Load settings');
@@ -1189,7 +981,6 @@ function updateAutoRefreshMode() {
     }
 
     async function loadAllData() {
-      if (isTypingScores) return;
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
         db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
@@ -1200,15 +991,18 @@ function updateAutoRefreshMode() {
       appState.teams = teamsResult.data || [];
 
       const settingsRow = settingsResult.data?.[0] || null;
-      if (settingsRow) {
+      if (settingsRow && Object.prototype.hasOwnProperty.call(settingsRow, 'game_started')) {
         appState.settingsLiveEnabled = true;
         appState.settings = {
           ...appState.settings,
           game_started: !!settingsRow.game_started,
-          cutoff_time: settingsRow.cutoff_time || '09:30',
-          open_time: settingsRow.open_time || '06:00',
-          registration_closed: !!settingsRow.registration_closed
+          cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
+          open_time: settingsRow.open_time || appState.settings.open_time
         };
+      } else if (!settingsRow) {
+        appState.settingsLiveEnabled = true;
+      } else {
+        appState.settingsLiveEnabled = false;
       }
 
       renderHome();
@@ -1224,174 +1018,35 @@ function updateAutoRefreshMode() {
       return team ? (team.team_name || team.name || `Team ${team.id}`) : '-';
     }
 
-    function getActiveTeams() {
-      return appState.teams
-        .slice()
-        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, appState.numTeams || 4);
-    }
-
-    function getApprovedPlayersForTeam(teamId) {
-      return appState.players.filter(p => p.status === 'approved' && String(p.team) === String(teamId));
-    }
-
-    function getCaptainForTeam(teamId) {
-      const team = appState.teams.find(t => String(t.id) === String(teamId));
-      if (team?.captain_id) {
-        const captainByTeam = appState.players.find(p => String(p.id) === String(team.captain_id));
-        if (captainByTeam) return captainByTeam;
-      }
-      return appState.players.find(p => String(p.team) === String(teamId) && p.is_captain) || null;
-    }
-
-    function isTodayDateString(value) {
-      if (!value) return false;
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return false;
-      const now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-    }
-
-    function getTeamScoreValue(team) {
-      if (!team) return null;
-      return team.team_score ?? null;
-    }
-
-    function getTeamFrontScore(team) {
-      if (!team) return null;
-      return team.front_score ?? null;
-    }
-
-    function getTeamBackScore(team) {
-      if (!team) return null;
-      return team.back_score ?? null;
-    }
-
-    function calculateTeamTotal(front, back) {
-      const frontNum = parseInt(front, 10);
-      const backNum = parseInt(back, 10);
-      const safeFront = Number.isNaN(frontNum) ? 0 : frontNum;
-      const safeBack = Number.isNaN(backNum) ? 0 : backNum;
-      return safeFront + safeBack;
-    }
-
-    function updateTeamTotalInput() {
-      const frontInput = document.getElementById('team-front-score');
-      const backInput = document.getElementById('team-back-score');
-      const totalInput = document.getElementById('team-total-score');
-      if (!frontInput || !backInput || !totalInput) return;
-      const hasAnyValue = String(frontInput.value).trim() !== '' || String(backInput.value).trim() !== '';
-      totalInput.value = hasAnyValue ? String(calculateTeamTotal(frontInput.value, backInput.value)) : '';
-    }
-
-    function hasTeamSubmittedToday(team) {
-      return getTeamScoreValue(team) !== null && isTodayDateString(team.score_submitted_at);
-    }
-
-    function getScoringTeams() {
-      return getActiveTeams().filter(team => getApprovedPlayersForTeam(team.id).length > 0);
-    }
-
-    function allScoringTeamsSubmittedToday() {
-      const scoringTeams = getScoringTeams();
-      if (!scoringTeams.length) return false;
-      return scoringTeams.every(team => hasTeamSubmittedToday(team));
-    }
-
-    function isCurrentCaptainForTeam(teamId) {
-      const captain = getCaptainForTeam(teamId);
-      return !!captain && isCurrentPlayer(captain);
-    }
-
-    function todayKey() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
-
-    async function resetDailyGameIfNeeded() {
-      const hasOldPlayers = appState.players.some(p => p.registered_at && !isTodayDateString(p.registered_at));
-      const hasOldScores = appState.teams.some(t => t.score_submitted_at && !isTodayDateString(t.score_submitted_at));
-      if (!hasOldPlayers && !hasOldScores) return;
-
-      await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Daily reset players');
-      await db(
-        window.supabaseClient
-          .from('teams')
-          .update({ captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null })
-          .not('id', 'is', null),
-        'Daily reset teams'
-      );
-
-      if (appState.settingsLiveEnabled) {
-        await db(
-          window.supabaseClient
-            .from('settings')
-            .update({ game_started: false, open_time: '06:00', cutoff_time: '09:30', registration_closed: false })
-            .eq('key', SETTINGS_KEY),
-          'Daily reset settings'
-        );
-      }
-
-      appState.players = [];
-      appState.teams = appState.teams.map(t => ({ ...t, captain_id: null, front_score: null, back_score: null, team_score: null, score_submitted_at: null }));
-      appState.settings = { ...appState.settings, open_time: '06:00', cutoff_time: '09:30', registration_closed: false, game_started: false };
-      appState.numTeams = 4;
-      appState.selectedNumTeams = 4;
-      persistTeamsSubmitted(false);
-      localStorage.setItem(TEAMS_COUNT_KEY, '4');
-      localStorage.setItem('golf_money_game_last_daily_reset', todayKey());
-    }
-
-    async function clearExpiredTeamScoresIfNeeded() {
-      const expiredTeams = appState.teams.filter(team => {
-        const hasAnySavedScore = team.team_score !== null && team.team_score !== undefined;
-        const hasStaleDate = team.score_submitted_at && !isTodayDateString(team.score_submitted_at);
-        return hasAnySavedScore && hasStaleDate;
-      });
-
-      if (!expiredTeams.length) return;
-
-      for (const team of expiredTeams) {
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({ front_score: null, back_score: null, team_score: null, score_submitted_at: null })
-            .eq('id', team.id),
-          'Clear expired team score'
-        );
-      }
-    }
-async function notifyAdminsPlayerRegistered(playerName) {
-  try {
-    await fetch('/.netlify/functions/send-admin-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ playerName })
-    });
-  } catch (err) {
-    console.error('Admin notification failed:', err);
-  }
-}
-    
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
+        const phone = document.getElementById('reg-phone').value.trim();
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
 
-        const registrationState = getRegistrationState();
-        if (registrationState.manuallyClosed) {
+        const now = new Date();
+        const openTime = appState.settings.open_time || '06:00';
+        const cutoffTime = appState.settings.cutoff_time || '09:30';
+        const openDate = new Date();
+        const cutoffDate = new Date();
+        const [openH, openM] = openTime.split(':').map(Number);
+        const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+        openDate.setHours(openH, openM, 0, 0);
+        cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
+        if (appState.settings.registration_closed) {
           alert('Registration is manually closed.');
           return;
         }
-        if (registrationState.beforeOpen) {
-          alert(`Registration opens at ${formatTime12(registrationState.openTime)}.`);
+
+        if (now < openDate) {
+          alert(`Registration opens at ${formatTime12(openTime)}.`);
           return;
         }
-        if (registrationState.afterCutoff) {
-          alert(`Registration is closed. Cutoff time was ${formatTime12(registrationState.cutoffTime)}.`);
+
+        if (now > cutoffDate) {
+          alert(`Registration is closed. Cutoff time was ${formatTime12(cutoffTime)}.`);
           return;
         }
 
@@ -1401,51 +1056,18 @@ async function notifyAdminsPlayerRegistered(playerName) {
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
+          phone: phone || null,
           course: course || 'Cliffside Golf Club',
           status: 'pending',
           team: null,
           registered_at: new Date().toISOString(),
           is_captain: false,
-          device_token: ensureDeviceId()
+          device_token: null
         }]), 'Register player');
 
-        await notifyAdminsPlayerRegistered(name);
-        persistDevicePlayerName(name);
-
-        // Tag this browser as the player who just registered.
-        // This lets approve / deny notifications go only to this player.
-        await new Promise((resolve) => {
-          window.OneSignalDeferred = window.OneSignalDeferred || [];
-
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            resolve();
-          };
-OneSignalDeferred.push(async function(OneSignal) {
-  try {
-    const cleanName = name.trim().toLowerCase();
-
-    await OneSignal.User.addTag("player_name", cleanName);
-
-    await OneSignal.User.removeTag("role");
-    await OneSignal.User.addTag("role", "player");
-
-    alert("Player notification tag saved for: " + cleanName);
-
-    console.log("Player tagged:", cleanName);
-  } catch (e) {
-    alert("Player tag failed: " + e.message);
-    console.error("Player tag failed:", e);
-  }
-  finish();
-});
-
-setTimeout(finish, 3000);
-          });
-
+        appState.myPlayerName = name;
         document.getElementById('reg-name').value = '';
+        document.getElementById('reg-phone').value = '';
         showView('view-confirm');
         await loadAllData();
       } catch (err) {
@@ -1462,127 +1084,6 @@ setTimeout(finish, 3000);
       return `${h12}:${minutes} ${ampm}`;
     }
 
-    async function togglePlayerAverages() {
-      const card = document.getElementById('player-averages-card');
-      if (!card) return;
-      const willShow = card.classList.contains('hidden');
-      card.classList.toggle('hidden', !willShow);
-      if (willShow) await loadPlayerHistory();
-    }
-
-function isCurrentUserAnyCaptain() {
-  const currentPlayer = appState.players.find(p => isCurrentPlayer(p));
-  if (currentPlayer && currentPlayer.is_captain) return true;
-
-  return appState.teams.some(team => {
-    const captain = getCaptainForTeam(team.id);
-    return captain && isCurrentPlayer(captain);
-  });
-}
-
-function renderCaptainTeamSelection() {
-  const box = document.getElementById('captain-team-selection');
-  const list = document.getElementById('captain-team-selection-list');
-  if (!box || !list) return;
-
-  if (!isCurrentUserAnyCaptain()) {
-    box.classList.add('hidden');
-    list.innerHTML = '';
-    return;
-  }
-
-  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-  const teams = getActiveTeams();
-
-  if (!approvedPlayers.length || !teams.length) {
-    box.classList.add('hidden');
-    list.innerHTML = '';
-    return;
-  }
-
-  box.classList.remove('hidden');
-
-  list.innerHTML = approvedPlayers.map(p => `
-    <div style="display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
-      <div>
-        <div style="font-weight:900;color:#ffffff;">${p.name}${isCurrentPlayer(p) ? ' <span class="you-badge">YOU</span>' : ''}</div>
-        <div style="font-size:12px;color:#dbeafe;">${p.course || 'Cliffside Golf Club'}</div>
-      </div>
-      <select id="captain-team-select-${p.id}" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px;">
-        <option value="">No Team</option>
-        ${teams.map(t => `
-          <option value="${t.id}" ${String(p.team || '') === String(t.id) ? 'selected' : ''}>
-            ${getTeamName(t.id)}
-          </option>
-        `).join('')}
-      </select>
-    </div>
-  `).join('');
-}
-
-async function submitCaptainTeamSelections() {
-  try {
-    if (!isCurrentUserAnyCaptain()) {
-      alert('Only captains can submit teams.');
-      return;
-    }
-
-    const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-    const missingTeamPlayers = approvedPlayers.filter(p => {
-      const select = document.getElementById(`captain-team-select-${p.id}`);
-      return select && !select.value;
-    });
-
-    if (missingTeamPlayers.length) {
-      alert(`Select a team for: ${missingTeamPlayers.map(p => p.name).join(', ')}`);
-      return;
-    }
-
-    for (const p of approvedPlayers) {
-      const select = document.getElementById(`captain-team-select-${p.id}`);
-      if (!select) continue;
-
-      const nextTeam = select.value ? parseInt(select.value, 10) : null;
-
-      await db(
-        window.supabaseClient
-          .from('players')
-          .update({ team: nextTeam })
-          .eq('id', p.id),
-        'Captain assign player team'
-      );
-
-      appState.players = appState.players.map(player =>
-        String(player.id) === String(p.id)
-          ? { ...player, team: nextTeam }
-          : player
-      );
-    }
-
-    persistTeamsSubmitted(true);
-    renderHome();
-    renderAdminTeams();
-    loadGameView();
-    updateAutoRefreshMode();
-
-    alert('Teams submitted successfully!');
-  } catch (err) {
-    alert(`Could not submit teams: ${formatError(err)}`);
-  }
-}
-function areTeamsSubmitted() {
-  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-
-  if (!approvedPlayers.length) return false;
-
-  return approvedPlayers.every(p =>
-    p.team !== null &&
-    p.team !== undefined &&
-    p.team !== ''
-  );
-}
-  
-    
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
@@ -1591,97 +1092,96 @@ function areTeamsSubmitted() {
       const pendingCount = document.getElementById('pending-count');
       if (pendingCount) pendingCount.textContent = pending.length;
 
+      const teamCount = appState.numTeams || 4;
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      setText('overview-player-count', approved.length);
+      setText('overview-pending-count', pending.length);
+      setText('overview-team-count', teamCount);
+      setText('today-player-count', approved.length);
+      setText('today-team-count', teamCount);
+      setText('today-pending-count', pending.length);
+      setText('top-pending-badge', pending.length);
+      setText('manage-pending-count', pending.length);
+      setText('select-team-count', teamCount);
+      setText('activity-player-count', appState.players.length);
+      setText('activity-approved-count', approved.length);
+      setText('activity-pending-count', pending.length);
+      setText('activity-team-count', teamCount);
+      setText('money-player-count', approved.length);
+      setText('money-team-count', teamCount);
+      setText('money-pot', '$' + (approved.length * 20));
       const playerList = document.getElementById('player-list');
-      const homeTeamsDisplay = document.getElementById('home-teams-display');
-      const homeTeamsList = document.getElementById('home-teams-list');
-      const homePlayersDisplay = document.getElementById('home-players-display');
-
-if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
-        homeTeamsDisplay.classList.remove('hidden');
-        if (homePlayersDisplay) homePlayersDisplay.classList.add('hidden');
-        if (playerList) playerList.innerHTML = '';
-
-        const availableTeams = appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams || 4);
-
-        const myPlayer = approved.find(p => isCurrentPlayer(p));
-        const myTeamId = myPlayer?.team ?? null;
-
-        homeTeamsList.innerHTML = availableTeams.map(t => {
-          const teamPlayers = approved.filter(p => String(p.team) === String(t.id));
-          const captain = getCaptainForTeam(t.id);
-          const others = teamPlayers.filter(p => !captain || String(p.id) !== String(captain.id));
-          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
-
-          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
-            <div class="team-card-title">
-              <h4>${getTeamName(t.id)}</h4>
-              ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
-            </div>
-            <div style="padding:2px 8px;">
-              ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:8px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-              ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:8px 0;color:#777;">No other players</div>'}
-            </div>
-          </div>`;
-        }).join('') || '<div class="empty-state">No teams yet</div>';
-      } else {
-        if (homeTeamsDisplay) homeTeamsDisplay.classList.add('hidden');
-        if (homePlayersDisplay) homePlayersDisplay.classList.remove('hidden');
-        if (playerList) {
-          playerList.innerHTML = approved.map(p => {
-            const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
-            return `
-              <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div class="name-row" style="font-weight:800;font-size:16px;color:#ffffff;">${p.name}${getYouBadge(p.name)}</div>
-                <div style="font-size:13px;color:#2d5a27;font-weight:500;">${teamText}</div>
-              </li>
-            `;
-          }).join('') || '<li style="color:#999;">No approved players</li>';
-        }
+      if (playerList) {
+        playerList.innerHTML = approved.map(p => {
+          const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
+          return `
+            <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+              <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
+              <div style="font-size:13px;color:#54e86f;font-weight:700;">${teamText}</div>
+            </li>
+          `;
+        }).join('') || '<li style="color:#999;">No approved players</li>';
       }
 
+      const openTime = appState.settings.open_time || '06:00';
+      const cutoffTime = appState.settings.cutoff_time || '09:30';
       const hoursDisplay = document.getElementById('registration-hours-display');
-      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(appState.settings.open_time || '06:00')} - ${formatTime12(appState.settings.cutoff_time || '09:30')}`;
+      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
 
-      const registrationState = getRegistrationState();
-      const registrationOpenBox = document.getElementById('registration-open-status');
+      const registrationOpenStatus = document.getElementById('registration-open-status');
+      const settingsRegistrationState = document.getElementById('settings-registration-state');
 
-      if (registrationOpenBox) {
-        if (registrationState.manuallyClosed) {
-          registrationOpenBox.textContent = '⛔ Registration is CLOSED';
-          registrationOpenBox.style.background = '#ef4444';
-          registrationOpenBox.style.color = '#ffffff';
-        } else if (registrationState.beforeOpen) {
-          registrationOpenBox.textContent = `⏳ Opens at ${formatTime12(registrationState.openTime)}`;
-          registrationOpenBox.style.background = '#facc15';
-          registrationOpenBox.style.color = '#000000';
-        } else if (registrationState.afterCutoff) {
-          registrationOpenBox.textContent = '⛔ Registration is CLOSED';
-          registrationOpenBox.style.background = '#ef4444';
-          registrationOpenBox.style.color = '#ffffff';
-        } else {
-          registrationOpenBox.textContent = '⏰ Registration is OPEN';
-          registrationOpenBox.style.background = '#22c55e';
-          registrationOpenBox.style.color = '#000000';
-        }
+      const now = new Date();
+      const openDate = new Date();
+      const cutoffDate = new Date();
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+      openDate.setHours(openH, openM, 0, 0);
+      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
+      const isRegistrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+      if (registrationOpenStatus) {
+        registrationOpenStatus.textContent = isRegistrationOpen ? 'OPEN' : 'CLOSED';
+        registrationOpenStatus.className = isRegistrationOpen ? 'green' : 'orange';
+      }
+      if (settingsRegistrationState) {
+        settingsRegistrationState.textContent = isRegistrationOpen ? 'open' : 'closed';
+        settingsRegistrationState.className = isRegistrationOpen ? 'green' : 'orange';
       }
 
-      renderCaptainTeamSelection();
+      const scoredPlayers = appState.players
+        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 5);
+      const topFive = document.getElementById('home-top-five');
+      if (topFive) {
+        topFive.innerHTML = scoredPlayers.length ? scoredPlayers.map((p, idx) => `
+          <div class="avg-line"><span>${idx + 1}</span><span>${p.name}</span><strong class="green">${p.score}</strong></div>
+        `).join('') : '<div class="avg-line"><span>1</span><span>No scores yet</span><strong>-</strong></div>';
+      }
 
       const registerBtn = document.querySelector('#view-home .btn.btn-primary');
       if (registerBtn) {
-        registerBtn.disabled = !registrationState.isOpen;
-        registerBtn.style.opacity = registrationState.isOpen ? '1' : '0.7';
-        if (registrationState.manuallyClosed) {
+        if (appState.settings.registration_closed) {
+          registerBtn.disabled = true;
           registerBtn.textContent = 'Registration Closed';
-        } else if (registrationState.beforeOpen) {
-          registerBtn.textContent = `Registration Opens at ${formatTime12(registrationState.openTime)}`;
-        } else if (registrationState.afterCutoff) {
-          registerBtn.textContent = `Registration Closed at ${formatTime12(registrationState.cutoffTime)}`;
+          registerBtn.style.opacity = '0.7';
+        } else if (now < openDate) {
+          registerBtn.disabled = true;
+          registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
+          registerBtn.style.opacity = '0.7';
+        } else if (now > cutoffDate) {
+          registerBtn.disabled = true;
+          registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
+          registerBtn.style.opacity = '0.7';
         } else {
+          registerBtn.disabled = false;
           registerBtn.textContent = `Register for Today's Game`;
+          registerBtn.style.opacity = '1';
         }
       }
     }
@@ -1694,570 +1194,46 @@ if (areTeamsSubmitted() && homeTeamsDisplay && homeTeamsList) {
       document.getElementById('tab-'+t).classList.remove('hidden');
     }
 
-    function moneyFormat(amount) {
-      const rounded = Math.round((Number(amount) || 0) * 100) / 100;
-      return `$${rounded.toFixed(2).replace(/\.00$/, '')}`;
-    }
-
-    function getHighestScoreResult(teams, scoreGetter, potName, perPlayerEntry) {
-      const scored = teams
-        .map(team => ({ team, score: scoreGetter(team) }))
-        .filter(entry => entry.score !== null && entry.score !== undefined && !Number.isNaN(Number(entry.score)))
-        .map(entry => ({ team: entry.team, score: Number(entry.score) }));
-
-      if (!scored.length) {
-        return { potName, status: 'pending', winners: [], winningScore: null, perPlayerEntry };
-      }
-
-      const highest = Math.max(...scored.map(entry => entry.score));
-      const winners = scored.filter(entry => entry.score === highest);
-
-      return {
-        potName,
-        status: winners.length > 1 ? 'push' : 'winner',
-        winners,
-        winningScore: highest,
-        perPlayerEntry
-      };
-    }
-
-    function calculateMoneyGameResults(teams) {
-      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-      const totalPlayers = approvedPlayers.length;
-      const frontPot = totalPlayers * 5;
-      const backPot = totalPlayers * 5;
-      const totalPot = totalPlayers * 10;
-
-      const results = [
-        { key: 'front', label: 'Front 9', pot: frontPot, perPlayerEntry: 5, result: getHighestScoreResult(teams, getTeamFrontScore, 'Front 9', 5) },
-        { key: 'back', label: 'Back 9', pot: backPot, perPlayerEntry: 5, result: getHighestScoreResult(teams, getTeamBackScore, 'Back 9', 5) },
-        { key: 'total', label: 'Total', pot: totalPot, perPlayerEntry: 10, result: getHighestScoreResult(teams, getTeamScoreValue, 'Total', 10) }
-      ];
-
-      const playerPayouts = new Map();
-      approvedPlayers.forEach(p => {
-        playerPayouts.set(String(p.id), {
-          player: p,
-          payout: 0,
-          refundOnly: 0,
-          wins: []
-        });
-      });
-
-      results.forEach(part => {
-        if (part.result.status === 'push') {
-          approvedPlayers.forEach(p => {
-            const item = playerPayouts.get(String(p.id));
-            if (item) {
-              item.payout += part.perPlayerEntry;
-              item.refundOnly += part.perPlayerEntry;
-            }
-          });
-        } else if (part.result.status === 'winner') {
-          const winningTeam = part.result.winners[0].team;
-          const winningTeamPlayers = getApprovedPlayersForTeam(winningTeam.id);
-          const perWinningPlayer = winningTeamPlayers.length ? part.pot / winningTeamPlayers.length : 0;
-
-          winningTeamPlayers.forEach(p => {
-            const item = playerPayouts.get(String(p.id));
-            if (item) {
-              item.payout += perWinningPlayer;
-              item.wins.push(part.label);
-            }
-          });
-        }
-      });
-
-      return {
-        totalPlayers,
-        totalPot: totalPlayers * 20,
-        results,
-        playerPayouts: Array.from(playerPayouts.values()).sort((a, b) => {
-          if (b.payout !== a.payout) return b.payout - a.payout;
-          return (a.player.name || '').localeCompare(b.player.name || '');
-        })
-      };
-    }
-
-    function renderMoneyGameResults(teams) {
-      const money = calculateMoneyGameResults(teams);
-
-      function renderPotCard(part) {
-        const result = part.result;
-
-        if (result.status === 'push') {
-          const tiedTeams = result.winners.map(w => getTeamName(w.team.id)).join(', ');
-          return `
-            <div class="team-card" style="border-color:rgba(245,158,11,.35);">
-              <div style="font-size:16px;font-weight:900;color:#ffffff;margin-bottom:6px;">${part.label} — ${moneyFormat(part.pot)}</div>
-              <div style="font-size:22px;font-weight:900;color:#fbbf24;">PUSH</div>
-              <div class="muted" style="margin-top:6px;color:#e5edf5;">${moneyFormat(part.perPlayerEntry)} returned per player</div>
-              <div class="muted" style="margin-top:6px;color:#e5edf5;">Tie at ${result.winningScore}: ${tiedTeams}</div>
-            </div>
-          `;
-        }
-
-        if (result.status === 'winner') {
-          const winningTeam = result.winners[0].team;
-          const winningTeamPlayers = getApprovedPlayersForTeam(winningTeam.id);
-          const perWinningPlayer = winningTeamPlayers.length ? part.pot / winningTeamPlayers.length : 0;
-          return `
-            <div class="team-card current-team">
-              <div style="font-size:16px;font-weight:900;color:#ffffff;margin-bottom:6px;">${part.label} — ${moneyFormat(part.pot)}</div>
-              <div style="font-size:22px;font-weight:900;color:#7dff9f;">🏆 ${getTeamName(winningTeam.id)} wins</div>
-              <div class="muted" style="margin-top:6px;color:#e5edf5;">Score: ${result.winningScore}</div>
-              <div style="margin-top:8px;color:#ffffff;font-weight:900;">Team: ${moneyFormat(part.pot)} | Per Player: ${moneyFormat(perWinningPlayer)}</div>
-            </div>
-          `;
-        }
-
-        return `
-          <div class="team-card">
-            <div style="font-size:16px;font-weight:900;color:#ffffff;">${part.label} — ${moneyFormat(part.pot)}</div>
-            <div class="muted" style="margin-top:6px;">Waiting on scores</div>
-          </div>
-        `;
-      }
-
-      const payoutRows = money.playerPayouts.map(item => {
-        const teamName = item.player.team ? getTeamName(item.player.team) : 'No Team';
-        const emoji = item.payout > item.refundOnly ? '💰' : (item.payout > 0 ? '💵' : '😢');
-        const label = item.payout > item.refundOnly
-          ? moneyFormat(item.payout)
-          : (item.payout > 0 ? `${moneyFormat(item.payout)} back` : '$0');
-
-        return `
-          <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);color:#eef6ff;">
-            <div style="font-weight:800;">${emoji} ${item.player.name} <span class="muted" style="color:#9eb6c9;">(${teamName})</span></div>
-            <div style="font-weight:900;color:#ffffff;">${label}</div>
-          </div>
-        `;
-      }).join('');
-
-      return `
-        <div class="admin-section" style="max-width:600px;margin:0 auto 18px auto;background:linear-gradient(180deg, rgba(12,25,43,0.96) 0%, rgba(8,18,31,0.99) 100%);border:1px solid rgba(99,222,131,.28);">
-          <div style="font-size:22px;font-weight:900;color:#ffffff;margin-bottom:8px;">💰 MONEY GAME RESULTS</div>
-          <div class="muted" style="margin-bottom:14px;color:#e5edf5;">Players: ${money.totalPlayers} | Total Pot: ${moneyFormat(money.totalPot)}</div>
-          <div style="display:grid;grid-template-columns:1fr;gap:10px;">
-            ${money.results.map(renderPotCard).join('')}
-          </div>
-          <div style="margin-top:16px;font-size:17px;font-weight:900;color:#ffffff;">Player Payouts</div>
-          <div style="margin-top:6px;">${payoutRows || '<div class="muted">No player payouts yet</div>'}</div>
-        </div>
-      `;
-    }
-
     function loadGameView() {
-      const myPlayer = appState.players.find(p => isCurrentPlayer(p));
+      const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === (appState.myPlayerName || '').toLowerCase());
       const fallbackTeam = appState.teams[0]?.id ?? null;
       appState.myTeam = myPlayer?.team ?? fallbackTeam;
+      document.getElementById('my-team-label').textContent = `Your team: ${appState.myTeam ? getTeamName(appState.myTeam) : '-'}`;
 
-      const myTeam = appState.teams.find(t => String(t.id) === String(appState.myTeam)) || null;
-      const myCaptain = myTeam ? getCaptainForTeam(myTeam.id) : null;
-      const iAmCaptain = myTeam ? isCurrentCaptainForTeam(myTeam.id) : false;
-      const myTeamScore = myTeam ? getTeamScoreValue(myTeam) : null;
-      const myFrontScore = myTeam ? getTeamFrontScore(myTeam) : null;
-      const myBackScore = myTeam ? getTeamBackScore(myTeam) : null;
-      const myTeamSubmitted = myTeam ? hasTeamSubmittedToday(myTeam) : false;
-      const allSubmitted = allScoringTeamsSubmittedToday();
-      const myTeamPlayers = myTeam ? getApprovedPlayersForTeam(myTeam.id) : [];
-      const myTeamPanel = document.getElementById('myteam-score-panel');
+      const others = appState.teams.map(team => {
+        const players = appState.players.filter(p => String((p.team ?? fallbackTeam)) === String(team.id) && p.status === 'approved');
+        const scores = players.map(p => p.score).filter(v => v !== null && v !== undefined);
+        const bestScore = scores.length ? Math.min(...scores) : '-';
+        return `<div class="admin-section"><strong>${getTeamName(team.id)}</strong><div>${players.map(p => p.name).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
+      }).join('');
+      document.getElementById('tab-otherteams').innerHTML = others || '<div class="muted">No teams yet</div>';
+    }
 
-      if (myTeamPanel) {
-        if (!myPlayer || !myTeam) {
-          myTeamPanel.innerHTML = '<div class="empty-state">Register and get assigned to a team to use score keeping.</div>';
-        } else {
-          const currentButtonText = myTeamSubmitted ? 'Update Team Score' : 'Submit Team Score';
-          const frontInputValue = myFrontScore !== null && myFrontScore !== undefined ? String(myFrontScore) : '';
-          const backInputValue = myBackScore !== null && myBackScore !== undefined ? String(myBackScore) : '';
-          const scoreInputValue = myTeamScore !== null && myTeamScore !== undefined ? String(myTeamScore) : '';
-          const playerNames = myTeamPlayers.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ');
+    async function submitTeamScore(){
+      try {
+        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
+        const score = document.getElementById('team-total-score').value;
+        if(!score){ alert('Enter score'); return; }
 
-          if (iAmCaptain) {
-            myTeamPanel.innerHTML = `
-              <div style="background:#eef7ee;border:2px solid #2d5a27;border-radius:16px;padding:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-                  <div>
-                    <div style="font-size:12px;font-weight:800;color:#2d5a27;letter-spacing:.4px;">OFFICIAL SCORE KEEPER</div>
-                    <div style="font-size:22px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}</div>
-                  </div>
-                  <span class="you-badge">CAPTAIN</span>
-                </div>
-                <div class="muted" style="margin-bottom:12px;">Captain: ${myCaptain ? myCaptain.name : 'No captain selected'}</div>
-                <div class="muted" style="margin-bottom:14px;">Players: ${playerNames || 'No players yet'}</div>
-                <div style="background:#fff;border-radius:14px;padding:14px;">
-                  <div style="font-size:14px;font-weight:800;color:#7a5a00;background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:14px;">📝 Captain Only: Enter Player Scores + Team Score</div>
-                  <div style="background:#f4f4f4;border-radius:14px;padding:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-                      <div style="font-size:18px;font-weight:800;color:#143b2f;">${getTeamName(myTeam.id)}${myCaptain ? ` (${myCaptain.name})` : ''}</div>
-                      ${myTeamSubmitted ? '<span style="background:#4caf50;color:#fff;font-size:13px;font-weight:800;padding:6px 10px;border-radius:8px;">✓ Score Submitted</span>' : ''}
-                    </div>
+        const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === appState.myPlayerName.toLowerCase());
+        if (!myPlayer) { alert('Player not found yet'); return; }
 
-                    <div style="margin-bottom:16px;">
-                      <div style="font-size:13px;font-weight:800;color:#143b2f;margin-bottom:10px;text-transform:uppercase;">Player Scores</div>
-                      <div style="display:grid;grid-template-columns:1fr;gap:10px;">
-                        ${myTeamPlayers.map(p => `
-                          <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;background:#ffffff;border:1px solid #d8d8d8;border-radius:10px;padding:10px 12px;">
-                            <div style="font-weight:800;color:#143b2f;">${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}${String(p.id) === String(myCaptain?.id) ? ' 👑' : ''}</div>
-                           <input type="number" id="player-score-${p.id}" placeholder="Score" value="${p.score !== null && p.score !== undefined ? String(p.score) : ''}" onfocus="isTypingScores = true" onblur="isTypingScores = false" style="width:100%;padding:10px;border:2px solid #d8d8d8;border-radius:8px;font-size:18px;font-weight:800;text-align:center;">
-                          </div>
-                        `).join('')}
-                      </div>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Front</label>
-                        <input type="number" id="team-front-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Front" value="${frontInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Back</label>
-                        <input type="number" id="team-back-score" onfocus="isTypingScores = true" onblur="isTypingScores = false" placeholder="Back" value="${backInputValue}" oninput="updateTeamTotalInput()" style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:6px;">Total</label>
-                        <input type="number" id="team-total-score" placeholder="Total" value="${scoreInputValue}" readonly style="width:100%;padding:14px;border:2px solid #d8d8d8;border-radius:8px;font-size:24px;font-weight:800;background:#f0f0f0;">
-                      </div>
-                    </div>
-                    <button class="btn btn-success" onclick="submitTeamScore()" style="margin-top:14px;">${currentButtonText}</button>
-                    <div class="muted" style="margin-top:10px;">${myTeamSubmitted ? (allSubmitted ? 'All teams have submitted. You can still edit your player scores and team score if needed.' : 'Your team score is submitted. You can still edit it if there was a mistake.') : 'Only the designated captain on the device marked YOU can submit player scores and the final team score.'}</div>
-                  </div>
-                </div>
-              </div>`;
-          } else {
-            myTeamPanel.innerHTML = `
-              <div style="background:#f7f7f7;border:2px solid #e0e0e0;border-radius:16px;padding:16px;">
-                <div style="font-size:22px;font-weight:800;color:#143b2f;margin-bottom:8px;">${getTeamName(myTeam.id)}</div>
-                <div class="muted" style="margin-bottom:10px;">Captain: ${myCaptain ? `${myCaptain.name}${isCurrentPlayer(myCaptain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-                <div style="background:#fff3cd;color:#7a5a00;border-radius:12px;padding:12px;font-weight:700;">Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.</div>
-                ${myTeamSubmitted ? `<div style="margin-top:12px;background:#eef7ee;border-radius:12px;padding:12px;font-weight:700;color:#1a472a;">Your team has submitted a score.${allSubmitted ? ` Final score: ${myTeamScore}` : ' Scores will appear when all teams submit.'}</div>` : ''}
-              </div>`;
-          }
-        }
+        await db(window.supabaseClient.from('players').update({ score: parseInt(score, 10) }).eq('id', myPlayer.id), 'Submit score');
+        alert('Score submitted!');
+      } catch (err) {
+        alert(`Could not save score: ${formatError(err)}`);
       }
-
-      const otherTeamsContainer = document.getElementById('tab-otherteams');
-      const teamsToShow = getScoringTeams();
-      if (!allSubmitted) {
-        otherTeamsContainer.innerHTML = '<div class="admin-section" style="max-width:600px;margin:20px auto;"><strong>Final Results are hidden for now.</strong><div class="muted" style="margin-top:8px;">All teams must submit before money game results appear here.</div></div>';
-      } else {
-        const rankedTeams = teamsToShow
-          .map(team => ({ team, score: getTeamScoreValue(team) ?? -999999 }))
-          .sort((a, b) => b.score - a.score);
-
-        function getPlaceMeta(index, total) {
-          if (index === 0) return '🥇 1st Place';
-          if (index === 1) return '🥈 2nd Place';
-          if (index === 2) return '🥉 3rd Place';
-          if (index === total - 1) return '💩 Last Place';
-          return `#${index + 1}`;
-        }
-
-        const moneyResults = renderMoneyGameResults(teamsToShow);
-
-        const others = rankedTeams.map((entry, index) => {
-          const team = entry.team;
-          const players = getApprovedPlayersForTeam(team.id);
-          const captain = getCaptainForTeam(team.id);
-          const isMyTeam = appState.myTeam && String(appState.myTeam) === String(team.id);
-          const teamScore = getTeamScoreValue(team);
-          const placeLabel = getPlaceMeta(index, rankedTeams.length);
-          return `<div class="team-card ${isMyTeam ? 'current-team' : ''}">
-            <div class="team-card-title">
-              <h4>${getTeamName(team.id)}</h4>
-              <span class="place-badge">${placeLabel}</span>
-            </div>
-            <div class="muted" style="margin-bottom:10px;">Captain: ${captain ? `${captain.name}${isCurrentPlayer(captain) ? ' (YOU)' : ''}` : 'No captain selected'}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-              <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Front</div>
-                <div style="font-size:22px;font-weight:800;color:#ffffff;">${getTeamFrontScore(team) ?? '-'}</div>
-              </div>
-              <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
-                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Back</div>
-                <div style="font-size:22px;font-weight:800;color:#ffffff;">${getTeamBackScore(team) ?? '-'}</div>
-              </div>
-              <div style="background:rgba(34,197,94,0.12);border-radius:10px;padding:10px;border:1px solid rgba(99,222,131,.28);">
-                <div style="font-size:12px;font-weight:800;color:#9eb6c9;margin-bottom:4px;">Total</div>
-                <div style="font-size:24px;font-weight:900;color:#ffffff;">${teamScore ?? '-'}</div>
-              </div>
-            </div>
-            <div>${players.map(p => `${p.name}${isCurrentPlayer(p) ? ' (YOU)' : ''}`).join(', ') || 'No players'}</div>
-          </div>`;
-        }).join('');
-        otherTeamsContainer.innerHTML = moneyResults + (others || '<div class="muted">No teams yet</div>');
-      }
-    }
-function getScoreDraftKey(teamId, playerId) {
-  return `${teamId}__${playerId}`;
-}
-
-function getDraftPlayerScore(teamId, playerId) {
-  return scoreDraft[getScoreDraftKey(teamId, playerId)] ?? '';
-}
-
-function setDraftPlayerScore(teamId, playerId, value) {
-  scoreDraft[getScoreDraftKey(teamId, playerId)] = value;
-}
-    document.addEventListener('input', function(e) {
-  const el = e.target;
-  if (!el || !el.id) return;
-
-  if (el.id.startsWith('player-score-')) {
-    const playerId = el.id.replace('player-score-', '');
-    if (appState.myTeam) {
-      setDraftPlayerScore(appState.myTeam, playerId, el.value);
-    }
-  }
-});
-function syncScoreDraftToInputs() {
-  if (!appState.myTeam) return;
-
-  document.querySelectorAll('[id^="player-score-"]').forEach(el => {
-    const playerId = el.id.replace('player-score-', '');
-    const draftValue = getDraftPlayerScore(appState.myTeam, playerId);
-
-    if (draftValue !== '' && el.value !== draftValue) {
-      el.value = draftValue;
-    }
-  });
-}
-
-const scoreDraftObserver = new MutationObserver(() => {
-  syncScoreDraftToInputs();
-});
-
-scoreDraftObserver.observe(document.body, {
-  childList: true,
-  subtree: true
-});
-
-async function runOneSignal(callback) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(callback);
-}
-
-async function enablePlayerNotifications() {
-  runOneSignal(async function(OneSignal) {
-    try {
-      await OneSignal.Notifications.requestPermission();
-
-      const permission = OneSignal.Notifications.permission;
-
-      if (!permission) {
-        alert("Notifications are still blocked. Turn them on in browser/site settings.");
-        return;
-      }
-
-      await OneSignal.User.PushSubscription.optIn();
-
-      await OneSignal.User.removeTag("role");
-      await OneSignal.User.addTag("role", "player");
-      await OneSignal.User.addTag("general_notifications", "true");
-      await OneSignal.User.addTag("app", "golf_money_game");
-
-      alert("Player notifications are on");
-    } catch (e) {
-      console.error(e);
-      alert("Notifications failed: " + e.message);
-    }
-  });
-}
-
-async function enableAdminNotifications() {
-  runOneSignal(async function(OneSignal) {
-    try {
-      await OneSignal.Slidedown.promptPush({ force: true });
-
-      await OneSignal.User.addTag("general_notifications", "true");
-      await OneSignal.User.addTag("is_admin", "true");
-      await OneSignal.User.addTag("app", "golf_money_game");
-
-      alert("Admin alerts are on");
-    } catch (e) {
-      console.error(e);
-      alert("Admin alerts failed: " + e.message);
-    }
-  });
-}
-
-async function disableAdminNotifications() {
-  runOneSignal(async function(OneSignal) {
-    try {
-      await OneSignal.User.removeTag("is_admin");
-      alert("Admin alerts are off");
-    } catch (e) {
-      console.error(e);
-      alert("Could not turn off admin alerts: " + e.message);
-    }
-  });
-}
-
-async function disableNotifications() {
-  runOneSignal(async function(OneSignal) {
-    try {
-      await OneSignal.User.PushSubscription.optOut();
-      await OneSignal.User.removeTag("general_notifications");
-      await OneSignal.User.removeTag("is_admin");
-
-      alert("Notifications are off");
-    } catch (e) {
-      console.error(e);
-      alert("Could not turn off notifications: " + e.message);
-    }
-  });
-}
-
-async function submitTeamScore(){
-  if (isSubmittingScores) return;
-  isSubmittingScores = true;
-
-  try {
-    if (!appState.myPlayerName) { 
-      alert('Register first on this device'); 
-      return; 
-    }
-
-    if (!appState.myTeam) { 
-      alert('You are not assigned to a team yet'); 
-      return; 
-    }
-
-    if (!isCurrentCaptainForTeam(appState.myTeam)) {
-      alert('Only the designated captain with YOU beside their name can submit or edit player scores and the final team score.');
-      return;
-    }
-
-    const myTeamPlayers = getApprovedPlayersForTeam(appState.myTeam);
-    if (!myTeamPlayers.length) { 
-      alert('No players found for this team yet.'); 
-      return; 
-    }
-
-    const playerScores = myTeamPlayers.map(p => {
-      const draftValue = getDraftPlayerScore(appState.myTeam, p.id);
-      const domValue = document.getElementById(`player-score-${p.id}`)?.value;
-      const value = draftValue !== '' ? draftValue : domValue;
-
-      return {
-        id: p.id,
-        name: p.name,
-        score: value === '' || value === undefined || value === null ? null : parseInt(value, 10)
-      };
-    });
-
-    const missingPlayerScore = playerScores.find(p => p.score === null || Number.isNaN(p.score));
-    if (missingPlayerScore) {
-      alert(`Enter a score for ${missingPlayerScore.name}.`);
-      return;
-    }
-
-    const frontValue = document.getElementById('team-front-score')?.value;
-    const backValue = document.getElementById('team-back-score')?.value;
-    if ((!frontValue && frontValue !== '0') || (!backValue && backValue !== '0')) { 
-      alert('Enter both front and back scores'); 
-      return; 
-    }
-
-    const totalScore = calculateTeamTotal(frontValue, backValue);
-    const nowIso = new Date().toISOString();
-
-    await db(
-      window.supabaseClient
-        .from('teams')
-        .update({
-          front_score: parseInt(frontValue, 10),
-          back_score: parseInt(backValue, 10),
-          team_score: totalScore,
-          score_submitted_at: nowIso
-        })
-        .eq('id', appState.myTeam),
-      'Submit team score'
-    );
-
-    // Save each player's submitted score so the Leaderboard updates immediately.
-    for (const p of playerScores) {
-      await db(
-        window.supabaseClient
-          .from('players')
-          .update({ score: p.score })
-          .eq('id', p.id),
-        `Update player score for ${p.name}`
-      );
-    }
-
-   const sheetPlayersPayload = playerScores
-  .map(p => ({
-    name: String(p.name || '').trim(),
-    score: p.score
-  }))
-  .filter(p => p.name !== '' && p.score !== null && !Number.isNaN(p.score));
-
-if (!sheetPlayersPayload.length) {
-  alert('No valid player scores were built for Google Sheets.');
-  return;
-}
-
-    await sendScoresToSheet(sheetPlayersPayload);
-
-myTeamPlayers.forEach(p => {
-  delete scoreDraft[getScoreDraftKey(appState.myTeam, p.id)];
-});
-
-alert('Player scores and team score saved!');
-await loadAllData();
-
-  } catch (err) {
-    alert(`Could not save team score: ${formatError(err)}`);
-  } finally {
-    isSubmittingScores = false;
-  }
-}
-    
-    function getLeaderboardEmoji(place, score, avg) {
-      if (avg !== null && score !== null && score >= avg + 5) return '💩';
-      if (place === 1) return '🥇';
-      if (place === 2) return '🥈';
-      if (place === 3) return '🥉';
-      return '';
     }
 
     function renderLeaderboard() {
       const ranked = appState.players
-        .filter(p => p.status === 'approved')
-        .map(p => {
-          const score = p.score !== null && p.score !== undefined && p.score !== '' ? parseFloat(p.score) : null;
-          const avg = p.avg !== null && p.avg !== undefined && p.avg !== '' ? parseFloat(p.avg) : null;
-          return { ...p, score, avg };
-        })
-        .filter(p => p.score !== null && !Number.isNaN(p.score))
-        .sort((a, b) => {
-          if (a.score === b.score) return (a.name || '').localeCompare(b.name || '');
-          return a.score - b.score;
-        });
+        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
+        .sort((a,b) => a.score - b.score);
 
-      const leaderboardList = document.getElementById('leaderboard-list');
-      if (!leaderboardList) return;
-
-      leaderboardList.innerHTML = ranked.map((p, idx) => {
-        const place = idx + 1;
-        const emoji = getLeaderboardEmoji(place, p.score, p.avg);
-        const avgText = p.avg !== null && !Number.isNaN(p.avg) ? `Avg ${p.avg.toFixed(2)}` : 'Avg -';
-
-        return `
-          <li class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
-            <span>
-              ${emoji ? `${emoji} ` : ''}${place}. ${p.name}
-              ${isCurrentPlayerName(p.name) ? '<span class="you-badge">YOU</span>' : ''}
-              ${p.avg !== null && p.score >= p.avg + 5 ? '<span style="font-size:12px;color:#fbbf24;font-weight:900;margin-left:6px;">5+ over avg</span>' : ''}
-            </span>
-            <span style="font-weight:900;">${p.score.toFixed(0)} <small style="display:block;color:#9eb6c9;font-weight:700;">${avgText}</small></span>
-          </li>
-        `;
-      }).join('') || '<li style="color:#999;">No player scores submitted yet</li>';
+      document.getElementById('leaderboard-list').innerHTML = ranked.map((p, idx) => `
+        <li class="player-item"><span>${idx + 1}. ${p.name}</span><span>${p.score}</span></li>
+      `).join('') || '<li style="color:#999;">No scores submitted yet</li>';
     }
-
-
 
     function showLeaderboard() {
       renderLeaderboard();
@@ -2273,20 +1249,14 @@ await loadAllData();
 
     function renderAdminPlayers(){
       const pending = appState.players.filter(p => p.status === 'pending');
-      const managePlayersBadge = document.getElementById('manage-players-badge');
-      if (managePlayersBadge) {
-        managePlayersBadge.textContent = String(pending.length);
-        managePlayersBadge.classList.toggle('hidden', pending.length === 0);
-      }
       const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
-
 
       const pendingList = document.getElementById('pending-players-list');
       if (pendingList) {
         pendingList.innerHTML = pending.length ? pending.map(p => `
-          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
+          <div class="player-item">
             <div>
-              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
+              <div style="font-weight:700;">${p.name}</div>
               <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2300,9 +1270,9 @@ await loadAllData();
       const approvedNoTeamList = document.getElementById('approved-no-team-list');
       if (approvedNoTeamList) {
         approvedNoTeamList.innerHTML = approvedNoTeam.length ? approvedNoTeam.map(p => `
-          <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}">
+          <div class="player-item">
             <div>
-              <div class="name-row" style="font-weight:700;">${p.name}${getYouBadge(p.name)}</div>
+              <div style="font-weight:700;">${p.name}</div>
               <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -2313,47 +1283,32 @@ await loadAllData();
         `).join('') : '<div class="empty-state">No approved players without a team</div>';
       }
 
-      const registrationState = getRegistrationState();
+      const now = new Date();
+      const openTime = appState.settings.open_time || '06:00';
+      const cutoffTime = appState.settings.cutoff_time || '09:30';
+      const openDate = new Date();
+      const cutoffDate = new Date();
+      const [openH, openM] = openTime.split(':').map(Number);
+      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+      openDate.setHours(openH, openM, 0, 0);
+      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+      const isOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
       const statusEl = document.getElementById('admin-reg-status');
       const cardEl = document.getElementById('admin-status-card');
       if (statusEl && cardEl) {
-        statusEl.textContent = registrationState.isOpen ? 'OPEN' : 'CLOSED';
-        statusEl.className = registrationState.isOpen ? 'open' : 'closed';
-
-        if (registrationState.isOpen) {
-          cardEl.querySelector('div').textContent = `Registration is open until ${formatTime12(registrationState.cutoffTime)}.`;
-        } else if (registrationState.beforeOpen) {
-          cardEl.querySelector('div').textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
-        } else if (registrationState.manuallyClosed) {
-          cardEl.querySelector('div').textContent = 'Registration is manually closed.';
-        } else {
-          cardEl.querySelector('div').textContent = `Registration closed at ${formatTime12(registrationState.cutoffTime)}.`;
-        }
+        statusEl.textContent = isOpen ? 'OPEN' : 'CLOSED';
+        statusEl.className = isOpen ? 'open' : 'closed';
+        cardEl.querySelector('div').textContent = isOpen
+          ? `Registration is open until ${formatTime12(cutoffTime)}.`
+          : 'Registration is closed. No new players can register.';
       }
     }
 
     async function changeTeam(id, teamId){
       try {
-        const player = appState.players.find(p => String(p.id) === String(id));
-        const oldTeam = player?.team ?? null;
         const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
-
         await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', id), 'Change team');
         appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, team: nextTeam } : p);
-
-        if (oldTeam && String(oldTeam) !== String(nextTeam)) {
-          const oldTeamRow = appState.teams.find(t => String(t.id) === String(oldTeam));
-          if (oldTeamRow && String(oldTeamRow.captain_id) === String(id)) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', oldTeam), 'Clear old captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(oldTeam) ? { ...t, captain_id: null } : t);
-          }
-        }
-
-        if (nextTeam && player?.is_captain) {
-          await db(window.supabaseClient.from('teams').update({ captain_id: id }).eq('id', nextTeam), 'Set captain after team change');
-          appState.teams = appState.teams.map(t => String(t.id) === String(nextTeam) ? { ...t, captain_id: id } : t);
-        }
-
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -2363,104 +1318,32 @@ await loadAllData();
       }
     }
 
-async function notifyPlayer(playerName, message) {
-  try {
-
-    const cleanName = (playerName || '').trim().toLowerCase();
-
-    console.log(
-      'Sending player notification:',
-      cleanName,
-      message
-    );
-
-    await fetch('/.netlify/functions/send-player-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        playerName: cleanName,
-        message
-      })
-    });
-
-  } catch (err) {
-    console.error('Player notification failed:', err);
-  }
-  }
-    
-async function approve(id){
-  try {
-    const player = appState.players.find(
-      p => String(p.id) === String(id)
-    );
-
-    await db(
-      window.supabaseClient
-        .from('players')
-        .update({ status: 'approved' })
-        .eq('id', id),
-      'Approve player'
-    );
-
-    appState.players = appState.players.map(p =>
-      String(p.id) === String(id)
-        ? { ...p, status: 'approved' }
-        : p
-    );
-
-    if (player) {
-      await notifyPlayer(
-        player.name,
-        "You have been approved for today's game."
-      );
+    async function approve(id){
+      try {
+        await db(window.supabaseClient.from('players').update({ status: 'approved' }).eq('id', id), 'Approve player');
+        appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, status: 'approved' } : p);
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not approve player: ${formatError(err)}`);
+      }
     }
 
-    renderHome();
-    renderAdminPlayers();
-    renderAdminTeams();
-    renderLeaderboard();
-  } catch (err) {
-    alert(`Could not approve player: ${formatError(err)}`);
-  }
-}
-
-async function deleteP(id){
-  if(!confirm('Delete?')) return;
-
-  try {
-    const player = appState.players.find(
-      p => String(p.id) === String(id)
-    );
-
-    if (player) {
-      await notifyPlayer(
-        player.name,
-        "Your registration was denied."
-      );
+    async function deleteP(id){
+      if(!confirm('Delete?')) return;
+      try {
+        await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
+        appState.players = appState.players.filter(p => String(p.id) !== String(id));
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderLeaderboard();
+      } catch (err) {
+        alert(`Could not delete player: ${formatError(err)}`);
+      }
     }
-
-    await db(
-      window.supabaseClient
-        .from('players')
-        .delete()
-        .eq('id', id),
-      'Delete player'
-    );
-
-    appState.players = appState.players.filter(
-      p => String(p.id) !== String(id)
-    );
-
-    renderHome();
-    renderAdminPlayers();
-    renderAdminTeams();
-    renderLeaderboard();
-  } catch (err) {
-    alert(`Could not delete player: ${formatError(err)}`);
-  }
-}
 
     function renderAdminTeams(){
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
@@ -2472,42 +1355,30 @@ async function deleteP(id){
       const numTeamsSelect = document.getElementById('num-teams');
       if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
 
-      const teamsSubmittedStatus = document.getElementById('teams-submitted-status');
-      if (teamsSubmittedStatus) {
-        teamsSubmittedStatus.classList.toggle('hidden', !appState.teamsSubmitted);
-        teamsSubmittedStatus.innerHTML = appState.teamsSubmitted
-          ? `✅ Teams have been submitted. Current setup: ${appState.numTeams || 4} teams.`
-          : '';
-      }
-
       const teamAssignmentList = document.getElementById('team-assignment-list');
       if (teamAssignmentList) {
         teamAssignmentList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
           const playerTeam = p.team ?? '';
           const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
           const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
-          const isCaptainSelected = !!p.is_captain || currentCaptainId === String(p.id);
           return `
-            <div class="player-item ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}" style="background:rgba(15,23,42,0.85);padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;border:1px solid rgba(255,255,255,0.08);">
+            <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
               <div style="min-width:110px;">
-                <div class="name-row" style="font-weight:900;color:#ffffff;">${p.name}${getYouBadge(p.name)}</div>
-                <div style="color:#ffffff;font-size:13px;">${p.course || 'Cliffside Golf Club'}</div>
+                <div style="font-weight:700;">${p.name}</div>
+                <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
               </div>
               <div style="flex:1;min-width:140px;">
-                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);width:100%;background:#0f172a;color:#ffffff;">
+                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
                   <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
                   ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
                 </select>
               </div>
-              <div style="flex:1;min-width:180px;">
-                <div class="captain-select-wrap">
-                  <label>👑 Captain Control</label>
-                <select class="captain-select" onchange="setCaptainFromPlayerRow('${p.id}', this.value)">
-                    <option value="">-- Choose Role --</option>
-                    <option value="yes" ${(currentCaptainId === String(p.id) || p.is_captain) ? 'selected' : ''}>👑 Make Captain</option>
-                    <option value="no" ${(currentCaptainId !== String(p.id) && !p.is_captain) ? 'selected' : ''}>Player Only</option>
-                  </select>
-                </div>
+              <div style="flex:1;min-width:160px;">
+                <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;" ${!playerTeam ? 'disabled' : ''}>
+                  <option value="">-- Captain? --</option>
+                  <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
+                  <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
+                </select>
               </div>
             </div>
           `;
@@ -2516,56 +1387,25 @@ async function deleteP(id){
 
       const teamsContainer = document.getElementById('teams-container');
       if (teamsContainer) {
-        const myPlayer = approvedPlayers.find(p => isCurrentPlayerName(p.name));
-        const myTeamId = myPlayer?.team ?? null;
-
         teamsContainer.innerHTML = availableTeams.map(t => {
           const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
-          const captain = getCaptainForTeam(t.id);
-          const others = teamPlayers.filter(p => !captain || String(p.id) !== String(captain.id));
-          const isMyTeam = myTeamId && String(myTeamId) === String(t.id);
+          const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
+          const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
           return `
-            <div class="team-card ${isMyTeam ? 'current-team' : ''}">
-              <div class="team-card-title">
-                <h4>${getTeamName(t.id)}</h4>
-                ${isMyTeam ? '<span class="you-badge">YOUR TEAM</span>' : ''}
-              </div>
+            <div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px;">
+              <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
               <div style="padding:4px 8px;">
-                ${captain ? `<div class="captain-row ${isCurrentPlayerName(captain.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${captain.name} 👑 (Captain)</span>${getYouBadge(captain.name)}</div></div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-                ${others.length ? others.map(p => `<div class="team-player-row ${isCurrentPlayerName(p.name) ? 'current-player-card' : ''}"><div class="name-row"><span>${p.name}</span>${getYouBadge(p.name)}</div></div>`).join('') : '<div style="padding:6px 0;color:#777;">No other players</div>'}
+                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
               </div>
             </div>
           `;
         }).join('');
       }
 
-      const notice = document.getElementById('team-selection-notice');
-      const noticeTitle = document.getElementById('team-selection-title');
-      const noticeSubtitle = document.getElementById('team-selection-subtitle');
-      if (notice && noticeTitle && noticeSubtitle) {
-        const registrationState = getRegistrationState();
-
-        if (registrationState.isOpen) {
-          notice.style.background = '#fff7ea';
-          notice.style.borderColor = '#f0a020';
-          noticeTitle.textContent = '⏰ Registration is still OPEN';
-          noticeSubtitle.textContent = `Team selection is available now and registration closes at ${formatTime12(registrationState.cutoffTime)}.`;
-        } else if (registrationState.beforeOpen) {
-          notice.style.background = '#eef5fb';
-          notice.style.borderColor = '#2f93ff';
-          noticeTitle.textContent = '🕓 Registration has not opened yet';
-          noticeSubtitle.textContent = `Registration opens at ${formatTime12(registrationState.openTime)}.`;
-        } else if (registrationState.manuallyClosed) {
-          notice.style.background = '#eef7ee';
-          notice.style.borderColor = '#4caf50';
-          noticeTitle.textContent = '✅ Registration was manually CLOSED';
-          noticeSubtitle.textContent = 'You can now assign players to teams:';
-        } else {
-          notice.style.background = '#eef7ee';
-          notice.style.borderColor = '#4caf50';
-          noticeTitle.textContent = '✅ Registration is now CLOSED';
-          noticeSubtitle.textContent = 'You can now assign players to teams:';
-        }
+      const gameStatus = document.getElementById('game-status');
+      if (gameStatus) {
+        gameStatus.innerText = appState.settings.game_started ? 'GAME IN PROGRESS' : 'Game not started';
       }
     }
 
@@ -2576,9 +1416,6 @@ async function deleteP(id){
 
     function submitNumTeams() {
       appState.numTeams = appState.selectedNumTeams || 4;
-      appState.selectedNumTeams = appState.numTeams;
-      localStorage.setItem(TEAMS_COUNT_KEY, String(appState.numTeams));
-
       const allowedTeamIds = new Set(
         appState.teams
           .slice()
@@ -2586,55 +1423,33 @@ async function deleteP(id){
           .slice(0, appState.numTeams)
           .map(t => String(t.id))
       );
-
       appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
       appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
       renderAdminTeams();
-      alert(`Number of teams set to ${appState.numTeams}.`);
     }
 
     function submitTeams() {
-      persistTeamsSubmitted(true);
+      appState.teamsSubmitted = true;
       renderHome();
       renderAdminTeams();
-      updateAutoRefreshMode();
       alert('Teams submitted successfully!');
     }
 
     async function setCaptainFromPlayerRow(playerId, value) {
       try {
         const player = appState.players.find(p => String(p.id) === String(playerId));
-        if (!player) return;
-
-        const makeCaptain = value === 'yes';
-
-        await db(
-          window.supabaseClient
-            .from('players')
-            .update({ is_captain: makeCaptain })
-            .eq('id', playerId),
-          'Update player captain flag'
-        );
-
-        appState.players = appState.players.map(p =>
-          String(p.id) === String(playerId) ? { ...p, is_captain: makeCaptain } : p
-        );
-
-        if (player.team) {
-          const teamId = player.team;
-
-          if (makeCaptain) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
-          } else {
-            const team = appState.teams.find(t => String(t.id) === String(teamId));
-            if (team && String(team.captain_id) === String(playerId)) {
-              await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
-              appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
-            }
+        if (!player || !player.team) return;
+        const teamId = player.team;
+        if (value === 'yes') {
+          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
+          appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
+        } else {
+          const team = appState.teams.find(t => String(t.id) === String(teamId));
+          if (team && String(team.captain_id) === String(playerId)) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
+            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
           }
         }
-
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -2646,17 +1461,8 @@ async function deleteP(id){
     async function assignPlayerToTeam(playerId, teamId) {
       if (!playerId) return;
       try {
-        const nextTeam = teamId === '' ? null : parseInt(teamId, 10);
-        const player = appState.players.find(p => String(p.id) === String(playerId));
-
-        await db(window.supabaseClient.from('players').update({ team: nextTeam }).eq('id', playerId), 'Assign player to team');
-        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: nextTeam } : p);
-
-        if (nextTeam && player?.is_captain) {
-          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', nextTeam), 'Set captain after assignment');
-          appState.teams = appState.teams.map(t => String(t.id) === String(nextTeam) ? { ...t, captain_id: playerId } : t);
-        }
-
+        await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
+        appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -2734,8 +1540,6 @@ async function deleteP(id){
 
         if (!appState.settingsLiveEnabled) {
           renderHome();
-          renderAdminPlayers();
-          renderAdminTeams();
           updateSettingsView();
           alert('Saved locally. Add the settings columns in Supabase to make this live on all devices.');
           return;
@@ -2762,10 +1566,7 @@ async function deleteP(id){
         }
 
         renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
         updateSettingsView();
-        updateAutoRefreshMode();
         alert('Saved!');
       } catch (err) {
         alert(`Could not save settings: ${formatError(err)}`);
@@ -2809,9 +1610,7 @@ async function deleteP(id){
         }
         renderHome();
         renderAdminPlayers();
-        renderAdminTeams();
         updateSettingsView();
-        updateAutoRefreshMode();
         alert(nextState ? 'Registration is now CLOSED' : 'Registration is now OPEN');
       } catch (err) {
         alert(`Could not toggle registration: ${formatError(err)}`);
@@ -2841,42 +1640,15 @@ async function deleteP(id){
 
     async function clearAllPlayers() {
       if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
-
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
-
-        await db(
-          window.supabaseClient
-            .from('teams')
-            .update({
-              captain_id: null,
-              front_score: null,
-              back_score: null,
-              team_score: null,
-              score_submitted_at: null
-            })
-            .not('id', 'is', null),
-          'Clear all captains'
-        );
-
         appState.players = [];
-        appState.teams = appState.teams.map(t => ({
-          ...t,
-          captain_id: null,
-          front_score: null,
-          back_score: null,
-          team_score: null,
-          score_submitted_at: null
-        }));
-
-        persistTeamsSubmitted(false);
-        updateAutoRefreshMode();
-
+        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null }));
+        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear all captains');
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
         renderLeaderboard();
-
         alert('All players cleared');
       } catch (err) {
         alert(`Could not clear all players: ${formatError(err)}`);
@@ -2884,108 +1656,50 @@ async function deleteP(id){
     }
 
     function switchAdminTab(t, ev){
-      document.querySelectorAll('.admin-pill-btn').forEach(b => b.classList.remove('active'));
-
-      const clickedBtn = ev?.target?.closest('.admin-pill-btn');
-      if (clickedBtn) clickedBtn.classList.add('active');
-
+      document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
+      if (ev?.target) ev.target.classList.add('active');
       document.getElementById('admin-players').classList.add('hidden');
       document.getElementById('admin-teams').classList.add('hidden');
       document.getElementById('admin-settings').classList.add('hidden');
-      document.getElementById('admin-' + t).classList.remove('hidden');
-
-      if (t === 'players') {
-        renderAdminPlayers();
-        updateAutoRefreshMode();
-      }
-
-      if (t === 'teams') {
-        stopAutoRefresh();
-        renderAdminTeams();
-        setStatus('Team editing mode - auto refresh paused');
-      }
-
-      if (t === 'settings') {
-        updateSettingsView();
-        updateAutoRefreshMode();
-      }
+      document.getElementById('admin-'+t).classList.remove('hidden');
+      if(t==='players') renderAdminPlayers();
+      if(t==='teams') renderAdminTeams();
+      if(t==='settings') updateSettingsView();
     }
 
     function logout(){ showView('view-home'); }
 
-async function initApp() {
-  try {
-    loadDeviceState();
-    setStatus('Connecting... step 1');
-
-    await ensureBaseData();
-    setStatus('Connecting... step 2');
-
-    await loadAllData();
-    setStatus('Connecting... step 3');
-
-    await resetDailyGameIfNeeded();
-    setStatus('Connecting... step 4');
-
-    await clearExpiredTeamScoresIfNeeded();
-    setStatus('Connecting... step 5');
-
-    await loadAllData();
-    setStatus('Connecting... step 6');
-
-    await loadWeather();
-    setStatus('Connecting... step 7');
-
-    setInterval(loadWeather, 600000);
-    updateAutoRefreshMode();
-
-    setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
-
-    window.supabaseClient
-      .channel('players-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
-        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-          setStatus('Live update paused to protect teams/scores');
-          return;
-        }
-
-        setStatus('Live: players updated');
+    async function initApp() {
+      try {
+        setStatus('Connecting...');
+        await ensureBaseData();
         await loadAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
-        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-          setStatus('Live update paused to protect teams/scores');
-          return;
-        }
+        setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
-        setStatus('Live: teams updated');
-        await loadAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
-        if (isAdminTeamsOpen() || isTeamViewOpen() || isSubmittingScores || isTypingScores) {
-          setStatus('Live update paused to protect teams/scores');
-          return;
-        }
+        window.supabaseClient
+          .channel('players-live')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async () => {
+            setStatus('Live: players updated');
+            await loadAllData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+            setStatus('Live: teams updated');
+            await loadAllData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+            setStatus('Live: settings updated');
+            await loadAllData();
+          })
+          .subscribe((status) => {
+            setStatus('Status: ' + status);
+          });
+      } catch (err) {
+        const msg = formatError(err);
+        setStatus('Startup error');
+        alert(`Startup failed: ${msg}`);
+      }
+    }
 
-        setStatus('Live: settings updated');
-        await loadAllData();
-      })
-      .subscribe((status) => {
-        setStatus('Status: ' + status);
-
-        if (!isAdminTeamsOpen() && !isTeamViewOpen() && !isSubmittingScores && !isTypingScores) {
-          updateAutoRefreshMode();
-        }
-      });
-
-    await loadPlayerHistory();
-
-  } catch (err) {
-    const msg = formatError(err);
-    setStatus('Startup error: ' + msg);
-    alert('Startup failed: ' + msg);
-  }
-}
     window.addEventListener('load', initApp);
   </script>
 </body>
