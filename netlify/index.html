@@ -1246,21 +1246,22 @@ async function loadPlayerHistory() {
       return `${h12}:${minutes} ${ampm}`;
     }
 function showPlayersPage() {
-
   const approved = appState.players.filter(
     p => p.status === 'approved'
   );
 
-  document.getElementById('players-page-count').textContent =
-    approved.length;
+  const count = document.getElementById('players-page-count');
+  const list = document.getElementById('players-page-list');
 
-  document.getElementById('players-page-list').innerHTML =
-    approved.map(p => `
+  if (count) count.textContent = approved.length;
+  if (list) {
+    list.innerHTML = approved.map(p => `
       <li class="player-item">
         <span>${p.name}</span>
         <span>${p.team ? getTeamName(p.team) : 'Waiting for team'}</span>
       </li>
-    `).join('');
+    `).join('') || '<li class="empty-state">No approved players yet</li>';
+  }
 
   showView('view-players');
 }
@@ -1312,7 +1313,7 @@ function showTeamsPage() {
         ${teamPlayers.map(p => `
           <div class="player-item">
             <span>${p.name}</span>
-            <span>${p.is_captain ? 'Captain' : 'Player'}</span>
+            <span>${isCaptainPlayer(p) ? 'Captain' : 'Player'}</span>
           </div>
         `).join('')}
       </div>
@@ -1322,9 +1323,40 @@ function showTeamsPage() {
   showView('view-teams');
 }
 
+function isCaptainPlayer(player) {
+  if (!player) return false;
+  if (player.is_captain === true) return true;
+
+  return appState.teams.some(t =>
+    t.captain_id && String(t.captain_id) === String(player.id)
+  );
+}
+
 function showCaptainTeamsPage() {
+  const myName = (appState.myPlayerName || '')
+    .trim()
+    .toLowerCase();
+
+  const myPlayer = appState.players.find(p =>
+    (p.name || '').trim().toLowerCase() === myName
+  );
+
+  if (!myPlayer) {
+    alert('Register on this device first.');
+    return;
+  }
+
+  if (!isCaptainPlayer(myPlayer)) {
+    alert('🔒 Captains only. Admin must assign you as captain.');
+    return;
+  }
+
+  renderCaptainTeamsPage();
+  showView('view-captain-teams');
+}
+
+function renderCaptainTeamsPage() {
   const allPlayers = appState.players || [];
-  const approvedPlayers = allPlayers.filter(p => p.status === 'approved');
 
   const count = document.getElementById('captain-player-count');
   const list = document.getElementById('captain-team-assignment-list');
@@ -1332,14 +1364,10 @@ function showCaptainTeamsPage() {
 
   if (select) select.value = String(appState.selectedNumTeams || appState.numTeams || 4);
   if (count) count.textContent = allPlayers.length;
-  if (!list) {
-    showView('view-captain-teams');
-    return;
-  }
+  if (!list) return;
 
   if (!allPlayers.length) {
     list.innerHTML = '<div class="empty-state">No registered players yet</div>';
-    showView('view-captain-teams');
     return;
   }
 
@@ -1378,8 +1406,6 @@ function showCaptainTeamsPage() {
       </div>
     `;
   }).join('');
-
-  showView('view-captain-teams');
 }
 
 function updateCaptainNumTeams() {
@@ -1389,135 +1415,111 @@ function updateCaptainNumTeams() {
 
 function submitCaptainNumTeams() {
   appState.numTeams = appState.selectedNumTeams || 4;
-  showCaptainTeamsPage();
+  renderCaptainTeamsPage();
   renderHome();
-}
-function showCaptainTeamsPage() {
-
-  const myName = (appState.myPlayerName || '')
-    .trim()
-    .toLowerCase();
-
-  const myPlayer = appState.players.find(p =>
-    (p.name || '').trim().toLowerCase() === myName
-  );
-
-  if (!myPlayer) {
-    alert('Register on this device first.');
-    return;
-  }
-
-  if (myPlayer.is_captain !== true) {
-    alert('🔒 Captains only. Admin must assign you as captain.');
-    return;
-  }
-
-  showView('view-captain-teams');
 }
 
 function renderHome() {
   const approved = appState.players.filter(p => p.status === 'approved');
-    function renderHome() {
-      const approved = appState.players.filter(p => p.status === 'approved');
-      const pending = appState.players.filter(p => p.status === 'pending');
-      const playerCount = document.getElementById('player-count');
-      if (playerCount) playerCount.textContent = approved.length;
-      const pendingCount = document.getElementById('pending-count');
-      if (pendingCount) pendingCount.textContent = pending.length;
+  const pending = appState.players.filter(p => p.status === 'pending');
+  const playerCount = document.getElementById('player-count');
+  if (playerCount) playerCount.textContent = approved.length;
+  const pendingCount = document.getElementById('pending-count');
+  if (pendingCount) pendingCount.textContent = pending.length;
 
-      const teamCount = Math.max(1, Math.ceil(approved.length / 4));
-      const setText = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
-      };
+  const teamCount = Math.max(1, Math.ceil(approved.length / 4));
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
 
-      setText('overview-player-count', approved.length);
-      setText('overview-pending-count', pending.length);
-      setText('overview-team-count', teamCount);
-      setText('today-player-count', approved.length);
-      setText('today-team-count', teamCount);
-      setText('today-pending-count', pending.length);
-      setText('top-pending-badge', pending.length);
-      setText('manage-pending-count', pending.length);
-      setText('select-team-count', teamCount);
-      setText('activity-player-count', appState.players.length);
-      setText('activity-approved-count', approved.length);
-      setText('activity-pending-count', pending.length);
-      setText('activity-team-count', teamCount);
-      setText('money-player-count', approved.length);
-      setText('money-team-count', teamCount);
-      setText('money-pot', '$' + (approved.length * 20));
-      const playerList = document.getElementById('player-list');
-      if (playerList) {
-        playerList.innerHTML = approved.map(p => {
-          const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
-          return `
-            <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-              <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
-              <div style="font-size:13px;color:#54e86f;font-weight:700;">${teamText}</div>
-            </li>
-          `;
-        }).join('') || '<li style="color:#999;">No approved players</li>';
-      }
+  setText('overview-player-count', approved.length);
+  setText('overview-pending-count', pending.length);
+  setText('overview-team-count', teamCount);
+  setText('today-player-count', approved.length);
+  setText('today-team-count', teamCount);
+  setText('today-pending-count', pending.length);
+  setText('top-pending-badge', pending.length);
+  setText('manage-pending-count', pending.length);
+  setText('select-team-count', teamCount);
+  setText('activity-player-count', appState.players.length);
+  setText('activity-approved-count', approved.length);
+  setText('activity-pending-count', pending.length);
+  setText('activity-team-count', teamCount);
+  setText('money-player-count', approved.length);
+  setText('money-team-count', teamCount);
+  setText('money-pot', '$' + (approved.length * 20));
+  const playerList = document.getElementById('player-list');
+  if (playerList) {
+    playerList.innerHTML = approved.map(p => {
+      const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
+      return `
+        <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
+          <div style="font-size:13px;color:#54e86f;font-weight:700;">${teamText}</div>
+        </li>
+      `;
+    }).join('') || '<li style="color:#999;">No approved players</li>';
+  }
 
-      const openTime = appState.settings.open_time || '06:00';
-      const cutoffTime = appState.settings.cutoff_time || '09:30';
-      const hoursDisplay = document.getElementById('registration-hours-display');
-      if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
+  const openTime = appState.settings.open_time || '06:00';
+  const cutoffTime = appState.settings.cutoff_time || '09:30';
+  const hoursDisplay = document.getElementById('registration-hours-display');
+  if (hoursDisplay) hoursDisplay.textContent = `${formatTime12(openTime)} - ${formatTime12(cutoffTime)}`;
 
-      const registrationOpenStatus = document.getElementById('registration-open-status');
-      const settingsRegistrationState = document.getElementById('settings-registration-state');
+  const registrationOpenStatus = document.getElementById('registration-open-status');
+  const settingsRegistrationState = document.getElementById('settings-registration-state');
 
-      const now = new Date();
-      const openDate = new Date();
-      const cutoffDate = new Date();
-      const [openH, openM] = openTime.split(':').map(Number);
-      const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-      openDate.setHours(openH, openM, 0, 0);
-      cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+  const now = new Date();
+  const openDate = new Date();
+  const cutoffDate = new Date();
+  const [openH, openM] = openTime.split(':').map(Number);
+  const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+  openDate.setHours(openH, openM, 0, 0);
+  cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
 
-      const isRegistrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
-      if (registrationOpenStatus) {
-        registrationOpenStatus.textContent = isRegistrationOpen ? 'OPEN' : 'CLOSED';
-        registrationOpenStatus.className = isRegistrationOpen ? 'green' : 'orange';
-      }
-      if (settingsRegistrationState) {
-        settingsRegistrationState.textContent = isRegistrationOpen ? 'open' : 'closed';
-        settingsRegistrationState.className = isRegistrationOpen ? 'green' : 'orange';
-      }
+  const isRegistrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+  if (registrationOpenStatus) {
+    registrationOpenStatus.textContent = isRegistrationOpen ? 'OPEN' : 'CLOSED';
+    registrationOpenStatus.className = isRegistrationOpen ? 'green' : 'orange';
+  }
+  if (settingsRegistrationState) {
+    settingsRegistrationState.textContent = isRegistrationOpen ? 'open' : 'closed';
+    settingsRegistrationState.className = isRegistrationOpen ? 'green' : 'orange';
+  }
 
-      const scoredPlayers = appState.players
-        .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
-        .sort((a, b) => a.score - b.score)
-        .slice(0, 5);
-      const topFive = document.getElementById('home-top-five');
-      if (topFive) {
-        topFive.innerHTML = scoredPlayers.length ? scoredPlayers.map((p, idx) => `
-          <div class="avg-line"><span>${idx + 1}</span><span>${p.name}</span><strong class="green">${p.score}</strong></div>
-        `).join('') : '<div class="avg-line"><span>1</span><span>No scores yet</span><strong>-</strong></div>';
-      }
+  const scoredPlayers = appState.players
+    .filter(p => p.status === 'approved' && p.score !== null && p.score !== undefined)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5);
+  const topFive = document.getElementById('home-top-five');
+  if (topFive) {
+    topFive.innerHTML = scoredPlayers.length ? scoredPlayers.map((p, idx) => `
+      <div class="avg-line"><span>${idx + 1}</span><span>${p.name}</span><strong class="green">${p.score}</strong></div>
+    `).join('') : '<div class="avg-line"><span>1</span><span>No scores yet</span><strong>-</strong></div>';
+  }
 
-      const registerBtn = document.querySelector('#view-register .btn.btn-primary');
-      if (registerBtn) {
-        if (appState.settings.registration_closed) {
-          registerBtn.disabled = true;
-          registerBtn.textContent = 'Registration Closed';
-          registerBtn.style.opacity = '0.7';
-        } else if (now < openDate) {
-          registerBtn.disabled = true;
-          registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
-          registerBtn.style.opacity = '0.7';
-        } else if (now > cutoffDate) {
-          registerBtn.disabled = true;
-          registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
-          registerBtn.style.opacity = '0.7';
-        } else {
-          registerBtn.disabled = false;
-          registerBtn.textContent = `Register for Today's Game`;
-          registerBtn.style.opacity = '1';
-        }
-      }
+  const registerBtn = document.querySelector('#view-register .btn.btn-primary');
+  if (registerBtn) {
+    if (appState.settings.registration_closed) {
+      registerBtn.disabled = true;
+      registerBtn.textContent = 'Registration Closed';
+      registerBtn.style.opacity = '0.7';
+    } else if (now < openDate) {
+      registerBtn.disabled = true;
+      registerBtn.textContent = `Registration Opens at ${formatTime12(openTime)}`;
+      registerBtn.style.opacity = '0.7';
+    } else if (now > cutoffDate) {
+      registerBtn.disabled = true;
+      registerBtn.textContent = `Registration Closed at ${formatTime12(cutoffTime)}`;
+      registerBtn.style.opacity = '0.7';
+    } else {
+      registerBtn.disabled = false;
+      registerBtn.textContent = `Register for Today's Game`;
+      registerBtn.style.opacity = '1';
     }
+  }
+}
 
     function switchGameTab(t, ev){
       document.querySelectorAll('#view-game .tab-btn').forEach(b=>b.classList.remove('active'));
