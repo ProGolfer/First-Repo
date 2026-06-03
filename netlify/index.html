@@ -1187,7 +1187,26 @@ async function loadPlayerHistory() {
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
+function showPlayersPage() {
 
+  const approved = appState.players.filter(
+    p => p.status === 'approved'
+  );
+
+  document.getElementById('players-page-count').textContent =
+    approved.length;
+
+  document.getElementById('players-page-list').innerHTML =
+    approved.map(p => `
+      <li class="player-item">
+        <span>${p.name}</span>
+        <span>${p.team ? getTeamName(p.team) : 'Waiting for team'}</span>
+      </li>
+    `).join('');
+
+  showView('view-players');
+}
+  
     function renderHome() {
       const approved = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending');
