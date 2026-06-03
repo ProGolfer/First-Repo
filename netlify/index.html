@@ -657,9 +657,9 @@
       </div>
 
       <div class="action-grid">
-        <div class="action-card highlight" onclick="showAdminLogin();">
-          <div class="big-icon">👥</div>
-          <h3>MANAGE <span>PLAYERS</span></h3>
+        <div class="action-card highlight" onclick="showCaptainTeamsPage();">
+          <div class="big-icon">🔒</div>
+          <h3>CAPTAINS <span>ONLY</span></h3>
           <p><span class="orange" id="manage-pending-count">0</span> pending approval</p>
           <div class="arrow-circle">→</div>
         </div>
@@ -795,6 +795,53 @@
         <div id="teams-page-list"></div>
       </div>
 
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+    <div id="view-captain-teams" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">🔒</div>
+          <h1>CAPTAINS <span>ONLY</span></h1>
+        </div>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="players-header">
+          <h3>Team Selection</h3>
+          <span class="players-count">Locked</span>
+        </div>
+        <p style="color:#a8b4c5;font-weight:800;margin-top:8px;line-height:1.45;">
+          Captains only. Registered players show here so captains can assign teams when ready.
+        </p>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>🏌️ Number of Teams</label>
+          <select id="captain-num-teams" onchange="updateCaptainNumTeams()">
+            <option value="1">1 Team</option>
+            <option value="2">2 Teams</option>
+            <option value="3">3 Teams</option>
+            <option value="4" selected>4 Teams</option>
+            <option value="5">5 Teams</option>
+            <option value="6">6 Teams</option>
+            <option value="7">7 Teams</option>
+            <option value="8">8 Teams</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="submitCaptainNumTeams()">Submit Number of Teams</button>
+      </div>
+
+      <div class="players-section">
+        <div class="players-header">
+          <h3>Registered Players</h3>
+          <span class="players-count" id="captain-player-count">0</span>
+        </div>
+        <div id="captain-team-assignment-list"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
@@ -1273,6 +1320,77 @@ function showTeamsPage() {
   }).join('');
 
   showView('view-teams');
+}
+
+function showCaptainTeamsPage() {
+  const allPlayers = appState.players || [];
+  const approvedPlayers = allPlayers.filter(p => p.status === 'approved');
+
+  const count = document.getElementById('captain-player-count');
+  const list = document.getElementById('captain-team-assignment-list');
+  const select = document.getElementById('captain-num-teams');
+
+  if (select) select.value = String(appState.selectedNumTeams || appState.numTeams || 4);
+  if (count) count.textContent = allPlayers.length;
+  if (!list) {
+    showView('view-captain-teams');
+    return;
+  }
+
+  if (!allPlayers.length) {
+    list.innerHTML = '<div class="empty-state">No registered players yet</div>';
+    showView('view-captain-teams');
+    return;
+  }
+
+  const availableTeams = appState.teams
+    .slice()
+    .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+    .slice(0, appState.numTeams || 4);
+
+  list.innerHTML = allPlayers.map(p => {
+    const isApproved = p.status === 'approved';
+    const playerTeam = p.team ?? '';
+    const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
+    const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
+
+    return `
+      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+        <div style="min-width:130px;">
+          <div style="font-weight:900;">${p.name}</div>
+          <div class="muted">${isApproved ? 'Approved' : 'Pending approval'}</div>
+        </div>
+
+        <div style="flex:1;min-width:140px;">
+          <select onchange="changeTeam('${p.id}', this.value)" ${!isApproved ? 'disabled' : ''}>
+            <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
+            ${availableTeams.map(t => `<option value="${t.id}" ${String(playerTeam) === String(t.id) ? 'selected' : ''}>${getTeamName(t.id)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="flex:1;min-width:150px;">
+          <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" ${!isApproved || !playerTeam ? 'disabled' : ''}>
+            <option value="">-- Captain? --</option>
+            <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
+            <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
+          </select>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  showView('view-captain-teams');
+}
+
+function updateCaptainNumTeams() {
+  const select = document.getElementById('captain-num-teams');
+  appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
+}
+
+function submitCaptainNumTeams() {
+  appState.numTeams = appState.selectedNumTeams || 4;
+  showCaptainTeamsPage();
+  renderHome();
 }
 
     function renderHome() {
