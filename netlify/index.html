@@ -729,11 +729,7 @@
           <input type="text" id="reg-name" placeholder="Enter your name">
         </div>
 
-        <div class="form-group">
-          <label>Phone (optional)</label>
-          <input type="tel" id="reg-phone" placeholder="(555) 123-4567">
-        </div>
-
+      
         <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
       </div>
 
@@ -1021,7 +1017,7 @@
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
-        const phone = document.getElementById('reg-phone').value.trim();
+
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
 
@@ -1056,7 +1052,7 @@
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
-          phone: phone || null,
+          
           course: course || 'Cliffside Golf Club',
           status: 'pending',
           team: null,
@@ -1067,7 +1063,7 @@
 
         appState.myPlayerName = name;
         document.getElementById('reg-name').value = '';
-        document.getElementById('reg-phone').value = '';
+        
         showView('view-confirm');
         await loadAllData();
       } catch (err) {
