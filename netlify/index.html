@@ -1582,6 +1582,32 @@ function renderHome() {
       } else alert('Invalid password');
     }
 
+async function toggleCaptain(id, makeCaptain) {
+  try {
+    await db(
+      window.supabaseClient
+        .from('players')
+        .update({ is_captain: makeCaptain })
+        .eq('id', id),
+      'Toggle captain'
+    );
+
+    appState.players = appState.players.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, is_captain: makeCaptain }
+        : p
+    );
+
+    renderHome();
+    renderAdminPlayers();
+    renderAdminTeams();
+
+  } catch (err) {
+    alert(`Could not update captain: ${formatError(err)}`);
+  }
+}
+
+    
     function renderAdminPlayers(){
       const pending = appState.players.filter(p => p.status === 'pending');
       const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
@@ -1611,7 +1637,12 @@ function renderHome() {
               <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span style="background:#e8f2ff;color:#1565c0;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;">No Team</span>
+              <span style="background:${p.is_captain ? '#facc15' : '#e8f2ff'};color:${p.is_captain ? '#111827' : '#1565c0'};padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;">
+  ${p.is_captain ? '👑 Captain' : 'No Team'}
+</span>
+<button class="btn btn-warning btn-small" onclick="toggleCaptain('${p.id}', ${p.is_captain ? 'false' : 'true'})">
+  ${p.is_captain ? 'Remove Captain' : '👑 Make Captain'}
+</button>
               <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">🗑️ Delete</button>
             </div>
           </div>
@@ -2055,11 +2086,39 @@ async function loadWeather() {
     console.log('Weather failed safely', err);
   }
 }
+async function resetDailyGameIfNeeded() {
+  const today = new Date().toISOString().slice(0, 10);
+  const lastReset = localStorage.getItem('gmg_last_reset_date');
 
+  if (lastReset === today) return;
+
+  await db(
+    window.supabaseClient
+      .from('players')
+      .update({
+        team: null,
+        is_captain: false,
+        score: null
+      })
+      .not('id', 'is', null),
+    'Daily reset players'
+  );
+
+  await db(
+    window.supabaseClient
+      .from('teams')
+      .update({ captain_id: null })
+      .not('id', 'is', null),
+    'Daily reset teams'
+  );
+
+  localStorage.setItem('gmg_last_reset_date', today);
+}
     async function initApp() {
       try {
         setStatus('Connecting...');
         await ensureBaseData();
+        await resetDailyGameIfNeeded();
         await loadAllData();
         await loadWeather();
         setInterval(loadWeather, 600000);
