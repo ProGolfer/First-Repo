@@ -870,17 +870,32 @@
     </div>
 
     <div id="view-game" class="card hidden">
-      <div class="header"><h1>🏆 My Team Scores</h1></div>
-      <div class="tabs" style="grid-template-columns: 1fr 1fr;">
-        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Submit Scores</button>
-        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Other Teams</button>
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">🏆</div>
+          <h1>LIVE <span>SCORING</span></h1>
+        </div>
       </div>
+
+      <div class="tabs" style="grid-template-columns: 1fr 1fr 1fr;">
+        <button class="tab-btn active" onclick="switchGameTab('myteam', event)">Score</button>
+        <button class="tab-btn" onclick="switchGameTab('otherteams', event)">Standings</button>
+        <button class="tab-btn" onclick="switchGameTab('results', event)">Results</button>
+      </div>
+
       <div id="tab-myteam">
         <p class="muted" id="my-team-label">Your team: -</p>
-        <div class="form-group"><label>Your Total Score</label><input type="number" id="team-total-score" placeholder="Enter final score"></div>
-        <button class="btn btn-success" onclick="submitTeamScore()">✅ Submit Final Score</button>
+        <div id="live-scorecard"></div>
       </div>
-      <div id="tab-otherteams" class="hidden"></div>
+
+      <div id="tab-otherteams" class="hidden">
+        <div id="live-standings-display"></div>
+      </div>
+
+      <div id="tab-results" class="hidden">
+        <div id="live-results-display"></div>
+      </div>
+
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
@@ -1521,43 +1536,424 @@ function renderHome() {
   }
 }
 
+
+    const CLIFFSIDE_HOLES = [
+      { hole: 1, par: 4 }, { hole: 2, par: 4 }, { hole: 3, par: 5 },
+      { hole: 4, par: 3 }, { hole: 5, par: 4 }, { hole: 6, par: 3 },
+      { hole: 7, par: 4 }, { hole: 8, par: 4 }, { hole: 9, par: 5 },
+      { hole: 10, par: 5 }, { hole: 11, par: 4 }, { hole: 12, par: 4 },
+      { hole: 13, par: 3 }, { hole: 14, par: 4 }, { hole: 15, par: 4 },
+      { hole: 16, par: 3 }, { hole: 17, par: 4 }, { hole: 18, par: 5 }
+    ];
+
+    let liveScoreState = { currentHole: 1, scores: {} };
+
+    function getTodayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function getLiveScoreStorageKey(teamId) {
+      return `gmg_live_score_${getTodayKey()}_${teamId || 'no_team'}`;
+    }
+
+    function getMyPlayer() {
+      const myName = (appState.myPlayerName || '').trim().toLowerCase();
+      return appState.players.find(p => (p.name || '').trim().toLowerCase() === myName) || null;
+    }
+
+    function getMyTeamPlayers() {
+      if (!appState.myTeam) return [];
+      return appState.players.filter(p => p.status === 'approved' && String(p.team) === String(appState.myTeam));
+    }
+
+    function loadTeamLiveScore(teamId) {
+      try {
+        const saved = localStorage.getItem(getLiveScoreStorageKey(teamId));
+        if (!saved) return { currentHole: 1, scores: {} };
+        const parsed = JSON.parse(saved);
+        return { currentHole: parsed.currentHole || 1, scores: parsed.scores || {} };
+      } catch (_) {
+        return { currentHole: 1, scores: {} };
+      }
+    }
+
+    function saveTeamLiveScore(teamId) {
+      if (!teamId) return;
+      localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(liveScoreState));
+    }
+
+    function getHoleInfo(holeNumber) {
+      return CLIFFSIDE_HOLES.find(h => h.hole === holeNumber) || CLIFFSIDE_HOLES[0];
+    }
+
+    function scoreToPoints(score, par) {
+      const diff = Number(score) - Number(par);
+      if (diff <= -2) return 4;
+      if (diff === -1) return 3;
+      if (diff === 0) return 2;
+      if (diff === 1) return 1;
+      return 0;
+    }
+
+    function calculateHolePointsForScores(playerScores, par) {
+      const points = Object.values(playerScores || {})
+        .map(score => scoreToPoints(Number(score), par))
+        .sort((a, b) => b - a);
+      return points.slice(0, Math.min(3, points.length)).reduce((sum, v) => sum + v, 0);
+    }
+
+    function getSavedHolePoints(holeNumber) {
+      return Number(liveScoreState.scores[String(holeNumber)]?.holePoints || 0);
+    }
+
+    function getRunningTotalThrough(holeNumber) {
+      let total = 0;
+      for (let i = 1; i <= holeNumber; i++) total += getSavedHolePoints(i);
+      return total;
+    }
+
+    function getFrontTotal() {
+      let total = 0;
+      for (let i = 1; i <= 9; i++) total += getSavedHolePoints(i);
+      return total;
+    }
+
+    function getBackTotal() {
+      let total = 0;
+      for (let i = 10; i <= 18; i++) total += getSavedHolePoints(i);
+      return total;
+    }
+
+    function getRoundTotal() {
+      return getFrontTotal() + getBackTotal();
+    }
+
+    function getCurrentHolePlayerScores() {
+      const holeInfo = getHoleInfo(liveScoreState.currentHole);
+      const saved = liveScoreState.scores[String(liveScoreState.currentHole)];
+      const scores = {};
+      getMyTeamPlayers().forEach(p => {
+        scores[p.id] = saved?.playerScores?.[p.id] !== undefined ? Number(saved.playerScores[p.id]) : holeInfo.par;
+      });
+      return scores;
+    }
+
     function switchGameTab(t, ev){
       document.querySelectorAll('#view-game .tab-btn').forEach(b=>b.classList.remove('active'));
       if (ev?.target) ev.target.classList.add('active');
-      document.getElementById('tab-myteam').classList.add('hidden');
-      document.getElementById('tab-otherteams').classList.add('hidden');
+      ['myteam','otherteams','results'].forEach(id => document.getElementById('tab-' + id).classList.add('hidden'));
       document.getElementById('tab-'+t).classList.remove('hidden');
+      if (t === 'otherteams') renderLiveStandings();
+      if (t === 'results') renderLiveResults();
     }
 
     function loadGameView() {
-      const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === (appState.myPlayerName || '').toLowerCase());
-      const fallbackTeam = appState.teams[0]?.id ?? null;
-      appState.myTeam = myPlayer?.team ?? fallbackTeam;
-      document.getElementById('my-team-label').textContent = `Your team: ${appState.myTeam ? getTeamName(appState.myTeam) : '-'}`;
+      const myPlayer = getMyPlayer();
+      appState.myTeam = myPlayer?.team ?? null;
+      const label = document.getElementById('my-team-label');
+      const mount = document.getElementById('live-scorecard');
 
-      const others = appState.teams.map(team => {
-        const players = appState.players.filter(p => String((p.team ?? fallbackTeam)) === String(team.id) && p.status === 'approved');
-        const scores = players.map(p => p.score).filter(v => v !== null && v !== undefined);
-        const bestScore = scores.length ? Math.min(...scores) : '-';
-        return `<div class="admin-section"><strong>${getTeamName(team.id)}</strong><div>${players.map(p => p.name).join(', ') || 'No players'}</div><div>Best Score: ${bestScore}</div></div>`;
-      }).join('');
-      document.getElementById('tab-otherteams').innerHTML = others || '<div class="muted">No teams yet</div>';
+      if (!myPlayer) {
+        if (label) label.textContent = 'Register on this device first.';
+        if (mount) mount.innerHTML = '<div class="dashboard-panel"><div class="empty-state">Register on this device first to use Live Scoring.</div></div>';
+        renderLiveStandings();
+        renderLiveResults();
+        return;
+      }
+
+      if (!appState.myTeam) {
+        if (label) label.textContent = 'Your team: waiting for team assignment';
+        if (mount) mount.innerHTML = '<div class="dashboard-panel"><div class="empty-state">You are approved, but you are not assigned to a team yet.</div></div>';
+        renderLiveStandings();
+        renderLiveResults();
+        return;
+      }
+
+      if (label) label.textContent = `Your team: ${getTeamName(appState.myTeam)}`;
+      liveScoreState = loadTeamLiveScore(appState.myTeam);
+      liveScoreState.currentHole = Math.min(18, Math.max(1, liveScoreState.currentHole || 1));
+
+      renderLiveScorecard();
+      renderLiveStandings();
+      renderLiveResults();
     }
 
-    async function submitTeamScore(){
+    function renderLiveScorecard() {
+      const mount = document.getElementById('live-scorecard');
+      if (!mount) return;
+
+      const myPlayer = getMyPlayer();
+      const teamPlayers = getMyTeamPlayers();
+      const holeInfo = getHoleInfo(liveScoreState.currentHole);
+      const playerScores = getCurrentHolePlayerScores();
+      const isCaptain = isCaptainPlayer(myPlayer);
+      const holePoints = calculateHolePointsForScores(playerScores, holeInfo.par);
+      const savedHole = liveScoreState.scores[String(liveScoreState.currentHole)];
+      const runningBeforeCurrent = getRunningTotalThrough(liveScoreState.currentHole - 1);
+      const projectedRunning = runningBeforeCurrent + holePoints;
+      const nineLabel = liveScoreState.currentHole <= 9 ? 'Front Total' : 'Back Total';
+      const nineTotal = liveScoreState.currentHole <= 9 ? getFrontTotal() : getBackTotal();
+
+      const rows = teamPlayers.map(p => {
+        const score = playerScores[p.id] ?? holeInfo.par;
+        const pts = scoreToPoints(score, holeInfo.par);
+        return `
+          <div class="player-item">
+            <div>
+              <div style="font-weight:900;">${p.name} ${isCaptainPlayer(p) ? '👑' : ''}</div>
+              <div class="muted">${pts} pts</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-secondary btn-small" onclick="adjustHoleScore('${p.id}', -1)">−</button>
+              <div style="font-size:26px;font-weight:950;min-width:34px;text-align:center;">${score}</div>
+              <button class="btn btn-secondary btn-small" onclick="adjustHoleScore('${p.id}', 1)">+</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      const history = CLIFFSIDE_HOLES
+        .filter(h => h.hole <= liveScoreState.currentHole)
+        .map(h => {
+          const pts = liveScoreState.scores[String(h.hole)]?.holePoints;
+          const current = h.hole === liveScoreState.currentHole;
+          return `<div style="text-align:center;padding:8px;border-radius:12px;background:${current ? 'rgba(34,197,94,.18)' : 'rgba(15,23,42,.74)'};border:1px solid rgba(148,163,184,.16);">
+            <div style="font-size:12px;color:#a8b4c5;font-weight:900;">H${h.hole}</div>
+            <div style="font-size:18px;font-weight:950;">${pts ?? '-'}</div>
+          </div>`;
+        }).join('');
+
+      mount.innerHTML = `
+        <div class="dashboard-panel">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div>
+              <div class="section-title green">Hole ${holeInfo.hole} of 18</div>
+              <div style="font-size:24px;font-weight:950;">Par ${holeInfo.par}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="muted" style="font-weight:900;">${nineLabel}</div>
+              <div style="font-size:34px;font-weight:950;color:#54e86f;">${nineTotal}</div>
+              <div class="muted" style="font-size:12px;">Projected ${projectedRunning}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.20);display:flex;justify-content:space-between;gap:10px;">
+            <strong>Hole Points</strong>
+            <strong style="font-size:24px;color:#54e86f;">${holePoints}</strong>
+          </div>
+
+          ${savedHole ? `<div style="margin-top:10px;color:#54e86f;font-weight:900;">✅ Hole ${holeInfo.hole} submitted</div>` : ''}
+
+          <div style="margin-top:14px;">${rows || '<div class="empty-state">No players on your team yet</div>'}</div>
+
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;">${history}</div>
+
+          ${isCaptain ? `<button class="btn btn-primary" onclick="submitCurrentHole()" style="margin-top:14px;">${savedHole ? 'Update Hole Score' : 'Submit Hole'}</button>` : `<div class="empty-state" style="margin-top:14px;">🔒 Only the team captain can submit the official hole score.</div>`}
+
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn btn-secondary" onclick="previousHole()">← Previous Hole</button>
+            <button class="btn btn-secondary" onclick="nextHole()">Next Hole →</button>
+          </div>
+
+          ${liveScoreState.currentHole === 18 && isCaptain ? `<button class="btn btn-success" onclick="submitFinalLiveScore()">✅ Submit Official Team Score</button>` : ''}
+        </div>`;
+    }
+
+    function adjustHoleScore(playerId, delta) {
+      const holeInfo = getHoleInfo(liveScoreState.currentHole);
+      const key = String(liveScoreState.currentHole);
+      const saved = liveScoreState.scores[key] || { playerScores: {}, holePoints: 0 };
+      const current = saved.playerScores[playerId] !== undefined ? Number(saved.playerScores[playerId]) : holeInfo.par;
+      saved.playerScores[playerId] = Math.max(1, current + delta);
+      saved.holePoints = calculateHolePointsForScores(saved.playerScores, holeInfo.par);
+      saved.par = holeInfo.par;
+      saved.hole = liveScoreState.currentHole;
+      liveScoreState.scores[key] = saved;
+      renderLiveScorecard();
+    }
+
+    function submitCurrentHole() {
+      const myPlayer = getMyPlayer();
+      if (!isCaptainPlayer(myPlayer)) {
+        alert('Only the captain can submit the official hole score.');
+        return;
+      }
+
+      const holeInfo = getHoleInfo(liveScoreState.currentHole);
+      const playerScores = getCurrentHolePlayerScores();
+      const holePoints = calculateHolePointsForScores(playerScores, holeInfo.par);
+
+      liveScoreState.scores[String(liveScoreState.currentHole)] = {
+        hole: liveScoreState.currentHole,
+        par: holeInfo.par,
+        playerScores,
+        holePoints,
+        submittedAt: new Date().toISOString()
+      };
+
+      if (liveScoreState.currentHole < 18) liveScoreState.currentHole += 1;
+      saveTeamLiveScore(appState.myTeam);
+      renderLiveScorecard();
+      renderLiveStandings();
+      renderLiveResults();
+    }
+
+    function previousHole() {
+      if (liveScoreState.currentHole > 1) {
+        liveScoreState.currentHole -= 1;
+        saveTeamLiveScore(appState.myTeam);
+        renderLiveScorecard();
+      }
+    }
+
+    function nextHole() {
+      if (liveScoreState.currentHole < 18) {
+        liveScoreState.currentHole += 1;
+        saveTeamLiveScore(appState.myTeam);
+        renderLiveScorecard();
+      }
+    }
+
+    async function submitFinalLiveScore(){
       try {
-        if (!appState.myPlayerName) { alert('Register first on this device'); return; }
-        const score = document.getElementById('team-total-score').value;
-        if(!score){ alert('Enter score'); return; }
+        const myPlayer = getMyPlayer();
+        if (!myPlayer || !appState.myTeam) {
+          alert('Player or team not found.');
+          return;
+        }
 
-        const myPlayer = appState.players.find(p => (p.name || '').toLowerCase() === appState.myPlayerName.toLowerCase());
-        if (!myPlayer) { alert('Player not found yet'); return; }
+        if (!isCaptainPlayer(myPlayer)) {
+          alert('Only the captain can submit the official final team score.');
+          return;
+        }
 
-        await db(window.supabaseClient.from('players').update({ score: parseInt(score, 10) }).eq('id', myPlayer.id), 'Submit score');
-        alert('Score submitted!');
+        const teamPlayers = getMyTeamPlayers();
+        if (!teamPlayers.length) {
+          alert('No players found on this team.');
+          return;
+        }
+
+        const missing = CLIFFSIDE_HOLES.filter(h => !liveScoreState.scores[String(h.hole)]);
+        if (missing.length && !confirm(`You still have ${missing.length} holes not submitted. Submit final score anyway?`)) {
+          return;
+        }
+
+        const total = getRoundTotal();
+
+        await db(
+          window.supabaseClient
+            .from('players')
+            .update({ score: total })
+            .in('id', teamPlayers.map(p => p.id)),
+          'Submit official team score'
+        );
+
+        appState.players = appState.players.map(p =>
+          teamPlayers.some(tp => String(tp.id) === String(p.id)) ? { ...p, score: total } : p
+        );
+
+        alert(`Official team score submitted: ${total} points`);
+        renderHome();
+        renderLiveScorecard();
+        renderLiveStandings();
+        renderLiveResults();
+        renderLeaderboard();
+
       } catch (err) {
         alert(`Could not save score: ${formatError(err)}`);
       }
+    }
+
+    function renderLiveStandings() {
+      const mount = document.getElementById('live-standings-display');
+      if (!mount) return;
+
+      const myTeamPlayers = getMyTeamPlayers();
+      const myTeamSubmitted = myTeamPlayers.some(p => p.score !== null && p.score !== undefined);
+
+      if (!appState.myTeam || !myTeamSubmitted) {
+        mount.innerHTML = `<div class="dashboard-panel"><div class="empty-state">🔒 Live standings locked<br>Your captain must submit your team score to unlock submitted team standings.</div></div>`;
+        return;
+      }
+
+      const teamsWithScores = appState.teams.map(team => {
+        const players = appState.players.filter(p => p.status === 'approved' && String(p.team) === String(team.id));
+        const scoreValues = players.map(p => p.score).filter(v => v !== null && v !== undefined).map(Number);
+        return { team, players, score: scoreValues.length ? Math.max(...scoreValues) : null };
+      }).filter(row => row.players.length);
+
+      const submitted = teamsWithScores.filter(row => row.score !== null).sort((a, b) => b.score - a.score);
+      const waiting = teamsWithScores.filter(row => row.score === null);
+
+      mount.innerHTML = `
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>Live Standings</h3>
+            <span class="players-count">${submitted.length}/${teamsWithScores.length}</span>
+          </div>
+          ${submitted.length ? submitted.map((row, idx) => `
+            <div class="player-item">
+              <span>${idx + 1}. ${getTeamName(row.team.id)}</span>
+              <strong class="green">${row.score}</strong>
+            </div>`).join('') : '<div class="empty-state">No teams have submitted yet.</div>'}
+          ${waiting.length ? `<div style="margin-top:14px;"><div class="section-title">Waiting On</div>${waiting.map(row => `
+            <div class="player-item">
+              <span>${getTeamName(row.team.id)}</span>
+              <span class="orange">Not submitted</span>
+            </div>`).join('')}</div>` : ''}
+        </div>`;
+    }
+
+    function findUniqueWinner(rows, field) {
+      const valid = rows.filter(r => typeof r[field] === 'number');
+      if (!valid.length) return { type: 'none' };
+      const best = Math.max(...valid.map(r => r[field]));
+      const winners = valid.filter(r => r[field] === best);
+      if (winners.length !== 1) return { type: 'push', score: best, teams: winners };
+      return { type: 'winner', score: best, team: winners[0] };
+    }
+
+    function renderLiveResults() {
+      const mount = document.getElementById('live-results-display');
+      if (!mount) return;
+
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+      const pot = approvedPlayers.length * 20;
+      const frontMoney = Math.round(pot * 0.25);
+      const backMoney = Math.round(pot * 0.25);
+      const totalMoney = pot - frontMoney - backMoney;
+
+      const teamsWithPlayers = appState.teams.map(team => {
+        const players = appState.players.filter(p => p.status === 'approved' && String(p.team) === String(team.id));
+        const submittedScore = players.map(p => p.score).filter(v => v !== null && v !== undefined).map(Number);
+        return { team, players, total: submittedScore.length ? Math.max(...submittedScore) : null };
+      }).filter(row => row.players.length);
+
+      const allSubmitted = teamsWithPlayers.length > 0 && teamsWithPlayers.every(row => row.total !== null);
+
+      if (!allSubmitted) {
+        mount.innerHTML = `<div class="dashboard-panel"><div class="empty-state">Final results unlock after all teams submit.<br>Submitted: ${teamsWithPlayers.filter(row => row.total !== null).length}/${teamsWithPlayers.length}</div></div>`;
+        return;
+      }
+
+      const totalResult = findUniqueWinner(teamsWithPlayers, 'total');
+
+      const totalCard = totalResult.type === 'push'
+        ? `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#ffb020;">PUSH</div><div class="muted">Tie score: ${totalResult.score}. Money refunded.</div></div>`
+        : `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#54e86f;">${getTeamName(totalResult.team.team.id)}</div><div class="muted">Score: ${totalResult.score}</div><div style="font-size:22px;font-weight:950;margin-top:8px;">+$${totalMoney}</div></div>`;
+
+      mount.innerHTML = `
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>Final Results</h3>
+            <span class="players-count">$${pot} Pot</span>
+          </div>
+          <div class="player-item"><span>Front 9</span><span>$${frontMoney}</span></div>
+          <div class="player-item"><span>Back 9</span><span>$${backMoney}</span></div>
+          <div class="player-item"><span>Total</span><span>$${totalMoney}</span></div>
+        </div>
+        <div class="dashboard-panel"><div class="section-title">Front Winner</div><div class="empty-state">Front 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
+        <div class="dashboard-panel"><div class="section-title">Back Winner</div><div class="empty-state">Back 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
+        ${totalCard}`;
     }
 
     function renderLeaderboard() {
