@@ -1243,6 +1243,7 @@ async function loadPlayerHistory() {
         }]), 'Register player');
 
         appState.myPlayerName = name;
+       localStorage.setItem('gmg_player_name', name);
         document.getElementById('reg-name').value = '';
         
         showView('view-confirm');
@@ -2513,6 +2514,7 @@ async function resetDailyGameIfNeeded() {
     async function initApp() {
       try {
         setStatus('Connecting...');
+        appState.myPlayerName = localStorage.getItem('gmg_player_name') || '';
         await ensureBaseData();
         await resetDailyGameIfNeeded();
         await loadAllData();
