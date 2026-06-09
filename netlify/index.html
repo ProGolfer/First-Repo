@@ -1195,6 +1195,20 @@ async function loadPlayerHistory() {
       return team ? (team.team_name || team.name || `Team ${team.id}`) : '-';
     }
 
+    function cleanName(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function saveThisDevicePlayerName(name) {
+      const clean = String(name || '').trim();
+      appState.myPlayerName = clean;
+      if (clean) localStorage.setItem('gmg_player_name', clean);
+    }
+
+    function getMyPlayerName() {
+      return cleanName(appState.myPlayerName || localStorage.getItem('gmg_player_name') || '');
+    }
+
     async function registerPlayer(){
       try {
         const name = document.getElementById('reg-name').value.trim();
@@ -1227,8 +1241,14 @@ async function loadPlayerHistory() {
           return;
         }
 
-        const exists = appState.players.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
-        if (exists) { alert('Player already registered'); return; }
+        const exists = appState.players.find(p => cleanName(p.name) === cleanName(name));
+        if (exists) {
+          saveThisDevicePlayerName(exists.name || name);
+          alert(`${exists.name || name} is already registered. This device is now linked to that player.`);
+          await loadAllData();
+          showView('view-home');
+          return;
+        }
         if (!appState.teams.length) { alert('No teams available yet'); return; }
 
         await db(window.supabaseClient.from('players').insert([{
@@ -1242,8 +1262,7 @@ async function loadPlayerHistory() {
           device_token: null
         }]), 'Register player');
 
-        appState.myPlayerName = name;
-       localStorage.setItem('gmg_player_name', name);
+        saveThisDevicePlayerName(name);
         document.getElementById('reg-name').value = '';
         
         showView('view-confirm');
@@ -1342,32 +1361,31 @@ function showTeamsPage() {
 function isCaptainPlayer(player) {
   if (!player) return false;
 
+  const playerId = String(player.id || '');
+  const playerName = cleanName(player.name);
+
   if (
     player.is_captain === true ||
     player.is_captain === 'true' ||
     player.captain === true ||
     player.captain === 'true' ||
-    player.role === 'captain'
+    cleanName(player.role) === 'captain'
   ) {
     return true;
   }
 
   return appState.teams.some(t =>
-    t.captain_id && String(t.captain_id) === String(player.id)
+    String(t.captain_id || '') === playerId ||
+    cleanName(t.captain_name) === playerName ||
+    cleanName(t.captain) === playerName
   );
 }
 
 function showCaptainTeamsPage() {
-  const myName = (appState.myPlayerName || '')
-    .trim()
-    .toLowerCase();
-
-  const myPlayer = appState.players.find(p =>
-    (p.name || '').trim().toLowerCase() === myName
-  );
+  const myPlayer = getMyPlayer();
 
   if (!myPlayer) {
-    alert('Register on this device first.');
+    alert('Register on this device first. If you already registered, register the same name again to link this device.');
     return;
   }
 
@@ -1567,8 +1585,9 @@ function renderHome() {
     }
 
     function getMyPlayer() {
-      const myName = (appState.myPlayerName || '').trim().toLowerCase();
-      return appState.players.find(p => (p.name || '').trim().toLowerCase() === myName) || null;
+      const myName = getMyPlayerName();
+      if (!myName) return null;
+      return appState.players.find(p => cleanName(p.name) === myName) || null;
     }
 
     function getMyTeamPlayers() {
@@ -2210,21 +2229,32 @@ async function toggleCaptain(id, makeCaptain) {
     async function setCaptainFromPlayerRow(playerId, value) {
       try {
         const player = appState.players.find(p => String(p.id) === String(playerId));
-        if (!player || !player.team) return;
+        if (!player) return;
         const teamId = player.team;
+
         if (value === 'yes') {
-          await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set captain');
-          appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
-        } else {
-          const team = appState.teams.find(t => String(t.id) === String(teamId));
-          if (team && String(team.captain_id) === String(playerId)) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
+          if (teamId) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set team captain');
+            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
           }
+
+          await db(window.supabaseClient.from('players').update({ is_captain: true }).eq('id', playerId), 'Set player captain');
+          appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: true } : p);
+        } else {
+          if (teamId) {
+            const team = appState.teams.find(t => String(t.id) === String(teamId));
+            if (team && String(team.captain_id) === String(playerId)) {
+              await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', teamId), 'Clear team captain');
+              appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: null } : t);
+            }
+          }
+
+          await db(window.supabaseClient.from('players').update({ is_captain: false }).eq('id', playerId), 'Clear player captain');
+          appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: false } : p);
         }
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
+
+        await loadAllData();
+        renderCaptainTeamsPage();
       } catch (err) {
         alert(`Could not update captain: ${formatError(err)}`);
       }
@@ -2523,7 +2553,7 @@ async function resetDailyGameIfNeeded() {
     async function initApp() {
       try {
         setStatus('Connecting...');
-        appState.myPlayerName = localStorage.getItem('gmg_player_name') || '';
+        saveThisDevicePlayerName(localStorage.getItem('gmg_player_name') || '');
         await ensureBaseData();
         await resetDailyGameIfNeeded();
         await loadAllData();
