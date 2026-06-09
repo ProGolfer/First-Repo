@@ -1341,7 +1341,16 @@ function showTeamsPage() {
 
 function isCaptainPlayer(player) {
   if (!player) return false;
-  if (player.is_captain === true) return true;
+
+  if (
+    player.is_captain === true ||
+    player.is_captain === 'true' ||
+    player.captain === true ||
+    player.captain === 'true' ||
+    player.role === 'captain'
+  ) {
+    return true;
+  }
 
   return appState.teams.some(t =>
     t.captain_id && String(t.captain_id) === String(player.id)
