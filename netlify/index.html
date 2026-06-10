@@ -1259,10 +1259,29 @@
               </div>
             </div>
 
+            <div class="admin-section">
+              <h3 style="margin-bottom:10px;">👥 Player Management</h3>
+              <p class="muted" style="margin-bottom:12px;">Delete one player if someone registered twice, typed the wrong name, or backed out.</p>
+
+              <div class="form-group">
+                <label>Select Player</label>
+                <select id="system-delete-player-select">
+                  <option value="">-- Select Player --</option>
+                </select>
+              </div>
+
+              <button class="btn btn-warning" onclick="deleteSelectedPlayer()">Delete Selected Player</button>
+            </div>
+
             <div class="admin-section admin-danger-zone">
-              <h3 style="margin-bottom:10px;">🛠️ Reset / Cleanup</h3>
-              <p class="muted" style="margin-bottom:12px;">Use these carefully. We will add safer individual cleanup buttons in the next phase.</p>
+              <h3 style="margin-bottom:10px;">⚠️ Danger Zone</h3>
+              <p class="muted" style="margin-bottom:12px;">Use these carefully. These are for cleanup when something gets messed up.</p>
+
+              <button class="btn btn-warning" onclick="clearPendingPlayers()">Clear Pending Players</button>
               <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
+              <button class="btn btn-warning" onclick="clearAllTeams()">Clear Teams</button>
+              <button class="btn btn-warning" onclick="clearAllScores()">Clear Scores</button>
+              <button class="btn btn-danger" onclick="startNewDay()">Start New Day</button>
             </div>
           </div>
 
@@ -2932,20 +2951,140 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
+    function renderSystemTools() {
+      const select = document.getElementById('system-delete-player-select');
+      if (!select) return;
+
+      const currentValue = select.value;
+      const players = (appState.players || [])
+        .slice()
+        .sort((a, b) => cleanName(a.name).localeCompare(cleanName(b.name)));
+
+      select.innerHTML = '<option value="">-- Select Player --</option>' + players.map(p => {
+        const captain = isCaptainPlayer(p) ? ' 👑' : '';
+        const status = p.status ? ` (${p.status})` : '';
+        const team = p.team ? ` - ${getTeamName(p.team)}` : '';
+        return `<option value="${p.id}">${p.name}${captain}${status}${team}</option>`;
+      }).join('');
+
+      if (currentValue && players.some(p => String(p.id) === String(currentValue))) {
+        select.value = currentValue;
+      }
+    }
+
+    async function deleteSelectedPlayer() {
+      const select = document.getElementById('system-delete-player-select');
+      const playerId = select?.value;
+      if (!playerId) {
+        alert('Select a player to delete');
+        return;
+      }
+
+      const player = appState.players.find(p => String(p.id) === String(playerId));
+      if (!player) {
+        alert('Player not found');
+        return;
+      }
+
+      if (!confirm(`Delete ${player.name}? This removes them from today\'s game.`)) return;
+
+      try {
+        await db(window.supabaseClient.from('players').delete().eq('id', player.id), 'Delete selected player');
+
+        const captainTeams = appState.teams.filter(t => String(t.captain_id || '') === String(player.id));
+        if (captainTeams.length) {
+          await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('captain_id', player.id), 'Clear deleted captain from teams');
+        }
+
+        if (cleanName(appState.myPlayerName) === cleanName(player.name)) {
+          appState.myPlayerName = '';
+          localStorage.removeItem('gmg_player_name');
+        }
+
+        await loadAllData();
+        renderSystemTools();
+        alert(`${player.name} deleted`);
+      } catch (err) {
+        alert(`Could not delete player: ${formatError(err)}`);
+      }
+    }
+
+    async function clearPendingPlayers() {
+      const pending = appState.players.filter(p => p.status === 'pending');
+      if (!pending.length) {
+        alert('No pending players to clear');
+        return;
+      }
+      if (!confirm(`Clear ${pending.length} pending player(s)? Approved players will stay.`)) return;
+
+      try {
+        await db(window.supabaseClient.from('players').delete().eq('status', 'pending'), 'Clear pending players');
+        await loadAllData();
+        renderSystemTools();
+        alert('Pending players cleared');
+      } catch (err) {
+        alert(`Could not clear pending players: ${formatError(err)}`);
+      }
+    }
+
     async function clearAllPlayers() {
-      if (!confirm('Are you sure you want to delete ALL players? This cannot be undone.')) return;
+      if (!confirm('Delete ALL players? This clears pending, approved, captains, and team assignments.')) return;
       try {
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players');
-        appState.players = [];
-        appState.teams = appState.teams.map(t => ({ ...t, captain_id: null }));
         await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear all captains');
-        renderHome();
-        renderAdminPlayers();
-        renderAdminTeams();
-        renderLeaderboard();
+        appState.myPlayerName = '';
+        localStorage.removeItem('gmg_player_name');
+        await loadAllData();
+        renderSystemTools();
         alert('All players cleared');
       } catch (err) {
         alert(`Could not clear all players: ${formatError(err)}`);
+      }
+    }
+
+    async function clearAllTeams() {
+      if (!confirm('Clear all teams and captains? Players will stay approved, but team assignments will be removed.')) return;
+      try {
+        await db(window.supabaseClient.from('players').update({ team: null, is_captain: false }).not('id', 'is', null), 'Clear player teams');
+        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear team captains');
+        await loadAllData();
+        renderSystemTools();
+        alert('Teams and captains cleared');
+      } catch (err) {
+        alert(`Could not clear teams: ${formatError(err)}`);
+      }
+    }
+
+    async function clearAllScores() {
+      if (!confirm('Clear all live scores for today? Players and teams will stay.')) return;
+      try {
+        (appState.teams || []).forEach(t => {
+          localStorage.removeItem(getLiveScoreStorageKey(t.id));
+        });
+        await db(window.supabaseClient.from('players').update({ score: null }).not('id', 'is', null), 'Clear player scores');
+        liveScoreState = { currentHole: 1, scores: {} };
+        await loadAllData();
+        renderScoreManagement();
+        alert('Scores cleared');
+      } catch (err) {
+        alert(`Could not clear scores: ${formatError(err)}`);
+      }
+    }
+
+    async function startNewDay() {
+      if (!confirm('Start new day? This clears teams, captains, and live scores. Players stay unless you clear them separately.')) return;
+      try {
+        (appState.teams || []).forEach(t => {
+          localStorage.removeItem(getLiveScoreStorageKey(t.id));
+        });
+        await db(window.supabaseClient.from('players').update({ team: null, is_captain: false, score: null }).not('id', 'is', null), 'Reset players for new day');
+        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Reset teams for new day');
+        liveScoreState = { currentHole: 1, scores: {} };
+        await loadAllData();
+        renderSystemTools();
+        alert('New day started');
+      } catch (err) {
+        alert(`Could not start new day: ${formatError(err)}`);
       }
     }
 
@@ -2976,6 +3115,7 @@ async function toggleCaptain(id, makeCaptain) {
       if(t==='teams') renderAdminTeams();
       if(t==='scores') { updateSettingsView(); renderScoreManagement(); }
       if(t==='settings') updateSettingsView();
+      if(t==='tools') renderSystemTools();
     }
 
     function logout(){ showView('view-home'); }
