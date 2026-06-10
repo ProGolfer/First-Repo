@@ -533,6 +533,135 @@
     select { max-width:100%; }
     td select { min-width:110px; width:100%; }
 
+
+
+    /* Admin Control Center v2 */
+    #view-admin-dashboard { max-width: 1100px; margin: 0 auto; }
+
+    .admin-control-shell {
+      display:grid;
+      grid-template-columns: 230px 1fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .admin-sidebar {
+      background: linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:20px;
+      padding:14px;
+      position:sticky;
+      top:12px;
+    }
+
+    .admin-sidebar-title {
+      color:#54e86f;
+      font-weight:950;
+      font-size:13px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      padding:6px 8px 14px;
+    }
+
+    .admin-side-btn {
+      width:100%;
+      border:1px solid transparent;
+      background:transparent;
+      color:#dbeafe;
+      border-radius:14px;
+      padding:13px 12px;
+      margin-bottom:7px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:900;
+      text-align:left;
+    }
+
+    .admin-side-btn span:first-child { font-size:20px; width:26px; text-align:center; }
+
+    .admin-side-btn.active,
+    .admin-side-btn:hover {
+      border-color:rgba(84,232,111,.55);
+      background:rgba(34,197,94,.13);
+      color:#fff;
+      box-shadow:0 0 18px rgba(34,197,94,.12);
+    }
+
+    .admin-main-panel {
+      background: linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:20px;
+      padding:16px;
+      min-height:520px;
+    }
+
+    .admin-panel-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:14px;
+      padding-bottom:14px;
+      border-bottom:1px solid rgba(148,163,184,.16);
+    }
+
+    .admin-panel-header h2 {
+      font-size:24px;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+      margin-bottom:4px;
+    }
+
+    .admin-panel-header p {
+      color:#a8b4c5;
+      font-weight:800;
+      line-height:1.35;
+    }
+
+    .admin-status-mini {
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .admin-mini-card {
+      background:rgba(15,23,42,.70);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:16px;
+      padding:12px;
+      text-align:center;
+    }
+
+    .admin-mini-card strong { display:block; font-size:26px; color:#fff; }
+    .admin-mini-card small { color:#54e86f; font-weight:950; text-transform:uppercase; }
+
+    .admin-panel { display:none; }
+    .admin-panel.active { display:block; }
+
+    .admin-section {
+      color:#f8fafc;
+      background:rgba(15,23,42,.72);
+      border:1px solid rgba(148,163,184,.16);
+    }
+
+    .admin-section h3,
+    .admin-section label { color:#f8fafc; }
+
+    .approval-note {
+      background:rgba(34,197,94,.12);
+      border:1px solid rgba(34,197,94,.24);
+      color:#f8fafc;
+    }
+
+    .admin-danger-zone {
+      background:rgba(239,68,68,.12) !important;
+      border-color:rgba(239,68,68,.30) !important;
+    }
+
     @media (max-width: 760px) {
       body { padding:12px; }
       .container { max-width:100%; }
@@ -550,6 +679,16 @@
       .btn-row { flex-direction:column; }
       th, td { font-size:13px; }
     }
+
+    @media (max-width: 760px) {
+      .admin-control-shell { grid-template-columns:1fr; }
+      .admin-sidebar { position:relative; top:auto; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .admin-sidebar-title { grid-column:1 / -1; padding-bottom:6px; }
+      .admin-side-btn { margin-bottom:0; justify-content:flex-start; }
+      .admin-status-mini { grid-template-columns:1fr; }
+      .admin-panel-header { flex-direction:column; }
+    }
+
   </style>
 </head>
 <body>
@@ -915,96 +1054,175 @@
     </div>
 
     <div id="view-admin-dashboard" class="card hidden">
-      <div class="header"><div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:38px;">⚙️</div><h1>Admin Dashboard</h1></div>
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">⚙️</div>
+          <h1>ADMIN <span>CONTROL CENTER</span></h1>
+        </div>
+      </div>
 
       <div class="admin-top-status" id="admin-status-card">
         <strong>Registration Status: <span id="admin-reg-status" class="closed">CLOSED</span></strong>
         <div style="margin-top:8px;">Registration is closed. No new players can register.</div>
       </div>
 
-      <div class="admin-pill-tabs">
-        <button class="admin-pill-btn active" onclick="switchAdminTab('players', event)">Manage Players</button>
-        <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
-        <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
+      <div class="admin-status-mini">
+        <div class="admin-mini-card"><strong id="admin-mini-total">0</strong><small>Total Players</small></div>
+        <div class="admin-mini-card"><strong id="admin-mini-pending">0</strong><small>Pending</small></div>
+        <div class="admin-mini-card"><strong id="admin-mini-captains">0</strong><small>Captains</small></div>
       </div>
 
-      <div id="admin-players">
-        <div class="approval-note">
-          <div class="title">✅ Approval Always Available</div>
-          <div>You can approve or decline players anytime, even while registration is open.</div>
+      <div class="admin-control-shell">
+        <div class="admin-sidebar">
+          <div class="admin-sidebar-title">Admin Control</div>
+          <button class="admin-side-btn active" onclick="switchAdminTab('players', event)"><span>👥</span><span>Manage Players</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('teams', event)"><span>🚩</span><span>Team Management</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('scores', event)"><span>🏆</span><span>Score Management</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>Settings</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🛠️</span><span>System Tools</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity Log</span></button>
         </div>
 
-        <div class="section-title">⏳ Pending Players</div>
-        <div id="pending-players-list"></div>
+        <div class="admin-main-panel">
+          <div id="admin-players" class="admin-panel active">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Manage Players</h2>
+                <p>Approve players, decline players, and control who is a captain.</p>
+              </div>
+            </div>
 
-        <div class="section-title">✅ Approved Players (No Team)</div>
-        <div id="approved-no-team-list"></div>
+            <div class="approval-note">
+              <div class="title">✅ Approval Always Available</div>
+              <div>You can approve or decline players anytime, even while registration is open.</div>
+            </div>
+
+            <div class="section-title">⏳ Pending Players</div>
+            <div id="pending-players-list"></div>
+
+            <div class="section-title">✅ Approved Players / Captains</div>
+            <div id="approved-no-team-list"></div>
+          </div>
+
+          <div id="admin-teams" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Team Management</h2>
+                <p>Set the number of teams, move players, change captains, and fix team assignments.</p>
+              </div>
+            </div>
+
+            <div class="approval-note" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.24);">
+              <div class="title">🚩 Team Control</div>
+              <div>Use this if teams need adjusted or something was assigned wrong.</div>
+            </div>
+
+            <div class="admin-section">
+              <div class="form-group" style="margin-bottom:0;">
+                <label>🏌️ Number of Teams</label>
+                <select id="num-teams" onchange="updateNumTeams()">
+                  <option value="1">1 Team</option>
+                  <option value="2">2 Teams</option>
+                  <option value="3">3 Teams</option>
+                  <option value="4" selected>4 Teams</option>
+                  <option value="5">5 Teams</option>
+                  <option value="6">6 Teams</option>
+                  <option value="7">7 Teams</option>
+                  <option value="8">8 Teams</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="submitNumTeams()">Submit Number of Teams</button>
+            </div>
+
+            <div class="section-title">Players Waiting for Team</div>
+            <div id="team-assignment-list"></div>
+
+            <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
+
+            <div class="section-title">Teams</div>
+            <div id="teams-container"></div>
+          </div>
+
+          <div id="admin-scores" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Score Management</h2>
+                <p>Phase 2 will let you fix a team, hole, player score, or team total from here.</p>
+              </div>
+            </div>
+
+            <div class="admin-section">
+              <h3 style="margin-bottom:10px;">🏆 Score Fixing Coming Next</h3>
+              <p class="muted" style="line-height:1.45;">This section is ready for the next build. We will add Select Team, Select Hole, edit player scores, and Save Correction.</p>
+            </div>
+
+            <div class="admin-section admin-danger-zone">
+              <h3 style="margin-bottom:10px;">🗑️ Clear Team Score</h3>
+              <div class="form-group">
+                <label>Select Team to Clear</label>
+                <select id="clear-team-select">
+                  <option value="">-- Select Team --</option>
+                </select>
+              </div>
+              <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
+            </div>
+          </div>
+
+          <div id="admin-settings" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Settings</h2>
+                <p>Control registration windows and manual open/close status.</p>
+              </div>
+            </div>
+
+            <div class="admin-section">
+              <div class="form-group">
+                <label>⏰ Registration Opens At</label>
+                <input type="time" id="open-time" value="06:00">
+              </div>
+              <div class="form-group">
+                <label>⏰ Registration Closes At</label>
+                <input type="time" id="cutoff-time" value="09:30">
+              </div>
+              <button class="btn btn-primary" onclick="saveSettings()">Save Times</button>
+              <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
+            </div>
+          </div>
+
+          <div id="admin-tools" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>System Tools</h2>
+                <p>Cleanup tools for when something gets messed up.</p>
+              </div>
+            </div>
+
+            <div class="admin-section admin-danger-zone">
+              <h3 style="margin-bottom:10px;">🛠️ Reset / Cleanup</h3>
+              <p class="muted" style="margin-bottom:12px;">Use these carefully. We will add safer individual cleanup buttons in the next phase.</p>
+              <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
+            </div>
+          </div>
+
+          <div id="admin-log" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Activity Log</h2>
+                <p>Phase 3 will show approvals, captain changes, team submissions, and score fixes.</p>
+              </div>
+            </div>
+
+            <div class="admin-section">
+              <h3 style="margin-bottom:10px;">📊 Recent Activity</h3>
+              <div class="empty-state">Activity log will be added after the admin layout is tested.</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div id="admin-teams" class="hidden">
-        <div class="approval-note" style="background:#eef7ee;border-color:#4caf50;">
-          <div class="title">✅ Registration is now CLOSED</div>
-          <div>You can now assign players to teams:</div>
-        </div>
-
-        <div class="admin-section">
-          <div class="form-group" style="margin-bottom:0;">
-            <label>🏌️ Number of Teams</label>
-            <select id="num-teams" onchange="updateNumTeams()" style="padding:12px;border-radius:12px;border:2px solid #2d5a27;">
-              <option value="1">1 Team</option>
-              <option value="2">2 Teams</option>
-              <option value="3">3 Teams</option>
-              <option value="4" selected>4 Teams</option>
-              <option value="5">5 Teams</option>
-              <option value="6">6 Teams</option>
-              <option value="7">7 Teams</option>
-              <option value="8">8 Teams</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" onclick="submitNumTeams()">Submit Number of Teams</button>
-        </div>
-
-        <div class="section-title">Players Waiting for Team</div>
-        <div id="team-assignment-list"></div>
-
-        <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
-
-        <div class="section-title">Teams</div>
-        <div id="teams-container"></div>
-      </div>
-
-      <div id="admin-settings" class="hidden">
-        <div class="admin-section">
-          <div class="form-group">
-            <label>⏰ Registration Opens At</label>
-            <input type="time" id="open-time" value="06:00">
-          </div>
-          <div class="form-group">
-            <label>⏰ Registration Closes At</label>
-            <input type="time" id="cutoff-time" value="09:30">
-          </div>
-          <button class="btn btn-primary" onclick="saveSettings()">Save Times</button>
-          <button class="btn btn-warning" id="toggle-registration-btn" onclick="toggleRegistration()">Reopen Registration</button>
-        </div>
-
-        <div class="admin-section" style="background:#f3e1e5;">
-          <h3 style="margin-bottom:10px;">🗑️ Clear Team Score</h3>
-          <div class="form-group">
-            <label>Select Team to Clear</label>
-            <select id="clear-team-select">
-              <option value="">-- Select Team --</option>
-            </select>
-          </div>
-          <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
-        </div>
-
-        <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
-      </div>
-
-      <button class="btn logout-soft" onclick="logout()">← Log Out</button>
+      <button class="btn logout-soft" style="margin-top:14px;" onclick="logout()">← Log Out</button>
     </div>
-  </div>
-
   <script>
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
@@ -1131,6 +1349,7 @@
       renderLeaderboard();
       loadGameView();
       updateSettingsView();
+      updateAdminMiniStats();
     }
 
 async function loadPlayerHistory() {
@@ -2003,6 +2222,8 @@ function renderHome() {
     function adminLogin(){
       if(document.getElementById('admin-password').value === ADMIN_PASSWORD){
         showView('view-admin-dashboard');
+        updateAdminMiniStats();
+        switchAdminTab('players');
         renderAdminPlayers();
       } else alert('Invalid password');
     }
@@ -2457,15 +2678,32 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
+    function updateAdminMiniStats() {
+      const total = appState.players.length;
+      const pending = appState.players.filter(p => p.status === 'pending').length;
+      const captains = appState.players.filter(p => isCaptainPlayer(p)).length;
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      setText('admin-mini-total', total);
+      setText('admin-mini-pending', pending);
+      setText('admin-mini-captains', captains);
+    }
+
     function switchAdminTab(t, ev){
-      document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
-      if (ev?.target) ev.target.classList.add('active');
-      document.getElementById('admin-players').classList.add('hidden');
-      document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-settings').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
+      document.querySelectorAll('.admin-side-btn').forEach(b=>b.classList.remove('active'));
+      if (ev?.currentTarget) ev.currentTarget.classList.add('active');
+      else if (ev?.target) ev.target.closest('.admin-side-btn')?.classList.add('active');
+
+      document.querySelectorAll('.admin-panel').forEach(panel => panel.classList.remove('active'));
+      const panel = document.getElementById('admin-' + t);
+      if (panel) panel.classList.add('active');
+
+      updateAdminMiniStats();
       if(t==='players') renderAdminPlayers();
       if(t==='teams') renderAdminTeams();
+      if(t==='scores') updateSettingsView();
       if(t==='settings') updateSettingsView();
     }
 
