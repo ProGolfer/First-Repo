@@ -662,6 +662,46 @@
       border-color:rgba(239,68,68,.30) !important;
     }
 
+
+    .score-admin-summary {
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .score-admin-stat {
+      background:rgba(2,8,14,.45);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:14px;
+      padding:12px;
+      text-align:center;
+    }
+
+    .score-admin-stat strong { display:block; font-size:24px; color:#54e86f; }
+    .score-admin-stat small { color:#a8b4c5; font-weight:900; text-transform:uppercase; }
+
+    .score-admin-row {
+      display:grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap:10px;
+      align-items:center;
+      padding:12px 0;
+      border-bottom:1px solid rgba(148,163,184,.14);
+    }
+
+    .score-admin-row input {
+      width:76px;
+      text-align:center;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(148,163,184,.28);
+      background:#142232;
+      color:#f8fafc;
+      font-weight:950;
+      font-size:18px;
+    }
+
     @media (max-width: 760px) {
       body { padding:12px; }
       .container { max-width:100%; }
@@ -687,6 +727,9 @@
       .admin-side-btn { margin-bottom:0; justify-content:flex-start; }
       .admin-status-mini { grid-template-columns:1fr; }
       .admin-panel-header { flex-direction:column; }
+      .score-admin-summary { grid-template-columns:1fr; }
+      .score-admin-row { grid-template-columns:1fr; align-items:stretch; }
+      .score-admin-row input { width:100%; }
     }
 
   </style>
@@ -1147,13 +1190,31 @@
             <div class="admin-panel-header">
               <div>
                 <h2>Score Management</h2>
-                <p>Phase 2 will let you fix a team, hole, player score, or team total from here.</p>
+                <p>Fix a team score, hole score, or player score if something gets entered wrong.</p>
               </div>
             </div>
 
+            <div class="approval-note">
+              <div class="title">🏆 Score Correction Control</div>
+              <div>Select a team and hole, adjust player scores, then save the correction.</div>
+            </div>
+
             <div class="admin-section">
-              <h3 style="margin-bottom:10px;">🏆 Score Fixing Coming Next</h3>
-              <p class="muted" style="line-height:1.45;">This section is ready for the next build. We will add Select Team, Select Hole, edit player scores, and Save Correction.</p>
+              <div class="form-group">
+                <label>🚩 Select Team</label>
+                <select id="score-admin-team" onchange="renderScoreManagement()">
+                  <option value="">-- Select Team --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>⛳ Select Hole</label>
+                <select id="score-admin-hole" onchange="renderScoreManagement()">
+                  <option value="1">Hole 1</option>
+                </select>
+              </div>
+
+              <div id="score-admin-editor"></div>
             </div>
 
             <div class="admin-section admin-danger-zone">
@@ -2614,6 +2675,8 @@ async function toggleCaptain(id, makeCaptain) {
         clearTeamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
           availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
       }
+
+      populateScoreManagementSelectors();
     }
 
     async function toggleRegistration() {
@@ -2638,6 +2701,180 @@ async function toggleCaptain(id, makeCaptain) {
       } catch (err) {
         alert(`Could not toggle registration: ${formatError(err)}`);
       }
+    }
+
+
+    function populateScoreManagementSelectors() {
+      const teamSelect = document.getElementById('score-admin-team');
+      const holeSelect = document.getElementById('score-admin-hole');
+      if (teamSelect) {
+        const current = teamSelect.value;
+        const availableTeams = appState.teams
+          .slice()
+          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+          .slice(0, appState.numTeams || 4);
+        teamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
+          availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
+        if (current && availableTeams.some(t => String(t.id) === String(current))) teamSelect.value = current;
+      }
+      if (holeSelect) {
+        const currentHole = holeSelect.value || '1';
+        holeSelect.innerHTML = CLIFFSIDE_HOLES.map(h => `<option value="${h.hole}">Hole ${h.hole} - Par ${h.par}</option>`).join('');
+        holeSelect.value = currentHole;
+      }
+    }
+
+    function getAdminSelectedTeamId() {
+      return document.getElementById('score-admin-team')?.value || '';
+    }
+
+    function getAdminSelectedHole() {
+      return parseInt(document.getElementById('score-admin-hole')?.value || '1', 10);
+    }
+
+    function renderScoreManagement() {
+      populateScoreManagementSelectors();
+      const mount = document.getElementById('score-admin-editor');
+      if (!mount) return;
+
+      const teamId = getAdminSelectedTeamId();
+      const holeNumber = getAdminSelectedHole();
+      const holeInfo = getHoleInfo(holeNumber);
+
+      if (!teamId) {
+        mount.innerHTML = '<div class="empty-state">Select a team to fix scores.</div>';
+        return;
+      }
+
+      const teamPlayers = appState.players.filter(p => p.status === 'approved' && String(p.team) === String(teamId));
+      if (!teamPlayers.length) {
+        mount.innerHTML = '<div class="empty-state">No approved players are assigned to this team yet.</div>';
+        return;
+      }
+
+      const scoreData = loadTeamLiveScore(teamId);
+      const savedHole = scoreData.scores[String(holeNumber)] || { playerScores: {}, holePoints: 0, par: holeInfo.par, hole: holeNumber };
+      const playerScores = {};
+      teamPlayers.forEach(p => {
+        playerScores[p.id] = savedHole.playerScores?.[p.id] !== undefined ? Number(savedHole.playerScores[p.id]) : holeInfo.par;
+      });
+      const holePoints = calculateHolePointsForScores(playerScores, holeInfo.par);
+
+      const rows = teamPlayers.map(p => {
+        const score = playerScores[p.id];
+        const pts = scoreToPoints(score, holeInfo.par);
+        return `
+          <div class="score-admin-row">
+            <div>
+              <div style="font-weight:950;">${p.name} ${isCaptainPlayer(p) ? '👑' : ''}</div>
+              <div class="muted">${pts} pts on this hole</div>
+            </div>
+            <button class="btn btn-secondary btn-small" onclick="adjustAdminScore('${p.id}', -1)">−</button>
+            <input id="admin-score-${p.id}" type="number" min="1" value="${score}" onchange="previewAdminScorePoints()">
+            <button class="btn btn-secondary btn-small" onclick="adjustAdminScore('${p.id}', 1)">+</button>
+          </div>`;
+      }).join('');
+
+      mount.innerHTML = `
+        <div class="score-admin-summary">
+          <div class="score-admin-stat"><strong>${getTeamName(teamId)}</strong><small>Team</small></div>
+          <div class="score-admin-stat"><strong>Hole ${holeInfo.hole}</strong><small>Par ${holeInfo.par}</small></div>
+          <div class="score-admin-stat"><strong id="admin-hole-points-preview">${holePoints}</strong><small>Hole Points</small></div>
+        </div>
+
+        <div style="margin-bottom:10px;color:#a8b4c5;font-weight:800;line-height:1.45;">
+          These corrections save to this device's live scoring storage. Use this during testing and on the scoring/admin device.
+        </div>
+
+        ${savedHole.submittedAt ? `<div style="margin-bottom:10px;color:#54e86f;font-weight:900;">✅ Hole already submitted</div>` : `<div style="margin-bottom:10px;color:#ffb020;font-weight:900;">⚠️ Hole not submitted yet. Saving here will create it.</div>`}
+
+        <div>${rows}</div>
+
+        <button class="btn btn-primary" onclick="saveAdminScoreCorrection()" style="margin-top:14px;">Save Score Correction</button>
+        <button class="btn btn-warning" onclick="clearAdminHoleScore()">Clear This Hole</button>
+      `;
+    }
+
+    function getAdminScoreValues() {
+      const teamId = getAdminSelectedTeamId();
+      const teamPlayers = appState.players.filter(p => p.status === 'approved' && String(p.team) === String(teamId));
+      const values = {};
+      teamPlayers.forEach(p => {
+        const input = document.getElementById(`admin-score-${p.id}`);
+        values[p.id] = Math.max(1, parseInt(input?.value || '1', 10));
+      });
+      return values;
+    }
+
+    function previewAdminScorePoints() {
+      const holeInfo = getHoleInfo(getAdminSelectedHole());
+      const preview = document.getElementById('admin-hole-points-preview');
+      if (preview) preview.textContent = calculateHolePointsForScores(getAdminScoreValues(), holeInfo.par);
+    }
+
+    function adjustAdminScore(playerId, delta) {
+      const input = document.getElementById(`admin-score-${playerId}`);
+      if (!input) return;
+      const current = parseInt(input.value || '1', 10);
+      input.value = Math.max(1, current + delta);
+      previewAdminScorePoints();
+    }
+
+    function saveAdminScoreCorrection() {
+      const teamId = getAdminSelectedTeamId();
+      const holeNumber = getAdminSelectedHole();
+      if (!teamId) {
+        alert('Select a team first');
+        return;
+      }
+
+      const holeInfo = getHoleInfo(holeNumber);
+      const playerScores = getAdminScoreValues();
+      const scoreData = loadTeamLiveScore(teamId);
+      scoreData.scores[String(holeNumber)] = {
+        hole: holeNumber,
+        par: holeInfo.par,
+        playerScores,
+        holePoints: calculateHolePointsForScores(playerScores, holeInfo.par),
+        submittedAt: new Date().toISOString(),
+        correctedByAdmin: true
+      };
+      scoreData.currentHole = Math.max(scoreData.currentHole || 1, holeNumber);
+      localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData));
+
+      if (String(appState.myTeam || '') === String(teamId)) {
+        liveScoreState = scoreData;
+      }
+
+      renderScoreManagement();
+      renderLiveStandings();
+      renderLiveResults();
+      if (String(appState.myTeam || '') === String(teamId)) renderLiveScorecard();
+      alert('Score correction saved');
+    }
+
+    function clearAdminHoleScore() {
+      const teamId = getAdminSelectedTeamId();
+      const holeNumber = getAdminSelectedHole();
+      if (!teamId) {
+        alert('Select a team first');
+        return;
+      }
+      if (!confirm(`Clear ${getTeamName(teamId)} Hole ${holeNumber}?`)) return;
+
+      const scoreData = loadTeamLiveScore(teamId);
+      delete scoreData.scores[String(holeNumber)];
+      localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData));
+
+      if (String(appState.myTeam || '') === String(teamId)) {
+        liveScoreState = scoreData;
+      }
+
+      renderScoreManagement();
+      renderLiveStandings();
+      renderLiveResults();
+      if (String(appState.myTeam || '') === String(teamId)) renderLiveScorecard();
+      alert('Hole score cleared');
     }
 
     async function clearSpecificTeamScore() {
@@ -2703,7 +2940,7 @@ async function toggleCaptain(id, makeCaptain) {
       updateAdminMiniStats();
       if(t==='players') renderAdminPlayers();
       if(t==='teams') renderAdminTeams();
-      if(t==='scores') updateSettingsView();
+      if(t==='scores') { updateSettingsView(); renderScoreManagement(); }
       if(t==='settings') updateSettingsView();
     }
 
