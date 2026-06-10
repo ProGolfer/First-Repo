@@ -1774,15 +1774,49 @@ function renderHome() {
   setText('money-pot', '$' + (approved.length * 20));
   const playerList = document.getElementById('player-list');
   if (playerList) {
-    playerList.innerHTML = approved.map(p => {
-      const teamText = p.team ? getTeamName(p.team) : 'Waiting for team';
-      return `
+    const assignedPlayers = approved.filter(p => p.team);
+
+    if (!approved.length) {
+      playerList.innerHTML = '<li style="color:#999;">No approved players</li>';
+    } else if (assignedPlayers.length) {
+      const teamIds = [...new Set(assignedPlayers.map(p => String(p.team)))];
+
+      playerList.innerHTML = teamIds.map(teamId => {
+        const teamPlayers = assignedPlayers
+          .filter(p => String(p.team) === String(teamId))
+          .sort((a, b) => {
+            const aCaptain = isCaptainPlayer(a) ? 0 : 1;
+            const bCaptain = isCaptainPlayer(b) ? 0 : 1;
+            if (aCaptain !== bCaptain) return aCaptain - bCaptain;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+        return `
+          <li style="list-style:none;margin-bottom:14px;">
+            <div style="background:rgba(15,30,44,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:18px;font-weight:950;color:#54e86f;">${getTeamName(teamId)}</div>
+                <div style="font-size:12px;color:#a8b4c5;font-weight:900;">${teamPlayers.length} Players</div>
+              </div>
+
+              ${teamPlayers.map(p => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid rgba(148,163,184,.12);">
+                  <span style="font-weight:850;color:#f8fafc;">${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
+                  <span style="font-size:12px;color:${isCaptainPlayer(p) ? '#54e86f' : '#a8b4c5'};font-weight:900;">${isCaptainPlayer(p) ? 'Captain' : 'Player'}</span>
+                </div>
+              `).join('')}
+            </div>
+          </li>
+        `;
+      }).join('');
+    } else {
+      playerList.innerHTML = approved.map(p => `
         <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
           <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
-          <div style="font-size:13px;color:#54e86f;font-weight:700;">${teamText}</div>
+          <div style="font-size:13px;color:#54e86f;font-weight:700;">Waiting for team</div>
         </li>
-      `;
-    }).join('') || '<li style="color:#999;">No approved players</li>';
+      `).join('');
+    }
   }
 
   const openTime = appState.settings.open_time || '06:00';
