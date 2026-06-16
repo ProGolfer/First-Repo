@@ -732,6 +732,116 @@
       .score-admin-row input { width:100%; }
     }
 
+
+
+    .scorecard-grid {
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      padding-bottom:4px;
+    }
+
+    .scorecard-table {
+      min-width:620px;
+      width:100%;
+      display:grid;
+      grid-template-columns: 72px repeat(9, 1fr) 58px;
+      gap:6px;
+      align-items:center;
+      margin-top:12px;
+    }
+
+    .scorecard-cell,
+    .scorecard-label,
+    .scorecard-total-cell {
+      min-height:38px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:950;
+      background:rgba(15,23,42,.72);
+      border:1px solid rgba(148,163,184,.14);
+      color:#f8fafc;
+    }
+
+    .scorecard-label {
+      justify-content:flex-start;
+      padding-left:10px;
+      color:#a8b4c5;
+      background:transparent;
+      border:none;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      font-size:12px;
+    }
+
+    .scorecard-total-cell {
+      color:#54e86f;
+      background:rgba(34,197,94,.12);
+      border-color:rgba(34,197,94,.22);
+    }
+
+    .score-circle {
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:950;
+      margin:auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 16px rgba(0,0,0,.18);
+      border:2px solid rgba(255,255,255,.16);
+    }
+
+    .score-eagle { background:#7c3aed; color:#fff; }
+    .score-birdie { background:#16a34a; color:#03120b; }
+    .score-par { background:#e5e7eb; color:#111827; }
+    .score-bogey { background:#f59e0b; color:#111827; }
+    .score-double { background:#dc2626; color:#fff; }
+    .score-missing { background:#334155; color:#94a3b8; }
+
+    .scorecard-summary {
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .scorecard-summary-box {
+      padding:14px;
+      border-radius:16px;
+      background:rgba(15,23,42,.72);
+      border:1px solid rgba(148,163,184,.16);
+      text-align:center;
+    }
+
+    .scorecard-summary-box small {
+      display:block;
+      color:#a8b4c5;
+      font-weight:900;
+      text-transform:uppercase;
+      margin-bottom:4px;
+    }
+
+    .scorecard-summary-box strong {
+      font-size:30px;
+      color:#54e86f;
+    }
+
+    .clickable-player {
+      cursor:pointer;
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:8px;
+      background:rgba(15,23,42,.50);
+      border:1px solid rgba(148,163,184,.12);
+    }
+
+    .clickable-player:hover {
+      border-color:rgba(34,197,94,.55);
+      background:rgba(34,197,94,.10);
+    }
   </style>
 </head>
 <body>
@@ -1079,6 +1189,21 @@
       </div>
 
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+
+
+    <div id="view-player-scorecard" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">🏌️</div>
+          <h1>PLAYER <span>SCORECARD</span></h1>
+        </div>
+      </div>
+
+      <div id="player-scorecard-display"></div>
+
+      <button class="btn btn-back" onclick="showView('view-game'); switchGameTab('results');">← Back to Results</button>
     </div>
 
     <div id="view-leaderboard" class="card hidden">
@@ -2303,6 +2428,29 @@ function renderHome() {
         ? `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#ffb020;">PUSH</div><div class="muted">Tie score: ${totalResult.score}. Money refunded.</div></div>`
         : `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#54e86f;">${getTeamName(totalResult.team.team.id)}</div><div class="muted">Score: ${totalResult.score}</div><div style="font-size:22px;font-weight:950;margin-top:8px;">+$${totalMoney}</div></div>`;
 
+      const teamCards = teamsWithPlayers.map(row => {
+        const sortedPlayers = row.players.slice().sort((a, b) => {
+          const ac = isCaptainPlayer(a) ? 0 : 1;
+          const bc = isCaptainPlayer(b) ? 0 : 1;
+          if (ac !== bc) return ac - bc;
+          return cleanName(a.name).localeCompare(cleanName(b.name));
+        });
+
+        return `
+          <div class="dashboard-panel">
+            <div class="players-header">
+              <h3>${getTeamName(row.team.id)}</h3>
+              <span class="players-count">${row.total} pts</span>
+            </div>
+            ${sortedPlayers.map(p => `
+              <div class="player-item clickable-player" onclick="showPlayerScorecard('${p.id}')">
+                <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
+                <span class="green">View Card →</span>
+              </div>
+            `).join('')}
+          </div>`;
+      }).join('');
+
       mount.innerHTML = `
         <div class="dashboard-panel">
           <div class="players-header">
@@ -2315,7 +2463,133 @@ function renderHome() {
         </div>
         <div class="dashboard-panel"><div class="section-title">Front Winner</div><div class="empty-state">Front 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
         <div class="dashboard-panel"><div class="section-title">Back Winner</div><div class="empty-state">Back 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
-        ${totalCard}`;
+        ${totalCard}
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>Player Scorecards</h3>
+            <span class="players-count">Tap Player</span>
+          </div>
+          <div class="muted" style="font-weight:800;margin-bottom:10px;">Tap any player below to view their golf scorecard.</div>
+        </div>
+        ${teamCards}`;
+    }
+
+    function getScoreCircleClass(score, par) {
+      if (score === null || score === undefined || score === '') return 'score-missing';
+      const diff = Number(score) - Number(par);
+      if (diff <= -2) return 'score-eagle';
+      if (diff === -1) return 'score-birdie';
+      if (diff === 0) return 'score-par';
+      if (diff === 1) return 'score-bogey';
+      return 'score-double';
+    }
+
+    function getPlayerScorecardData(playerId) {
+      const player = appState.players.find(p => String(p.id) === String(playerId));
+      if (!player || !player.team) return null;
+
+      const scoreData = loadTeamLiveScore(player.team);
+      const holes = CLIFFSIDE_HOLES.map(h => {
+        const savedHole = scoreData.scores[String(h.hole)];
+        const rawScore = savedHole?.playerScores?.[player.id];
+        const score = rawScore !== undefined && rawScore !== null ? Number(rawScore) : null;
+        const points = score !== null ? scoreToPoints(score, h.par) : 0;
+        return { ...h, score, points };
+      });
+
+      const sumScores = arr => arr.reduce((sum, h) => sum + (h.score !== null ? Number(h.score) : 0), 0);
+      const sumPoints = arr => arr.reduce((sum, h) => sum + Number(h.points || 0), 0);
+      const completed = holes.filter(h => h.score !== null).length;
+      const front = holes.slice(0, 9);
+      const back = holes.slice(9, 18);
+
+      return {
+        player,
+        teamName: getTeamName(player.team),
+        holes,
+        front,
+        back,
+        completed,
+        frontScore: sumScores(front),
+        backScore: sumScores(back),
+        totalScore: sumScores(holes),
+        frontPoints: sumPoints(front),
+        backPoints: sumPoints(back),
+        totalPoints: sumPoints(holes)
+      };
+    }
+
+    function renderScorecardNine(title, holes, scoreTotal, pointsTotal) {
+      const totalLabel = title === 'OUT' ? 'OUT' : 'IN';
+      return `
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>${title}</h3>
+            <span class="players-count">${pointsTotal} pts</span>
+          </div>
+          <div class="scorecard-grid">
+            <div class="scorecard-table">
+              <div class="scorecard-label">Hole</div>
+              ${holes.map(h => `<div class="scorecard-cell">${h.hole}</div>`).join('')}
+              <div class="scorecard-total-cell">${totalLabel}</div>
+
+              <div class="scorecard-label">Par</div>
+              ${holes.map(h => `<div class="scorecard-cell">${h.par}</div>`).join('')}
+              <div class="scorecard-total-cell">${holes.reduce((sum, h) => sum + h.par, 0)}</div>
+
+              <div class="scorecard-label">Score</div>
+              ${holes.map(h => `<div class="scorecard-cell"><div class="score-circle ${getScoreCircleClass(h.score, h.par)}">${h.score ?? '-'}</div></div>`).join('')}
+              <div class="scorecard-total-cell">${scoreTotal || '-'}</div>
+            </div>
+          </div>
+          <div class="scorecard-summary">
+            <div class="scorecard-summary-box"><small>${totalLabel} Score</small><strong>${scoreTotal || '-'}</strong></div>
+            <div class="scorecard-summary-box"><small>${totalLabel} Points</small><strong>${pointsTotal}</strong></div>
+          </div>
+        </div>`;
+    }
+
+    function showPlayerScorecard(playerId) {
+      const data = getPlayerScorecardData(playerId);
+      const mount = document.getElementById('player-scorecard-display');
+      if (!mount) return;
+
+      if (!data) {
+        mount.innerHTML = `<div class="dashboard-panel"><div class="empty-state">Scorecard unavailable for this player.</div></div>`;
+        showView('view-player-scorecard');
+        return;
+      }
+
+      const warning = data.completed < 18
+        ? `<div class="dashboard-panel"><div class="empty-state">Only ${data.completed}/18 holes have saved scores on this device.</div></div>`
+        : '';
+
+      mount.innerHTML = `
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>${data.player.name} ${isCaptainPlayer(data.player) ? '👑' : ''}</h3>
+            <span class="players-count">${data.teamName}</span>
+          </div>
+          <div class="muted" style="font-weight:800;">Colored circles show score versus par.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px;font-weight:900;">
+            <span><span class="score-circle score-eagle" style="display:inline-flex;width:24px;height:24px;font-size:11px;vertical-align:middle;">E</span> Eagle+</span>
+            <span><span class="score-circle score-birdie" style="display:inline-flex;width:24px;height:24px;font-size:11px;vertical-align:middle;">B</span> Birdie</span>
+            <span><span class="score-circle score-par" style="display:inline-flex;width:24px;height:24px;font-size:11px;vertical-align:middle;">P</span> Par</span>
+            <span><span class="score-circle score-bogey" style="display:inline-flex;width:24px;height:24px;font-size:11px;vertical-align:middle;">+1</span> Bogey</span>
+            <span><span class="score-circle score-double" style="display:inline-flex;width:24px;height:24px;font-size:11px;vertical-align:middle;">+2</span> Double+</span>
+          </div>
+        </div>
+        ${warning}
+        ${renderScorecardNine('OUT', data.front, data.frontScore, data.frontPoints)}
+        ${renderScorecardNine('IN', data.back, data.backScore, data.backPoints)}
+        <div class="dashboard-panel">
+          <div class="scorecard-summary">
+            <div class="scorecard-summary-box"><small>Total Score</small><strong>${data.totalScore || '-'}</strong></div>
+            <div class="scorecard-summary-box"><small>Total Points</small><strong>${data.totalPoints}</strong></div>
+          </div>
+        </div>`;
+
+      showView('view-player-scorecard');
     }
 
     function renderLeaderboard() {
