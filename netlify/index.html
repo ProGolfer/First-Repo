@@ -3224,7 +3224,7 @@ async function toggleCaptain(id, makeCaptain) {
       previewAdminScorePoints();
     }
 
-    async function saveAdminScoreCorrection() {
+    function saveAdminScoreCorrection() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
@@ -3257,7 +3257,7 @@ async function toggleCaptain(id, makeCaptain) {
       alert('Score correction saved');
     }
 
-    async function clearAdminHoleScore() {
+    function clearAdminHoleScore() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
