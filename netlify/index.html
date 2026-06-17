@@ -1203,7 +1203,7 @@
 
       <div id="player-scorecard-display"></div>
 
-      <button class="btn btn-back" onclick="showView('view-game'); switchGameTab('results');">← Back to Results</button>
+      <button class="btn btn-back" onclick="backFromPlayerScorecard()">← Back</button>
     </div>
 
     <div id="view-leaderboard" class="card hidden">
@@ -1704,32 +1704,72 @@ async function loadPlayerHistory() {
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
+function renderTeamGroupCards(players, options = {}) {
+  const clickable = !!options.clickable;
+  const clickTarget = options.clickTarget || 'view-teams';
+  const assignedPlayers = players.filter(p => p.team);
+
+  if (!players.length) {
+    return '<li class="empty-state">No approved players yet</li>';
+  }
+
+  if (!assignedPlayers.length) {
+    return players.map(p => `
+      <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
+        <div style="font-size:13px;color:#54e86f;font-weight:700;">Waiting for team</div>
+      </li>
+    `).join('');
+  }
+
+  const teamIds = [...new Set(assignedPlayers.map(p => String(p.team)))];
+
+  return teamIds.map(teamId => {
+    const teamPlayers = assignedPlayers
+      .filter(p => String(p.team) === String(teamId))
+      .sort((a, b) => {
+        const aCaptain = isCaptainPlayer(a) ? 0 : 1;
+        const bCaptain = isCaptainPlayer(b) ? 0 : 1;
+        if (aCaptain !== bCaptain) return aCaptain - bCaptain;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+    return `
+      <li style="list-style:none;margin-bottom:14px;">
+        <div style="background:rgba(15,30,44,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:18px;font-weight:950;color:#54e86f;">${getTeamName(teamId)}</div>
+            <div style="font-size:12px;color:#a8b4c5;font-weight:900;">${teamPlayers.length} Players</div>
+          </div>
+
+          ${teamPlayers.map(p => `
+            <div ${clickable ? `onclick="showPlayerScorecard('${p.id}', '${clickTarget}')"` : ''} style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid rgba(148,163,184,.12);${clickable ? 'cursor:pointer;' : ''}">
+              <span style="font-weight:850;color:#f8fafc;">${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
+              <span style="font-size:12px;color:${clickable ? '#54e86f' : (isCaptainPlayer(p) ? '#54e86f' : '#a8b4c5')};font-weight:900;">${clickable ? 'View Card →' : (isCaptainPlayer(p) ? 'Captain' : 'Player')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </li>
+    `;
+  }).join('');
+}
+
 function showPlayersPage() {
-  const approved = appState.players.filter(
-    p => p.status === 'approved'
-  );
+  const approved = appState.players.filter(p => p.status === 'approved');
 
   const count = document.getElementById('players-page-count');
   const list = document.getElementById('players-page-list');
 
   if (count) count.textContent = approved.length;
   if (list) {
-    list.innerHTML = approved.map(p => `
-      <li class="player-item">
-        <span>${p.name}</span>
-        <span>${p.team ? getTeamName(p.team) : 'Waiting for team'}</span>
-      </li>
-    `).join('') || '<li class="empty-state">No approved players yet</li>';
+    list.innerHTML = renderTeamGroupCards(approved, { clickable: false });
   }
 
   showView('view-players');
 }
 
 function showTeamsPage() {
-  const approved = appState.players.filter(
-    p => p.status === 'approved'
-  );
-
+  const approved = appState.players.filter(p => p.status === 'approved');
   const assignedPlayers = approved.filter(p => p.team);
 
   const list = document.getElementById('teams-page-list');
@@ -1743,7 +1783,7 @@ function showTeamsPage() {
     list.innerHTML = `
       <div class="empty-state">
         No teams are available at this time.<br>
-        Teams will show here after they are selected by admin.
+        Teams will show here after they are selected by admin or captains.
       </div>
     `;
 
@@ -1751,33 +1791,21 @@ function showTeamsPage() {
     return;
   }
 
-  const teamIds = [
-    ...new Set(assignedPlayers.map(p => String(p.team)))
-  ];
-
+  const teamIds = [...new Set(assignedPlayers.map(p => String(p.team)))];
   if (count) count.textContent = teamIds.length + ' Teams';
 
-  list.innerHTML = teamIds.map(teamId => {
-    const teamPlayers = assignedPlayers.filter(
-      p => String(p.team) === String(teamId)
-    );
-
-    return `
-      <div class="dashboard-panel">
-        <div class="players-header">
-          <h3>${getTeamName(teamId)}</h3>
-          <span class="players-count">${teamPlayers.length}</span>
-        </div>
-
-        ${teamPlayers.map(p => `
-          <div class="player-item">
-            <span>${p.name}</span>
-            <span>${isCaptainPlayer(p) ? 'Captain' : 'Player'}</span>
-          </div>
-        `).join('')}
+  list.innerHTML = `
+    <div class="dashboard-panel">
+      <div class="players-header">
+        <h3>Selected Teams</h3>
+        <span class="players-count">Tap Player</span>
       </div>
-    `;
-  }).join('');
+      <div class="muted" style="font-weight:800;margin-top:8px;">Tap a player to open their scorecard.</div>
+    </div>
+    <ul class="player-list">
+      ${renderTeamGroupCards(approved, { clickable: true, clickTarget: 'view-teams' })}
+    </ul>
+  `;
 
   showView('view-teams');
 }
@@ -1918,49 +1946,7 @@ function renderHome() {
   setText('money-pot', '$' + (approved.length * 20));
   const playerList = document.getElementById('player-list');
   if (playerList) {
-    const assignedPlayers = approved.filter(p => p.team);
-
-    if (!approved.length) {
-      playerList.innerHTML = '<li style="color:#999;">No approved players</li>';
-    } else if (assignedPlayers.length) {
-      const teamIds = [...new Set(assignedPlayers.map(p => String(p.team)))];
-
-      playerList.innerHTML = teamIds.map(teamId => {
-        const teamPlayers = assignedPlayers
-          .filter(p => String(p.team) === String(teamId))
-          .sort((a, b) => {
-            const aCaptain = isCaptainPlayer(a) ? 0 : 1;
-            const bCaptain = isCaptainPlayer(b) ? 0 : 1;
-            if (aCaptain !== bCaptain) return aCaptain - bCaptain;
-            return (a.name || '').localeCompare(b.name || '');
-          });
-
-        return `
-          <li style="list-style:none;margin-bottom:14px;">
-            <div style="background:rgba(15,30,44,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <div style="font-size:18px;font-weight:950;color:#54e86f;">${getTeamName(teamId)}</div>
-                <div style="font-size:12px;color:#a8b4c5;font-weight:900;">${teamPlayers.length} Players</div>
-              </div>
-
-              ${teamPlayers.map(p => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid rgba(148,163,184,.12);">
-                  <span style="font-weight:850;color:#f8fafc;">${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
-                  <span style="font-size:12px;color:${isCaptainPlayer(p) ? '#54e86f' : '#a8b4c5'};font-weight:900;">${isCaptainPlayer(p) ? 'Captain' : 'Player'}</span>
-                </div>
-              `).join('')}
-            </div>
-          </li>
-        `;
-      }).join('');
-    } else {
-      playerList.innerHTML = approved.map(p => `
-        <li class="player-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-          <div style="font-weight:800;font-size:16px;color:#f8fafc;">${p.name}</div>
-          <div style="font-size:13px;color:#54e86f;font-weight:700;">Waiting for team</div>
-        </li>
-      `).join('');
-    }
+    playerList.innerHTML = renderTeamGroupCards(approved, { clickable: false });
   }
 
   const openTime = appState.settings.open_time || '06:00';
@@ -2443,7 +2429,7 @@ function renderHome() {
               <span class="players-count">${row.total} pts</span>
             </div>
             ${sortedPlayers.map(p => `
-              <div class="player-item clickable-player" onclick="showPlayerScorecard('${p.id}')">
+              <div class="player-item clickable-player" onclick="showPlayerScorecard('${p.id}', 'view-game')">
                 <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
                 <span class="green">View Card →</span>
               </div>
@@ -2549,7 +2535,19 @@ function renderHome() {
         </div>`;
     }
 
-    function showPlayerScorecard(playerId) {
+    let playerScorecardBackView = 'view-game';
+
+function backFromPlayerScorecard() {
+  if (playerScorecardBackView === 'view-teams') {
+    showTeamsPage();
+    return;
+  }
+  showView('view-game');
+  switchGameTab('results');
+}
+
+function showPlayerScorecard(playerId, backView = 'view-game') {
+      playerScorecardBackView = backView;
       const data = getPlayerScorecardData(playerId);
       const mount = document.getElementById('player-scorecard-display');
       if (!mount) return;
