@@ -1851,56 +1851,76 @@ function showCaptainTeamsPage() {
 }
 
 function renderCaptainTeamsPage() {
-  const allPlayers = appState.players || [];
+  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+  const activeTeams = getActiveTeams();
+  const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
+  const myPlayer = getMyPlayer();
+  const myCaptainTeam = myPlayer ? activeTeams.find(t => String(t.captain_id || '') === String(myPlayer.id)) : null;
 
   const count = document.getElementById('captain-player-count');
   const list = document.getElementById('captain-team-assignment-list');
   const select = document.getElementById('captain-num-teams');
 
   if (select) select.value = String(appState.selectedNumTeams || appState.numTeams || 4);
-  if (count) count.textContent = allPlayers.length;
+  if (count) count.textContent = availablePlayers.length;
   if (!list) return;
 
-  if (!allPlayers.length) {
-    list.innerHTML = '<div class="empty-state">No registered players yet</div>';
+  const teamOptions = activeTeams.map(t => `<option value="${t.id}" ${myCaptainTeam && String(myCaptainTeam.id) === String(t.id) ? 'selected' : ''}>${getTeamName(t.id)}</option>`).join('');
+
+  const draftRows = availablePlayers.length ? availablePlayers.map(p => `
+    <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+      <div style="min-width:130px;">
+        <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
+        <div class="muted">Available</div>
+      </div>
+      <div style="flex:1;min-width:150px;">
+        <select id="captain-pick-team-${p.id}">
+          <option value="">-- Select Team --</option>
+          ${teamOptions}
+        </select>
+      </div>
+      <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Submit</button>
+    </div>
+  `).join('') : '<div class="empty-state">No available players left to pick.</div>';
+
+  list.innerHTML = `
+    <div class="dashboard-panel" style="margin-bottom:14px;">
+      <div class="players-header">
+        <h3>${myPlayer ? '👑 ' + myPlayer.name : 'Captain'} ${myCaptainTeam ? '- ' + getTeamName(myCaptainTeam.id) : ''}</h3>
+        <span class="players-count">${availablePlayers.length} Left</span>
+      </div>
+      <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
+        Pick an available player, select the team, then hit Submit. Once submitted, that player leaves this list and appears under Selected Teams.
+      </p>
+    </div>
+
+    <div class="section-title">Available Players</div>
+    ${draftRows}
+
+    <div class="section-title">Selected Teams</div>
+    <ul class="player-list">
+      ${renderTeamGroupCards(approvedPlayers, { clickable: false })}
+    </ul>
+  `;
+}
+
+async function captainSubmitPlayerToTeam(playerId) {
+  const select = document.getElementById(`captain-pick-team-${playerId}`);
+  const teamId = select?.value || '';
+  if (!teamId) {
+    alert('Select a team first.');
     return;
   }
 
-  const availableTeams = appState.teams
-    .slice()
-    .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-    .slice(0, appState.numTeams || 4);
-
-  list.innerHTML = allPlayers.map(p => {
-    const isApproved = p.status === 'approved';
-    const playerTeam = p.team ?? '';
-    const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
-    const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
-
-    return `
-      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-        <div style="min-width:130px;">
-          <div style="font-weight:900;">${p.name}</div>
-          <div class="muted">${isApproved ? 'Approved' : 'Pending approval'}</div>
-        </div>
-
-        <div style="flex:1;min-width:140px;">
-          <select onchange="changeTeam('${p.id}', this.value)" ${!isApproved ? 'disabled' : ''}>
-            <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
-            ${availableTeams.map(t => `<option value="${t.id}" ${String(playerTeam) === String(t.id) ? 'selected' : ''}>${getTeamName(t.id)}</option>`).join('')}
-          </select>
-        </div>
-
-        <div style="flex:1;min-width:150px;">
-          <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" ${!isApproved || !playerTeam ? 'disabled' : ''}>
-            <option value="">-- Captain? --</option>
-            <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
-            <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
-          </select>
-        </div>
-      </div>
-    `;
-  }).join('');
+  try {
+    await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Captain assign player');
+    await loadAllData();
+    renderCaptainTeamsPage();
+    renderHome();
+    renderAdminTeams();
+  } catch (err) {
+    alert(`Could not assign player: ${formatError(err)}`);
+  }
 }
 
 function updateCaptainNumTeams() {
@@ -2642,7 +2662,8 @@ async function toggleCaptain(id, makeCaptain) {
     
     function renderAdminPlayers(){
       const pending = appState.players.filter(p => p.status === 'pending');
-      const approvedNoTeam = appState.players.filter(p => p.status === 'approved' && (p.team === null || p.team === undefined || p.team === ''));
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+      const availableTeams = getActiveTeams();
 
       const pendingList = document.getElementById('pending-players-list');
       if (pendingList) {
@@ -2662,23 +2683,27 @@ async function toggleCaptain(id, makeCaptain) {
 
       const approvedNoTeamList = document.getElementById('approved-no-team-list');
       if (approvedNoTeamList) {
-        approvedNoTeamList.innerHTML = approvedNoTeam.length ? approvedNoTeam.map(p => `
-          <div class="player-item">
-            <div>
-              <div style="font-weight:700;">${p.name}</div>
-              <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span style="background:${p.is_captain ? '#facc15' : '#e8f2ff'};color:${p.is_captain ? '#111827' : '#1565c0'};padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;">
-  ${p.is_captain ? '👑 Captain' : 'No Team'}
-</span>
-<button class="btn btn-warning btn-small" onclick="toggleCaptain('${p.id}', ${p.is_captain ? 'false' : 'true'})">
-  ${p.is_captain ? 'Remove Captain' : '👑 Make Captain'}
-</button>
+        approvedNoTeamList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
+          const captainTeam = availableTeams.find(t => String(t.captain_id || '') === String(p.id));
+          const playerTeam = p.team ? getTeamName(p.team) : 'No team yet';
+          return `
+            <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+              <div style="min-width:130px;">
+                <div style="font-weight:900;color:#f8fafc;">${p.name} ${captainTeam ? '👑' : ''}</div>
+                <div class="muted">${captainTeam ? 'Captain - ' + getTeamName(captainTeam.id) : playerTeam}</div>
+              </div>
+
+              <div style="flex:1;min-width:180px;">
+                <select onchange="assignCaptainToTeam('${p.id}', this.value)">
+                  <option value="">-- Not Captain --</option>
+                  ${availableTeams.map(t => `<option value="${t.id}" ${captainTeam && String(captainTeam.id) === String(t.id) ? 'selected' : ''}>Captain ${getTeamName(t.id)}</option>`).join('')}
+                </select>
+              </div>
+
               <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">🗑️ Delete</button>
             </div>
-          </div>
-        `).join('') : '<div class="empty-state">No approved players without a team</div>';
+          `;
+        }).join('') : '<div class="empty-state">No approved players yet</div>';
       }
 
       const now = new Date();
@@ -2690,15 +2715,64 @@ async function toggleCaptain(id, makeCaptain) {
       const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
       openDate.setHours(openH, openM, 0, 0);
       cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+
       const isOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
-      const statusEl = document.getElementById('admin-reg-status');
-      const cardEl = document.getElementById('admin-status-card');
-      if (statusEl && cardEl) {
-        statusEl.textContent = isOpen ? 'OPEN' : 'CLOSED';
-        statusEl.className = isOpen ? 'open' : 'closed';
-        cardEl.querySelector('div').textContent = isOpen
-          ? `Registration is open until ${formatTime12(cutoffTime)}.`
-          : 'Registration is closed. No new players can register.';
+      const status = document.getElementById('admin-reg-status');
+      if (status) {
+        status.textContent = isOpen ? 'OPEN' : 'CLOSED';
+        status.className = isOpen ? 'open' : 'closed';
+      }
+
+      const totalMini = document.getElementById('admin-mini-total');
+      const pendingMini = document.getElementById('admin-mini-pending');
+      const captainsMini = document.getElementById('admin-mini-captains');
+      if (totalMini) totalMini.textContent = appState.players.length;
+      if (pendingMini) pendingMini.textContent = pending.length;
+      if (captainsMini) captainsMini.textContent = appState.players.filter(p => isCaptainPlayer(p)).length;
+    }
+
+    function getActiveTeams() {
+      return appState.teams
+        .slice()
+        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+        .slice(0, appState.numTeams || 4);
+    }
+
+    async function assignCaptainToTeam(playerId, teamId) {
+      try {
+        const player = appState.players.find(p => String(p.id) === String(playerId));
+        if (!player) return;
+
+        const oldCaptainTeam = appState.teams.find(t => String(t.captain_id || '') === String(playerId));
+
+        if (!teamId) {
+          if (oldCaptainTeam) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', oldCaptainTeam.id), 'Remove old captain team');
+          }
+          await db(window.supabaseClient.from('players').update({ is_captain: false, team: null }).eq('id', playerId), 'Remove captain');
+          await loadAllData();
+          return;
+        }
+
+        const nextTeamId = parseInt(teamId, 10);
+        const targetTeam = appState.teams.find(t => String(t.id) === String(nextTeamId));
+        const oldTeamCaptainId = targetTeam?.captain_id ? String(targetTeam.captain_id) : '';
+
+        if (oldCaptainTeam && String(oldCaptainTeam.id) !== String(nextTeamId)) {
+          await db(window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', oldCaptainTeam.id), 'Clear previous captain team');
+        }
+
+        if (oldTeamCaptainId && oldTeamCaptainId !== String(playerId)) {
+          await db(window.supabaseClient.from('players').update({ is_captain: false, team: null }).eq('id', oldTeamCaptainId), 'Clear replaced captain');
+        }
+
+        await db(window.supabaseClient.from('players').update({ is_captain: true, team: nextTeamId }).eq('id', playerId), 'Assign captain to team');
+        await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', nextTeamId), 'Set team captain');
+
+        await loadAllData();
+      } catch (err) {
+        alert(`Could not assign captain: ${formatError(err)}`);
+        await loadAllData();
       }
     }
 
@@ -2745,56 +2819,50 @@ async function toggleCaptain(id, makeCaptain) {
 
     function renderAdminTeams(){
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
-      const availableTeams = appState.teams
-        .slice()
-        .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, appState.numTeams || 4);
+      const availableTeams = getActiveTeams();
 
       const numTeamsSelect = document.getElementById('num-teams');
       if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
 
       const teamAssignmentList = document.getElementById('team-assignment-list');
       if (teamAssignmentList) {
-        teamAssignmentList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
-          const playerTeam = p.team ?? '';
-          const teamForCaptain = availableTeams.find(t => String(t.id) === String(playerTeam));
-          const currentCaptainId = teamForCaptain?.captain_id ? String(teamForCaptain.captain_id) : '';
-          return `
-            <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
-              <div style="min-width:110px;">
-                <div style="font-weight:700;">${p.name}</div>
-                <div class="muted">${p.course || 'Cliffside Golf Club'}</div>
-              </div>
-              <div style="flex:1;min-width:140px;">
-                <select onchange="changeTeam('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
-                  <option value="" ${playerTeam === '' || playerTeam === null ? 'selected' : ''}>-- Select Team --</option>
-                  ${availableTeams.map(t=>`<option value="${t.id}" ${String(playerTeam)===String(t.id)?'selected':''}>${getTeamName(t.id)}</option>`).join('')}
-                </select>
-              </div>
-              <div style="flex:1;min-width:160px;">
-                <select onchange="setCaptainFromPlayerRow('${p.id}', this.value)" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;" ${!playerTeam ? 'disabled' : ''}>
-                  <option value="">-- Captain? --</option>
-                  <option value="yes" ${currentCaptainId === String(p.id) ? 'selected' : ''}>Captain</option>
-                  <option value="no" ${playerTeam && currentCaptainId !== String(p.id) ? 'selected' : ''}>Not Captain</option>
-                </select>
-              </div>
+        const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
+        teamAssignmentList.innerHTML = availablePlayers.length ? availablePlayers.map(p => `
+          <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
+            <div style="min-width:120px;">
+              <div style="font-weight:700;">${p.name}</div>
+              <div class="muted">Available</div>
             </div>
-          `;
-        }).join('') : '<div class="empty-state">No approved players</div>';
+            <div style="flex:1;min-width:150px;">
+              <select id="admin-pick-team-${p.id}" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
+                <option value="">-- Select Team --</option>
+                ${availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('')}
+              </select>
+            </div>
+            <button class="btn btn-primary btn-small" onclick="adminSubmitPlayerToTeam('${p.id}')">Submit</button>
+          </div>
+        `).join('') : '<div class="empty-state">No available players. Everyone is already assigned or set as captain.</div>';
       }
 
       const teamsContainer = document.getElementById('teams-container');
       if (teamsContainer) {
         teamsContainer.innerHTML = availableTeams.map(t => {
-          const teamPlayers = approvedPlayers.filter(p => String(p.team) === String(t.id));
+          const teamPlayers = approvedPlayers
+            .filter(p => String(p.team) === String(t.id))
+            .sort((a, b) => {
+              const aCap = String(t.captain_id || '') === String(a.id) || isCaptainPlayer(a) ? 0 : 1;
+              const bCap = String(t.captain_id || '') === String(b.id) || isCaptainPlayer(b) ? 0 : 1;
+              if (aCap !== bCap) return aCap - bCap;
+              return (a.name || '').localeCompare(b.name || '');
+            });
           const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
           const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
           return `
             <div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px;">
               <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
               <div style="padding:4px 8px;">
-                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">${captain.name} 👑 (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;">${p.name}</div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
+                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">👑 ${captain.name} (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
+                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;display:flex;justify-content:space-between;gap:8px;"><span>${p.name}</span><button class="btn btn-secondary btn-small" onclick="unassignPlayer('${p.id}')">Remove</button></div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
               </div>
             </div>
           `;
@@ -2805,6 +2873,17 @@ async function toggleCaptain(id, makeCaptain) {
       if (gameStatus) {
         gameStatus.innerText = appState.settings.game_started ? 'GAME IN PROGRESS' : 'Game not started';
       }
+    }
+
+    async function adminSubmitPlayerToTeam(playerId) {
+      const select = document.getElementById(`admin-pick-team-${playerId}`);
+      const teamId = select?.value || '';
+      if (!teamId) {
+        alert('Select a team first.');
+        return;
+      }
+      await assignPlayerToTeam(playerId, teamId);
+      await loadAllData();
     }
 
     function updateNumTeams() {
@@ -3145,7 +3224,7 @@ async function toggleCaptain(id, makeCaptain) {
       previewAdminScorePoints();
     }
 
-    function saveAdminScoreCorrection() {
+    async function saveAdminScoreCorrection() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
@@ -3178,7 +3257,7 @@ async function toggleCaptain(id, makeCaptain) {
       alert('Score correction saved');
     }
 
-    function clearAdminHoleScore() {
+    async function clearAdminHoleScore() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
