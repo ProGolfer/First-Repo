@@ -1150,30 +1150,14 @@
           <span class="players-count">Locked</span>
         </div>
         <p style="color:#a8b4c5;font-weight:800;margin-top:8px;line-height:1.45;">
-          Captains only. Registered players show here so captains can assign teams when ready.
+          Captains Only unlocks by QR code or Admin Override. Captains add available players to their assigned team.
         </p>
       </div>
 
-      <div class="dashboard-panel">
-        <div class="form-group" style="margin-bottom:0;">
-          <label>🏌️ Number of Teams</label>
-          <select id="captain-num-teams" onchange="updateCaptainNumTeams()">
-            <option value="1">1 Team</option>
-            <option value="2">2 Teams</option>
-            <option value="3">3 Teams</option>
-            <option value="4" selected>4 Teams</option>
-            <option value="5">5 Teams</option>
-            <option value="6">6 Teams</option>
-            <option value="7">7 Teams</option>
-            <option value="8">8 Teams</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" onclick="submitCaptainNumTeams()">Submit Number of Teams</button>
-      </div>
 
       <div class="players-section">
         <div class="players-header">
-          <h3>Registered Players</h3>
+          <h3>Available Players</h3>
           <span class="players-count" id="captain-player-count">0</span>
         </div>
         <div id="captain-team-assignment-list"></div>
@@ -1320,7 +1304,7 @@
             <div class="section-title">📱 Captain QR Access</div>
             <div class="admin-section">
               <p class="muted" style="margin-bottom:12px;font-weight:800;">
-                QR codes unlock the Captains Only page for today. The phone no longer has to be tagged or registered as that captain.
+                After assigning captains below, tap a captain card to show their QR. Scanning it unlocks only the Captains Only page for today — not the Admin page.
               </p>
               <button class="btn btn-secondary" onclick="enableAdminCaptainOverride()">Admin Override: Open Captains Only</button>
               <div id="captain-qr-list"></div>
@@ -1606,6 +1590,7 @@
       
       renderHome();
       renderAdminPlayers();
+      renderCaptainQRList();
       renderAdminTeams();
       renderLeaderboard();
       loadGameView();
@@ -1696,9 +1681,7 @@ async function loadPlayerHistory() {
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
 
-        renderCaptainQRList();
-
-      const now = new Date();
+        const now = new Date();
         const openTime = appState.settings.open_time || '06:00';
         const cutoffTime = appState.settings.cutoff_time || '09:30';
         const openDate = new Date();
@@ -1949,6 +1932,7 @@ function processCaptainAccessFromUrl() {
     teamName,
     date
   }));
+  localStorage.setItem('gmg_open_captain_after_load', 'true');
 
   window.history.replaceState({}, document.title, window.location.pathname);
   alert(`Captain access unlocked for ${captainName || 'this captain'}${teamName ? ' - ' + teamName : ''}.`);
@@ -1968,6 +1952,7 @@ function enableAdminCaptainOverride() {
 function clearCaptainAccessForThisDevice() {
   localStorage.removeItem(getCaptainAccessKey());
   localStorage.removeItem(getAdminCaptainOverrideKey());
+  localStorage.removeItem('gmg_open_captain_after_load');
   alert('Captain access cleared on this device.');
   showView('view-home');
 }
@@ -1987,19 +1972,21 @@ function buildCaptainAccessUrl(player, team) {
 
 function showCaptainQR(playerId) {
   const player = appState.players.find(p => String(p.id) === String(playerId));
-  const team = appState.teams.find(t => String(t.captain_id || '') === String(playerId));
+  const team = getActiveTeams().find(t => String(t.captain_id || '') === String(playerId) || (player && player.team && String(t.id) === String(player.team)));
   const box = document.getElementById('captain-qr-display');
   if (!player || !team || !box) return;
 
   const accessUrl = buildCaptainAccessUrl(player, team);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(accessUrl)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(accessUrl)}`;
 
   box.style.display = 'block';
   box.innerHTML = `
-    <h3 style="margin-bottom:6px;color:#fff;">${player.name}</h3>
-    <div class="muted" style="font-weight:900;margin-bottom:10px;">${getTeamName(team.id)} • Expires after today</div>
+    <h3 style="margin-bottom:6px;color:#fff;">👑 ${player.name}</h3>
+    <div class="muted" style="font-weight:900;margin-bottom:10px;">${getTeamName(team.id)} • Captains Only access • Expires today</div>
     <img src="${qrUrl}" alt="Captain access QR code for ${player.name}">
+    <p class="muted" style="font-weight:800;margin-top:10px;line-height:1.35;">Have ${player.name} scan this code with their phone. It unlocks only the Captains Only page.</p>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-small" onclick="window.open('${accessUrl}', '_blank')">Test/Open Link</button>
       <button class="btn btn-secondary btn-small" onclick="copyCaptainAccessLink('${encodeURIComponent(accessUrl)}')">Copy Link</button>
       <button class="btn btn-warning btn-small" onclick="document.getElementById('captain-qr-display').style.display='none'">Hide QR</button>
     </div>
@@ -2017,7 +2004,7 @@ function copyCaptainAccessLink(encodedUrl) {
 
 function showCaptainTeamsPage() {
   if (!canAccessCaptainPage()) {
-    alert('🔒 Captains Only is locked. Scan today’s Captain QR code or use Admin Override.');
+    alert('🔒 Captains Only is locked. Admin must show the captain QR code, or use Admin Override.');
     return;
   }
 
@@ -2036,9 +2023,6 @@ function renderCaptainTeamsPage() {
 
   const count = document.getElementById('captain-player-count');
   const list = document.getElementById('captain-team-assignment-list');
-  const select = document.getElementById('captain-num-teams');
-
-  if (select) select.value = String(appState.selectedNumTeams || appState.numTeams || 4);
   if (count) count.textContent = availablePlayers.length;
   if (!list) return;
 
@@ -2915,28 +2899,34 @@ async function toggleCaptain(id, makeCaptain) {
       if (totalMini) totalMini.textContent = appState.players.length;
       if (pendingMini) pendingMini.textContent = pending.length;
       if (captainsMini) captainsMini.textContent = appState.players.filter(p => isCaptainPlayer(p)).length;
+      renderCaptainQRList();
     }
 
     function renderCaptainQRList() {
       const mount = document.getElementById('captain-qr-list');
       if (!mount) return;
 
+      const activeTeams = getActiveTeams();
       const captains = appState.players
         .filter(p => p.status === 'approved')
         .map(p => {
-          const team = appState.teams.find(t => String(t.captain_id || '') === String(p.id));
+          const team = activeTeams.find(t =>
+            String(t.captain_id || '') === String(p.id) ||
+            (isCaptainPlayer(p) && p.team && String(t.id) === String(p.team))
+          );
           return team ? { player: p, team } : null;
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .sort((a, b) => (a.team.team_number || a.team.id) - (b.team.team_number || b.team.id));
 
       mount.innerHTML = captains.length ? `
         <div class="captain-qr-grid">
           ${captains.map(item => `
-            <div class="captain-qr-card">
+            <button type="button" class="captain-qr-card" onclick="showCaptainQR('${item.player.id}')" style="text-align:left;cursor:pointer;width:100%;">
               <strong>👑 ${item.player.name}</strong>
               <small>${getTeamName(item.team.id)}</small>
-              <button class="btn btn-primary btn-small" style="margin-top:10px;" onclick="showCaptainQR('${item.player.id}')">Show QR</button>
-            </div>
+              <div style="margin-top:10px;color:#eafff0;font-weight:900;">Show QR →</div>
+            </button>
           `).join('')}
         </div>
       ` : '<div class="empty-state">No captains assigned yet. Assign captain team numbers first.</div>';
@@ -2946,7 +2936,7 @@ async function toggleCaptain(id, makeCaptain) {
       return appState.teams
         .slice()
         .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, appState.numTeams || 4);
+        .slice(0, 4);
     }
 
     async function assignCaptainToTeam(playerId, teamId) {
@@ -3762,6 +3752,7 @@ async function resetDailyGameIfNeeded() {
   localStorage.setItem('gmg_last_reset_date', today);
   localStorage.removeItem(getCaptainAccessKey());
   localStorage.removeItem(getAdminCaptainOverrideKey());
+  localStorage.removeItem('gmg_open_captain_after_load');
 }
     async function initApp() {
       try {
@@ -3771,6 +3762,11 @@ async function resetDailyGameIfNeeded() {
         await ensureBaseData();
         await resetDailyGameIfNeeded();
         await loadAllData();
+        if (localStorage.getItem('gmg_open_captain_after_load') === 'true') {
+          localStorage.removeItem('gmg_open_captain_after_load');
+          renderCaptainTeamsPage();
+          showView('view-captain-teams');
+        }
         await loadWeather();
         setInterval(loadWeather, 600000);
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
