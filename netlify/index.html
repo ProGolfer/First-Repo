@@ -2016,7 +2016,6 @@ function renderCaptainTeamsPage() {
   const approvedPlayers = appState.players.filter(p => p.status === 'approved');
   const activeTeams = getActiveTeams();
   const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
-  const access = getCaptainAccess();
   const accessPlayer = getCaptainAccessPlayer();
   const accessTeam = getCaptainAccessTeam();
   const isAdminOverride = hasAdminCaptainOverride();
@@ -2026,32 +2025,51 @@ function renderCaptainTeamsPage() {
   if (count) count.textContent = availablePlayers.length;
   if (!list) return;
 
-  const teamsForPicker = isAdminOverride || !accessTeam ? activeTeams : [accessTeam];
-  const teamOptions = teamsForPicker.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
-
-  const draftRows = availablePlayers.length ? availablePlayers.map(p => `
-    <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-      <div style="min-width:130px;">
-        <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
-        <div class="muted">Available</div>
-      </div>
-      <div style="flex:1;min-width:150px;">
-        <select id="captain-pick-team-${p.id}" ${!isAdminOverride && accessTeam ? 'disabled' : ''}>
-          ${isAdminOverride || !accessTeam ? '<option value="">-- Select Team --</option>' : ''}
-          ${teamOptions}
-        </select>
-      </div>
-      <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Submit</button>
-    </div>
-  `).join('') : '<div class="empty-state">No available players left to pick.</div>';
-
   const unlockTitle = isAdminOverride
     ? '🛠️ Admin Override'
     : `${accessPlayer ? '👑 ' + accessPlayer.name : '👑 Captain Access'}${accessTeam ? ' - ' + getTeamName(accessTeam.id) : ''}`;
 
   const unlockNote = isAdminOverride
     ? 'Admin override is active on this device. You can assign any available player to any team.'
-    : `QR access is active for today${accessTeam ? '. Players you submit will go to ' + getTeamName(accessTeam.id) + '.' : '.'}`;
+    : `QR access is active for today${accessTeam ? '. Every player you add will go to ' + getTeamName(accessTeam.id) + '.' : '.'}`;
+
+  let draftRows = '';
+
+  if (!availablePlayers.length) {
+    draftRows = '<div class="empty-state">No available players left to pick.</div>';
+  } else if (isAdminOverride) {
+    const teamOptions = activeTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
+    draftRows = availablePlayers.map(p => `
+      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+        <div style="min-width:130px;">
+          <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
+          <div class="muted">Available</div>
+        </div>
+        <div style="flex:1;min-width:150px;">
+          <select id="captain-pick-team-${p.id}">
+            <option value="">-- Select Team --</option>
+            ${teamOptions}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Submit</button>
+      </div>
+    `).join('');
+  } else if (accessTeam) {
+    draftRows = availablePlayers.map(p => `
+      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+        <div style="min-width:130px;">
+          <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
+          <div class="muted">Available</div>
+        </div>
+        <div style="flex:1;min-width:150px;color:#54e86f;font-weight:950;text-align:center;">
+          Add to ${getTeamName(accessTeam.id)}
+        </div>
+        <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+      </div>
+    `).join('');
+  } else {
+    draftRows = '<div class="empty-state">Captain QR access is missing a team. Ask admin to generate the QR again.</div>';
+  }
 
   list.innerHTML = `
     <div class="captain-unlock-banner">
@@ -2072,27 +2090,6 @@ function renderCaptainTeamsPage() {
     </ul>
   `;
 }
-
-async function captainSubmitPlayerToTeam(playerId) {
-  const select = document.getElementById(`captain-pick-team-${playerId}`);
-  const accessTeam = getCaptainAccessTeam();
-  const teamId = select?.value || accessTeam?.id || '';
-  if (!teamId) {
-    alert('Select a team first.');
-    return;
-  }
-
-  try {
-    await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Captain assign player');
-    await loadAllData();
-    renderCaptainTeamsPage();
-    renderHome();
-    renderAdminTeams();
-  } catch (err) {
-    alert(`Could not assign player: ${formatError(err)}`);
-  }
-}
-
 function updateCaptainNumTeams() {
   const select = document.getElementById('captain-num-teams');
   appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
@@ -3624,17 +3621,34 @@ async function toggleCaptain(id, makeCaptain) {
     }
 
     async function startNewDay() {
-      if (!confirm('Start new day? This clears teams, captains, and live scores. Players stay unless you clear them separately.')) return;
+      if (!confirm('Start new day? This will clear ALL players, teams, captains, and live scores. Registration will reset to 6:00 AM - 9:30 AM.')) return;
       try {
         (appState.teams || []).forEach(t => {
           localStorage.removeItem(getLiveScoreStorageKey(t.id));
         });
-        await db(window.supabaseClient.from('players').update({ team: null, is_captain: false, score: null }).not('id', 'is', null), 'Reset players for new day');
+
+        await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players for new day');
         await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Reset teams for new day');
+        await db(window.supabaseClient.from('settings').upsert([{
+          key: SETTINGS_KEY,
+          game_started: false,
+          open_time: '06:00',
+          cutoff_time: '09:30',
+          registration_closed: false
+        }], { onConflict: 'key' }), 'Reset registration settings for new day');
+
+        appState.myPlayerName = '';
+        appState.settings = { ...appState.settings, game_started: false, open_time: '06:00', cutoff_time: '09:30', registration_closed: false };
+        localStorage.removeItem('gmg_player_name');
+        localStorage.removeItem(getCaptainAccessKey());
+        localStorage.removeItem(getAdminCaptainOverrideKey());
+        localStorage.removeItem('gmg_open_captain_after_load');
         liveScoreState = { currentHole: 1, scores: {} };
+
         await loadAllData();
+        updateSettingsView();
         renderSystemTools();
-        alert('New day started');
+        alert('New day started. Players cleared and registration reset to 6:00 AM - 9:30 AM.');
       } catch (err) {
         alert(`Could not start new day: ${formatError(err)}`);
       }
