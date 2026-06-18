@@ -2139,7 +2139,7 @@ function renderHome() {
   const pendingCount = document.getElementById('pending-count');
   if (pendingCount) pendingCount.textContent = pending.length;
 
-  const teamCount = Math.max(1, Math.ceil(approved.length / 4));
+  const teamCount = getRecommendedTeamCount ? getRecommendedTeamCount() : Math.max(1, Math.ceil(approved.length / 4));
   const setText = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -2959,11 +2959,27 @@ async function toggleCaptain(id, makeCaptain) {
       ` : '<div class="empty-state">No captains assigned yet. Assign captain team numbers first.</div>';
     }
 
+    function getRecommendedTeamCount() {
+      const approvedCount = appState.players.filter(p => p.status === 'approved').length;
+      const teamsByPlayers = Math.max(1, Math.ceil(approvedCount / 4));
+
+      const captainTeamNumbers = appState.teams
+        .filter(t => t.captain_id)
+        .map(t => Number(t.team_number || t.id || 0))
+        .filter(n => Number.isFinite(n) && n > 0);
+
+      const teamsByCaptains = captainTeamNumbers.length ? Math.max(...captainTeamNumbers) : 0;
+      const maxTeamsAvailable = appState.teams.length || 4;
+
+      return Math.min(maxTeamsAvailable, Math.max(teamsByPlayers, teamsByCaptains));
+    }
+
     function getActiveTeams() {
+      const activeTeamCount = getRecommendedTeamCount();
       return appState.teams
         .slice()
         .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-        .slice(0, 4);
+        .slice(0, activeTeamCount);
     }
 
     async function assignCaptainToTeam(playerId, teamId) {
@@ -3050,7 +3066,7 @@ async function toggleCaptain(id, makeCaptain) {
       const availableTeams = getActiveTeams();
 
       const numTeamsSelect = document.getElementById('num-teams');
-      if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || 4);
+      if (numTeamsSelect) numTeamsSelect.value = String(getRecommendedTeamCount());
 
       const teamAssignmentList = document.getElementById('team-assignment-list');
       if (teamAssignmentList) {
