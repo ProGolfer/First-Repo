@@ -2031,44 +2031,35 @@ function renderCaptainTeamsPage() {
 
   const unlockNote = isAdminOverride
     ? 'Admin override is active on this device. You can assign any available player to any team.'
-    : `QR access is active for today${accessTeam ? '. Every player you add will go to ' + getTeamName(accessTeam.id) + '.' : '.'}`;
+    : 'QR access is active for today. Choose the team from the dropdown, then tap Add.';
+
+  const teamOptions = activeTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
 
   let draftRows = '';
 
   if (!availablePlayers.length) {
     draftRows = '<div class="empty-state">No available players left to pick.</div>';
-  } else if (isAdminOverride) {
-    const teamOptions = activeTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
-    draftRows = availablePlayers.map(p => `
-      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-        <div style="min-width:130px;">
-          <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
-          <div class="muted">Available</div>
-        </div>
-        <div style="flex:1;min-width:150px;">
-          <select id="captain-pick-team-${p.id}">
-            <option value="">-- Select Team --</option>
-            ${teamOptions}
-          </select>
-        </div>
-        <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Submit</button>
-      </div>
-    `).join('');
-  } else if (accessTeam) {
-    draftRows = availablePlayers.map(p => `
-      <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-        <div style="min-width:130px;">
-          <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
-          <div class="muted">Available</div>
-        </div>
-        <div style="flex:1;min-width:150px;color:#54e86f;font-weight:950;text-align:center;">
-          Add to ${getTeamName(accessTeam.id)}
-        </div>
-        <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
-      </div>
-    `).join('');
+  } else if (!activeTeams.length) {
+    draftRows = '<div class="empty-state">No teams are available. Ask admin to assign captains first.</div>';
   } else {
-    draftRows = '<div class="empty-state">Captain QR access is missing a team. Ask admin to generate the QR again.</div>';
+    draftRows = availablePlayers.map(p => {
+      const defaultTeamId = accessTeam?.id || activeTeams[0]?.id || '';
+      return `
+        <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
+          <div style="min-width:130px;">
+            <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
+            <div class="muted">Available</div>
+          </div>
+          <div style="flex:1;min-width:150px;">
+            <select id="captain-pick-team-${p.id}">
+              <option value="">-- Select Team --</option>
+              ${activeTeams.map(t => `<option value="${t.id}" ${String(t.id) === String(defaultTeamId) ? 'selected' : ''}>${getTeamName(t.id)}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+        </div>
+      `;
+    }).join('');
   }
 
   list.innerHTML = `
@@ -2090,6 +2081,45 @@ function renderCaptainTeamsPage() {
     </ul>
   `;
 }
+
+async function captainSubmitPlayerToTeam(playerId) {
+  try {
+    const select = document.getElementById(`captain-pick-team-${playerId}`);
+    const teamId = select?.value || '';
+
+    if (!teamId) {
+      alert('Select a team first.');
+      return;
+    }
+
+    const player = appState.players.find(p => String(p.id) === String(playerId));
+    if (!player) {
+      alert('Player not found. Refresh and try again.');
+      return;
+    }
+
+    if (player.team) {
+      alert(`${player.name} is already on a team.`);
+      await loadAllData();
+      renderCaptainTeamsPage();
+      return;
+    }
+
+    await db(
+      window.supabaseClient
+        .from('players')
+        .update({ team: parseInt(teamId, 10) })
+        .eq('id', playerId),
+      'Captain assign player to team'
+    );
+
+    await loadAllData();
+    renderCaptainTeamsPage();
+  } catch (err) {
+    alert(`Could not add player to team: ${formatError(err)}`);
+  }
+}
+
 function updateCaptainNumTeams() {
   const select = document.getElementById('captain-num-teams');
   appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
