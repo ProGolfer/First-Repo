@@ -1489,7 +1489,7 @@
 numTeams: 4,
 selectedNumTeams: 4,
 teamsSubmitted: false
-   }
+   };
 
     function formatError(err) {
       if (!err) return 'Unknown error';
@@ -1672,8 +1672,7 @@ async function loadPlayerHistory() {
       if (clean) localStorage.setItem('gmg_player_name', clean);
     }
 
-    function getMyPlayerName() {
-function getApprovedPlayers() {
+    function getApprovedPlayers() {
   return appState.players.filter(p => p.status === 'approved');
 }
 
