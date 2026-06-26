@@ -1485,10 +1485,11 @@
       myTeam: null,
       myPlayerName: '',
       settingsLiveEnabled: false,
-      numTeams: 4,
-      selectedNumTeams: 4,
-      teamsSubmitted: false
-    };
+    teamMode: 'auto',
+numTeams: 4,
+selectedNumTeams: 4,
+teamsSubmitted: false
+   }
 
     function formatError(err) {
       if (!err) return 'Unknown error';
@@ -1672,6 +1673,40 @@ async function loadPlayerHistory() {
     }
 
     function getMyPlayerName() {
+
+      function getApprovedPlayers() {
+  return appState.players.filter(p => p.status === 'approved');
+}
+
+function getApprovedPlayerCount() {
+  return getApprovedPlayers().length;
+}
+
+function getAutoTeamCount() {
+  const approvedCount = getApprovedPlayerCount();
+  const maxTeamsAvailable = appState.teams.length || 8;
+
+  if (approvedCount <= 0) return 1;
+
+  return Math.min(maxTeamsAvailable, Math.max(1, Math.ceil(approvedCount / 4)));
+}
+
+function getActiveTeamCount() {
+  if (appState.teamMode === 'manual') {
+    return Math.max(1, parseInt(appState.numTeams || appState.selectedNumTeams || 1, 10));
+  }
+
+  return getAutoTeamCount();
+}
+
+function getActiveTeams() {
+  const activeTeamCount = getActiveTeamCount();
+
+  return appState.teams
+    .slice()
+    .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
+    .slice(0, activeTeamCount);
+}
       return cleanName(appState.myPlayerName || localStorage.getItem('gmg_player_name') || '');
     }
 
@@ -2140,7 +2175,7 @@ function renderHome() {
   const pendingCount = document.getElementById('pending-count');
   if (pendingCount) pendingCount.textContent = pending.length;
 
-  const teamCount = getRecommendedTeamCount ? getRecommendedTeamCount() : Math.max(1, Math.ceil(approved.length / 4));
+const teamCount = getActiveTeamCount();
   const setText = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
