@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.0.3 Backup & Restore
+    Version: 1.0.4 Backup Restore Pro
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -21,7 +21,7 @@
     - Score Management
     - Player Scorecards
     - Captain Team Builder Quick Add
-    - Backup & Restore / Auto Backup
+    - Backup & Restore Pro / Multiple Auto Saves
 
     Foundation Goal:
     - Organize code into clear sections without changing current behavior.
@@ -1469,7 +1469,11 @@
               <input type="file" id="restore-backup-file" accept="application/json,.json" style="display:none;" onchange="restoreBackupFromFile(event)">
               <button class="btn btn-secondary" onclick="document.getElementById('restore-backup-file').click()">📂 Restore Backup</button>
 
-              <button class="btn btn-warning" onclick="restoreLastAutoBackup()">↩️ Restore Last Auto Save</button>
+              <select id="auto-backup-select" class="form-group" style="width:100%;margin:8px 0;padding:12px;border-radius:12px;background:#142232;color:#f8fafc;border:1px solid rgba(148,163,184,.28);">
+                <option value="">Latest auto-save</option>
+              </select>
+
+              <button class="btn btn-warning" onclick="restoreLastAutoBackup()">↩️ Restore Selected Auto Save</button>
 
               <div class="muted" id="backup-status" style="font-weight:800;margin-top:8px;line-height:1.35;">No restore action running.</div>
             </div>
@@ -3900,11 +3904,13 @@ async function toggleCaptain(id, makeCaptain) {
 
 
     // ======================================================
-    // BACKUP & RESTORE
+    // BACKUP & RESTORE PRO
     // ======================================================
 
-    const BACKUP_VERSION = '1.0.3';
+    const BACKUP_VERSION = '1.0.4';
     const AUTO_BACKUP_KEY = `gmg_auto_backup_${getTodayKey()}`;
+    const AUTO_BACKUP_LIST_KEY = `gmg_auto_backup_list_${getTodayKey()}`;
+    const MAX_AUTO_BACKUPS = 5;
 
     function getAllLiveScoreBackups() {
       const liveScores = {};
@@ -3922,6 +3928,24 @@ async function toggleCaptain(id, makeCaptain) {
       return liveScores;
     }
 
+    function getGameLocalStorageSnapshot() {
+      const snapshot = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (
+          key === 'gmg_player_name' ||
+          key === 'gmg_player_id' ||
+          key.startsWith('gmg_captain_access_') ||
+          key.startsWith('gmg_admin_captain_override_') ||
+          key.startsWith('gmg_live_score_')
+        ) {
+          snapshot[key] = localStorage.getItem(key);
+        }
+      }
+      return snapshot;
+    }
+
     function countSubmittedHoles(liveScores) {
       return Object.values(liveScores || {}).reduce((total, scoreData) => {
         const scores = scoreData?.scores || {};
@@ -3931,6 +3955,10 @@ async function toggleCaptain(id, makeCaptain) {
 
     function buildBackupData(reason = 'manual') {
       const liveScores = getAllLiveScoreBackups();
+      const approvedPlayers = (appState.players || []).filter(p => p.status === 'approved');
+      const pendingPlayers = (appState.players || []).filter(p => p.status === 'pending');
+      const captains = (appState.players || []).filter(p => isCaptainPlayer(p));
+
       return {
         app: 'Golf Money Game',
         version: BACKUP_VERSION,
@@ -3945,16 +3973,21 @@ async function toggleCaptain(id, makeCaptain) {
         players: appState.players || [],
         teams: appState.teams || [],
         liveScores,
+        localStorageSnapshot: getGameLocalStorageSnapshot(),
         localDevice: {
           playerName: localStorage.getItem('gmg_player_name') || '',
           playerId: localStorage.getItem('gmg_player_id') || ''
         },
         summary: {
           players: (appState.players || []).length,
-          approved: (appState.players || []).filter(p => p.status === 'approved').length,
-          pending: (appState.players || []).filter(p => p.status === 'pending').length,
+          approved: approvedPlayers.length,
+          pending: pendingPlayers.length,
+          captains: captains.length,
           teams: getActiveTeamCount(),
-          submittedHoles: countSubmittedHoles(liveScores)
+          totalTeamsInDatabase: (appState.teams || []).length,
+          submittedHoles: countSubmittedHoles(liveScores),
+          teamMode: appState.teamMode,
+          teamsSubmitted: !!appState.teamsSubmitted
         }
       };
     }
@@ -3964,11 +3997,49 @@ async function toggleCaptain(id, makeCaptain) {
       if (status) status.textContent = text;
     }
 
+    function getAutoBackupList() {
+      try {
+        const raw = localStorage.getItem(AUTO_BACKUP_LIST_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function saveAutoBackupList(list) {
+      localStorage.setItem(AUTO_BACKUP_LIST_KEY, JSON.stringify(list.slice(0, MAX_AUTO_BACKUPS)));
+    }
+
+    function getBackupLabel(backup, index = 0) {
+      const when = backup?.createdAt ? new Date(backup.createdAt).toLocaleString() : 'Unknown time';
+      const reason = String(backup?.reason || 'auto').replace(/-/g, ' ');
+      const players = backup?.summary?.players ?? (backup?.players || []).length ?? 0;
+      const holes = backup?.summary?.submittedHoles ?? countSubmittedHoles(backup?.liveScores || {});
+      return `${index === 0 ? 'Latest: ' : ''}${when} • ${reason} • ${players} players • ${holes} holes`;
+    }
+
+    function refreshAutoBackupSelect() {
+      const select = document.getElementById('auto-backup-select');
+      if (!select) return;
+
+      const list = getAutoBackupList();
+      select.innerHTML = '<option value="">Latest auto-save</option>' + list.map((backup, index) => {
+        return `<option value="${index}">${getBackupLabel(backup, index)}</option>`;
+      }).join('');
+    }
+
     function saveAutoBackup(reason = 'auto') {
       try {
         const backup = buildBackupData(reason);
         localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(backup));
-        setBackupStatus(`Auto-save updated: ${new Date(backup.createdAt).toLocaleString()}`);
+
+        const list = getAutoBackupList();
+        list.unshift(backup);
+        saveAutoBackupList(list);
+
+        setBackupStatus(`Auto-save updated: ${getBackupLabel(backup)}`);
+        refreshAutoBackupSelect();
         return backup;
       } catch (err) {
         console.warn('Auto backup failed', err);
@@ -3989,7 +4060,7 @@ async function toggleCaptain(id, makeCaptain) {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        setBackupStatus(`Backup exported: ${backup.summary.players} players, ${backup.summary.teams} teams, ${backup.summary.submittedHoles} submitted holes.`);
+        setBackupStatus(`Backup exported: ${backup.summary.players} players, ${backup.summary.teams} active teams, ${backup.summary.submittedHoles} submitted holes.`);
       } catch (err) {
         alert(`Could not export backup: ${formatError(err)}`);
       }
@@ -4001,21 +4072,43 @@ async function toggleCaptain(id, makeCaptain) {
       if (!Array.isArray(data.players)) throw new Error('Backup is missing players.');
       if (!Array.isArray(data.teams)) throw new Error('Backup is missing teams.');
       if (!data.settings || typeof data.settings !== 'object') throw new Error('Backup is missing settings.');
+      if (data.liveScores && typeof data.liveScores !== 'object') throw new Error('Backup live scores are invalid.');
       return true;
+    }
+
+    function getBackupPreviewText(backup) {
+      validateBackupData(backup);
+      const summary = backup.summary || {};
+      const created = backup.createdAt ? new Date(backup.createdAt).toLocaleString() : 'unknown time';
+      const version = backup.version || 'unknown';
+      const reason = String(backup.reason || 'unknown').replace(/-/g, ' ');
+      const players = summary.players ?? backup.players.length;
+      const approved = summary.approved ?? backup.players.filter(p => p.status === 'approved').length;
+      const pending = summary.pending ?? backup.players.filter(p => p.status === 'pending').length;
+      const captains = summary.captains ?? backup.players.filter(p => p.is_captain === true || p.is_captain === 'true').length;
+      const teams = summary.teams ?? backup.teams.length;
+      const submittedHoles = summary.submittedHoles ?? countSubmittedHoles(backup.liveScores);
+      const mode = summary.teamMode || backup.teamMode || 'auto';
+
+      return (
+        `Restore this backup?\n\n` +
+        `Created: ${created}\n` +
+        `Version: ${version}\n` +
+        `Reason: ${reason}\n\n` +
+        `Players: ${players}\n` +
+        `Approved: ${approved}\n` +
+        `Pending: ${pending}\n` +
+        `Captains: ${captains}\n` +
+        `Teams: ${teams}\n` +
+        `Team mode: ${mode}\n` +
+        `Submitted holes: ${submittedHoles}\n\n` +
+        `This will replace today's current players, teams, settings, and live scores.`
+      );
     }
 
     async function restoreBackupData(backup) {
       validateBackupData(backup);
-      const summary = backup.summary || {};
-      const created = backup.createdAt ? new Date(backup.createdAt).toLocaleString() : 'unknown time';
-      const ok = confirm(
-        `Restore backup from ${created}?\n\n` +
-        `Players: ${summary.players ?? backup.players.length}\n` +
-        `Approved: ${summary.approved ?? backup.players.filter(p => p.status === 'approved').length}\n` +
-        `Teams: ${summary.teams ?? backup.teams.length}\n` +
-        `Submitted holes: ${summary.submittedHoles ?? countSubmittedHoles(backup.liveScores)}\n\n` +
-        `This will replace today's current players, teams, settings, and live scores.`
-      );
+      const ok = confirm(getBackupPreviewText(backup));
       if (!ok) return;
 
       setBackupStatus('Creating safety auto-save before restore...');
@@ -4055,6 +4148,14 @@ async function toggleCaptain(id, makeCaptain) {
         appState.selectedNumTeams = Number(backup.selectedNumTeams || backup.numTeams || 4);
         appState.teamsSubmitted = !!backup.teamsSubmitted;
 
+        if (backup.localStorageSnapshot && typeof backup.localStorageSnapshot === 'object') {
+          Object.entries(backup.localStorageSnapshot).forEach(([key, value]) => {
+            if (typeof key === 'string' && key.startsWith('gmg_') && value !== null && value !== undefined) {
+              localStorage.setItem(key, String(value));
+            }
+          });
+        }
+
         if (backup.localDevice?.playerName) localStorage.setItem('gmg_player_name', backup.localDevice.playerName);
         if (backup.localDevice?.playerId) localStorage.setItem('gmg_player_id', backup.localDevice.playerId);
 
@@ -4064,8 +4165,8 @@ async function toggleCaptain(id, makeCaptain) {
         setBackupStatus(`Restore complete: ${backup.players.length} players restored.`);
         alert('Backup restored successfully.');
       } catch (err) {
-        alert(`Restore failed: ${formatError(err)}\n\nYour current data was not fully restored. Use Restore Last Auto Save if needed.`);
-        setBackupStatus('Restore failed. Last auto-save is still available.');
+        alert(`Restore failed: ${formatError(err)}\n\nYour current data was not fully restored. Use Restore Selected Auto Save if needed.`);
+        setBackupStatus('Restore failed. Auto-saves are still available.');
       }
     }
 
@@ -4078,6 +4179,8 @@ async function toggleCaptain(id, makeCaptain) {
       reader.onload = async () => {
         try {
           const backup = JSON.parse(reader.result);
+          validateBackupData(backup);
+          setBackupStatus(`Backup loaded: ${getBackupLabel(backup)}`);
           await restoreBackupData(backup);
         } catch (err) {
           alert(`Invalid backup file: ${formatError(err)}`);
@@ -4091,12 +4194,24 @@ async function toggleCaptain(id, makeCaptain) {
 
     async function restoreLastAutoBackup() {
       try {
-        const raw = localStorage.getItem(AUTO_BACKUP_KEY);
-        if (!raw) {
+        const select = document.getElementById('auto-backup-select');
+        const list = getAutoBackupList();
+        let backup = null;
+
+        if (select && select.value !== '' && list[Number(select.value)]) {
+          backup = list[Number(select.value)];
+        } else if (list.length) {
+          backup = list[0];
+        } else {
+          const raw = localStorage.getItem(AUTO_BACKUP_KEY);
+          backup = raw ? JSON.parse(raw) : null;
+        }
+
+        if (!backup) {
           alert('No auto-save backup found for today yet.');
           return;
         }
-        const backup = JSON.parse(raw);
+
         await restoreBackupData(backup);
       } catch (err) {
         alert(`Could not restore auto-save: ${formatError(err)}`);
@@ -4123,11 +4238,19 @@ async function toggleCaptain(id, makeCaptain) {
         select.value = currentValue;
       }
 
+      refreshAutoBackupSelect();
+
       try {
+        const list = getAutoBackupList();
+        if (list.length) {
+          setBackupStatus(`Auto-saves available: ${list.length}. ${getBackupLabel(list[0])}`);
+          return;
+        }
+
         const raw = localStorage.getItem(AUTO_BACKUP_KEY);
         if (raw) {
           const backup = JSON.parse(raw);
-          setBackupStatus(`Last auto-save: ${new Date(backup.createdAt).toLocaleString()} (${backup.summary?.players || 0} players)`);
+          setBackupStatus(`Last auto-save: ${getBackupLabel(backup)}`);
         }
       } catch (_) {}
     }
