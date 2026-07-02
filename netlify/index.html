@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.0.1 QR Device Link
+    Version: 1.0.3 Backup & Restore
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -21,6 +21,7 @@
     - Score Management
     - Player Scorecards
     - Captain Team Builder Quick Add
+    - Backup & Restore / Auto Backup
 
     Foundation Goal:
     - Organize code into clear sections without changing current behavior.
@@ -1455,8 +1456,22 @@
             <div class="admin-panel-header">
               <div>
                 <h2>System Tools</h2>
-                <p>Cleanup tools for when something gets messed up.</p>
+                <p>Backup, restore, and cleanup tools for when something gets messed up.</p>
               </div>
+            </div>
+
+            <div class="admin-section">
+              <h3 style="margin-bottom:10px;">💾 Backup & Restore</h3>
+              <p class="muted" style="margin-bottom:12px;">Save today's full game, restore from a backup file, or recover the last auto-save.</p>
+
+              <button class="btn btn-primary" onclick="exportBackup()">💾 Export Backup</button>
+
+              <input type="file" id="restore-backup-file" accept="application/json,.json" style="display:none;" onchange="restoreBackupFromFile(event)">
+              <button class="btn btn-secondary" onclick="document.getElementById('restore-backup-file').click()">📂 Restore Backup</button>
+
+              <button class="btn btn-warning" onclick="restoreLastAutoBackup()">↩️ Restore Last Auto Save</button>
+
+              <div class="muted" id="backup-status" style="font-weight:800;margin-top:8px;line-height:1.35;">No restore action running.</div>
             </div>
 
             <div class="admin-section">
@@ -2739,6 +2754,7 @@ const teamCount = getActiveTeamCount();
 
       if (liveScoreState.currentHole < 18) liveScoreState.currentHole += 1;
       saveTeamLiveScore(appState.myTeam);
+      saveAutoBackup('after-submit-hole');
       renderLiveScorecard();
       renderLiveStandings();
       renderLiveResults();
@@ -3473,9 +3489,10 @@ async function toggleCaptain(id, makeCaptain) {
 
     function submitTeams() {
       appState.teamsSubmitted = true;
+      saveAutoBackup('after-submit-teams');
       renderHome();
       renderAdminTeams();
-      alert('Teams submitted successfully!');
+      alert('Teams submitted successfully! Auto-save backup updated.');
     }
 
     async function setCaptainFromPlayerRow(playerId, value) {
@@ -3823,6 +3840,7 @@ async function toggleCaptain(id, makeCaptain) {
       };
       scoreData.currentHole = Math.max(scoreData.currentHole || 1, holeNumber);
       localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData));
+      saveAutoBackup('after-admin-score-correction');
 
       if (String(appState.myTeam || '') === String(teamId)) {
         liveScoreState = scoreData;
@@ -3880,6 +3898,211 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
+
+    // ======================================================
+    // BACKUP & RESTORE
+    // ======================================================
+
+    const BACKUP_VERSION = '1.0.3';
+    const AUTO_BACKUP_KEY = `gmg_auto_backup_${getTodayKey()}`;
+
+    function getAllLiveScoreBackups() {
+      const liveScores = {};
+      (appState.teams || []).forEach(t => {
+        const key = getLiveScoreStorageKey(t.id);
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            liveScores[String(t.id)] = JSON.parse(raw);
+          } catch (_) {
+            liveScores[String(t.id)] = raw;
+          }
+        }
+      });
+      return liveScores;
+    }
+
+    function countSubmittedHoles(liveScores) {
+      return Object.values(liveScores || {}).reduce((total, scoreData) => {
+        const scores = scoreData?.scores || {};
+        return total + Object.values(scores).filter(h => h?.submittedAt).length;
+      }, 0);
+    }
+
+    function buildBackupData(reason = 'manual') {
+      const liveScores = getAllLiveScoreBackups();
+      return {
+        app: 'Golf Money Game',
+        version: BACKUP_VERSION,
+        reason,
+        createdAt: new Date().toISOString(),
+        dateKey: getTodayKey(),
+        teamMode: appState.teamMode,
+        numTeams: appState.numTeams,
+        selectedNumTeams: appState.selectedNumTeams,
+        teamsSubmitted: !!appState.teamsSubmitted,
+        settings: appState.settings || {},
+        players: appState.players || [],
+        teams: appState.teams || [],
+        liveScores,
+        localDevice: {
+          playerName: localStorage.getItem('gmg_player_name') || '',
+          playerId: localStorage.getItem('gmg_player_id') || ''
+        },
+        summary: {
+          players: (appState.players || []).length,
+          approved: (appState.players || []).filter(p => p.status === 'approved').length,
+          pending: (appState.players || []).filter(p => p.status === 'pending').length,
+          teams: getActiveTeamCount(),
+          submittedHoles: countSubmittedHoles(liveScores)
+        }
+      };
+    }
+
+    function setBackupStatus(text) {
+      const status = document.getElementById('backup-status');
+      if (status) status.textContent = text;
+    }
+
+    function saveAutoBackup(reason = 'auto') {
+      try {
+        const backup = buildBackupData(reason);
+        localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(backup));
+        setBackupStatus(`Auto-save updated: ${new Date(backup.createdAt).toLocaleString()}`);
+        return backup;
+      } catch (err) {
+        console.warn('Auto backup failed', err);
+        return null;
+      }
+    }
+
+    function exportBackup() {
+      try {
+        const backup = buildBackupData('manual-export');
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `GolfMoneyGame_Backup_${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setBackupStatus(`Backup exported: ${backup.summary.players} players, ${backup.summary.teams} teams, ${backup.summary.submittedHoles} submitted holes.`);
+      } catch (err) {
+        alert(`Could not export backup: ${formatError(err)}`);
+      }
+    }
+
+    function validateBackupData(data) {
+      if (!data || typeof data !== 'object') throw new Error('Backup file is empty or invalid.');
+      if (data.app !== 'Golf Money Game') throw new Error('This is not a Golf Money Game backup.');
+      if (!Array.isArray(data.players)) throw new Error('Backup is missing players.');
+      if (!Array.isArray(data.teams)) throw new Error('Backup is missing teams.');
+      if (!data.settings || typeof data.settings !== 'object') throw new Error('Backup is missing settings.');
+      return true;
+    }
+
+    async function restoreBackupData(backup) {
+      validateBackupData(backup);
+      const summary = backup.summary || {};
+      const created = backup.createdAt ? new Date(backup.createdAt).toLocaleString() : 'unknown time';
+      const ok = confirm(
+        `Restore backup from ${created}?\n\n` +
+        `Players: ${summary.players ?? backup.players.length}\n` +
+        `Approved: ${summary.approved ?? backup.players.filter(p => p.status === 'approved').length}\n` +
+        `Teams: ${summary.teams ?? backup.teams.length}\n` +
+        `Submitted holes: ${summary.submittedHoles ?? countSubmittedHoles(backup.liveScores)}\n\n` +
+        `This will replace today's current players, teams, settings, and live scores.`
+      );
+      if (!ok) return;
+
+      setBackupStatus('Creating safety auto-save before restore...');
+      saveAutoBackup('before-restore');
+
+      try {
+        setBackupStatus('Restoring settings...');
+        const restoredSettings = {
+          ...DEFAULT_SETTINGS,
+          ...(backup.settings || {}),
+          key: SETTINGS_KEY
+        };
+        await db(window.supabaseClient.from('settings').upsert([restoredSettings], { onConflict: 'key' }), 'Restore settings');
+
+        setBackupStatus('Restoring teams...');
+        for (const team of (backup.teams || [])) {
+          const row = { ...team };
+          await db(window.supabaseClient.from('teams').upsert([row], { onConflict: 'id' }), 'Restore teams');
+        }
+
+        setBackupStatus('Clearing current players...');
+        await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear current players for restore');
+
+        if ((backup.players || []).length) {
+          setBackupStatus('Restoring players...');
+          await db(window.supabaseClient.from('players').insert(backup.players), 'Restore players');
+        }
+
+        setBackupStatus('Restoring live scores...');
+        (appState.teams || []).forEach(t => localStorage.removeItem(getLiveScoreStorageKey(t.id)));
+        Object.entries(backup.liveScores || {}).forEach(([teamId, scoreData]) => {
+          localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData || { currentHole: 1, scores: {} }));
+        });
+
+        appState.teamMode = backup.teamMode || 'auto';
+        appState.numTeams = Number(backup.numTeams || backup.selectedNumTeams || 4);
+        appState.selectedNumTeams = Number(backup.selectedNumTeams || backup.numTeams || 4);
+        appState.teamsSubmitted = !!backup.teamsSubmitted;
+
+        if (backup.localDevice?.playerName) localStorage.setItem('gmg_player_name', backup.localDevice.playerName);
+        if (backup.localDevice?.playerId) localStorage.setItem('gmg_player_id', backup.localDevice.playerId);
+
+        await loadAllData();
+        renderScoreManagement();
+        renderSystemTools();
+        setBackupStatus(`Restore complete: ${backup.players.length} players restored.`);
+        alert('Backup restored successfully.');
+      } catch (err) {
+        alert(`Restore failed: ${formatError(err)}\n\nYour current data was not fully restored. Use Restore Last Auto Save if needed.`);
+        setBackupStatus('Restore failed. Last auto-save is still available.');
+      }
+    }
+
+    function restoreBackupFromFile(event) {
+      const input = event?.target;
+      const file = input?.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const backup = JSON.parse(reader.result);
+          await restoreBackupData(backup);
+        } catch (err) {
+          alert(`Invalid backup file: ${formatError(err)}`);
+        } finally {
+          if (input) input.value = '';
+        }
+      };
+      reader.onerror = () => alert('Could not read backup file.');
+      reader.readAsText(file);
+    }
+
+    async function restoreLastAutoBackup() {
+      try {
+        const raw = localStorage.getItem(AUTO_BACKUP_KEY);
+        if (!raw) {
+          alert('No auto-save backup found for today yet.');
+          return;
+        }
+        const backup = JSON.parse(raw);
+        await restoreBackupData(backup);
+      } catch (err) {
+        alert(`Could not restore auto-save: ${formatError(err)}`);
+      }
+    }
+
     function renderSystemTools() {
       const select = document.getElementById('system-delete-player-select');
       if (!select) return;
@@ -3899,6 +4122,14 @@ async function toggleCaptain(id, makeCaptain) {
       if (currentValue && players.some(p => String(p.id) === String(currentValue))) {
         select.value = currentValue;
       }
+
+      try {
+        const raw = localStorage.getItem(AUTO_BACKUP_KEY);
+        if (raw) {
+          const backup = JSON.parse(raw);
+          setBackupStatus(`Last auto-save: ${new Date(backup.createdAt).toLocaleString()} (${backup.summary?.players || 0} players)`);
+        }
+      } catch (_) {}
     }
 
     async function deleteSelectedPlayer() {
@@ -4002,6 +4233,7 @@ async function toggleCaptain(id, makeCaptain) {
 
     async function startNewDay() {
       if (!confirm('Start new day? This will clear ALL players, teams, captains, and live scores. Registration will reset to 6:00 AM - 9:30 AM.')) return;
+      saveAutoBackup('before-start-new-day');
       try {
         (appState.teams || []).forEach(t => {
           localStorage.removeItem(getLiveScoreStorageKey(t.id));
