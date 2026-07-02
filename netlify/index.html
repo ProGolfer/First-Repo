@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.0.0 Foundation
+    Version: 1.0.1 QR Device Link
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -15,6 +15,7 @@
     - Admin Control Center
     - Auto / Manual Team Mode
     - Captains Only QR Unlock
+    - Captain QR Device Link for Live Scoring
     - Captain Active Team Dropdowns
     - Live Scoring
     - Score Management
@@ -2076,10 +2077,16 @@ function processCaptainAccessFromUrl() {
     teamName,
     date
   }));
+
+  // v1.0.1 fix: scanning a captain QR should also link this device
+  // to that captain for Live Scoring, not just unlock Captains Only.
+  if (captainId) localStorage.setItem('gmg_player_id', String(captainId));
+  if (captainName) saveThisDevicePlayerName(captainName);
+
   localStorage.setItem('gmg_open_captain_after_load', 'true');
 
   window.history.replaceState({}, document.title, window.location.pathname);
-  alert(`Captain access unlocked for ${captainName || 'this captain'}${teamName ? ' - ' + teamName : ''}.`);
+  alert(`Captain access unlocked for ${captainName || 'this captain'}${teamName ? ' - ' + teamName : ''}. This device is now linked for Live Scoring.`);
 }
 
 function canAccessCaptainPage() {
@@ -2406,9 +2413,24 @@ const teamCount = getActiveTeamCount();
     }
 
     function getMyPlayer() {
+      const myId = localStorage.getItem('gmg_player_id') || '';
+      if (myId) {
+        const byId = appState.players.find(p => String(p.id) === String(myId));
+        if (byId) return byId;
+      }
+
+      const captainAccessPlayer = getCaptainAccessPlayer();
+      if (captainAccessPlayer) {
+        localStorage.setItem('gmg_player_id', String(captainAccessPlayer.id));
+        saveThisDevicePlayerName(captainAccessPlayer.name || '');
+        return captainAccessPlayer;
+      }
+
       const myName = getMyPlayerName();
       if (!myName) return null;
-      return appState.players.find(p => cleanName(p.name) === myName) || null;
+      const byName = appState.players.find(p => cleanName(p.name) === myName) || null;
+      if (byName?.id) localStorage.setItem('gmg_player_id', String(byName.id));
+      return byName;
     }
 
     function getMyTeamPlayers() {
