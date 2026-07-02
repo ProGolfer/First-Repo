@@ -3240,6 +3240,7 @@ async function toggleCaptain(id, makeCaptain) {
 
       renderHome();
       renderAdminTeams();
+      updateSettingsView();
       renderCaptainTeamsPage();
       alert(`Team settings saved: ${appState.teamMode === 'manual' ? 'Manual' : 'Auto'} mode, ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
     }
@@ -3411,12 +3412,13 @@ async function toggleCaptain(id, makeCaptain) {
       if (toggleBtn) toggleBtn.textContent = appState.settings.registration_closed ? 'Reopen Registration' : 'Close Registration Now';
 
       if (clearTeamSelect) {
-        const availableTeams = appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams || 4);
+        const availableTeams = getActiveTeams();
+        const current = clearTeamSelect.value;
         clearTeamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
           availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
+        if (current && availableTeams.some(t => String(t.id) === String(current))) {
+          clearTeamSelect.value = current;
+        }
       }
 
       populateScoreManagementSelectors();
@@ -3452,13 +3454,12 @@ async function toggleCaptain(id, makeCaptain) {
       const holeSelect = document.getElementById('score-admin-hole');
       if (teamSelect) {
         const current = teamSelect.value;
-        const availableTeams = appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams || 4);
+        const availableTeams = getActiveTeams();
         teamSelect.innerHTML = '<option value="">-- Select Team --</option>' +
           availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
-        if (current && availableTeams.some(t => String(t.id) === String(current))) teamSelect.value = current;
+        if (current && availableTeams.some(t => String(t.id) === String(current))) {
+          teamSelect.value = current;
+        }
       }
       if (holeSelect) {
         const currentHole = holeSelect.value || '1';
