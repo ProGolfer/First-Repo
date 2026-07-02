@@ -1723,6 +1723,10 @@ function getActiveTeams() {
     .slice(0, getActiveTeamCount());
 }
 
+function isActiveTeamId(teamId) {
+  return getActiveTeams().some(t => String(t.id) === String(teamId));
+}
+
 function getMyPlayerName() {
   return cleanName(
     appState.myPlayerName ||
@@ -2072,9 +2076,11 @@ function showCaptainTeamsPage() {
 function renderCaptainTeamsPage() {
   const approvedPlayers = appState.players.filter(p => p.status === 'approved');
   const activeTeams = getActiveTeams();
+  const activeTeamIds = new Set(activeTeams.map(t => String(t.id)));
   const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
   const accessPlayer = getCaptainAccessPlayer();
-  const accessTeam = getCaptainAccessTeam();
+  const accessTeamRaw = getCaptainAccessTeam();
+  const accessTeam = accessTeamRaw && activeTeamIds.has(String(accessTeamRaw.id)) ? accessTeamRaw : null;
   const isAdminOverride = hasAdminCaptainOverride();
 
   const count = document.getElementById('captain-player-count');
@@ -2086,11 +2092,12 @@ function renderCaptainTeamsPage() {
     ? '🛠️ Admin Override'
     : `${accessPlayer ? '👑 ' + accessPlayer.name : '👑 Captain Access'}${accessTeam ? ' - ' + getTeamName(accessTeam.id) : ''}`;
 
-  const unlockNote = isAdminOverride
-    ? 'Admin override is active on this device. You can assign any available player to any team.'
-    : 'QR access is active for today. Choose the team from the dropdown, then tap Add.';
+  const activeTeamText = `${activeTeams.length} active team${activeTeams.length === 1 ? '' : 's'}`;
+  const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
 
-  const teamOptions = activeTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('');
+  const unlockNote = isAdminOverride
+    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Dropdowns only show active teams.`
+    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Dropdowns only show active teams.`;
 
   let draftRows = '';
 
@@ -2146,6 +2153,12 @@ async function captainSubmitPlayerToTeam(playerId) {
 
     if (!teamId) {
       alert('Select a team first.');
+      return;
+    }
+
+    if (!isActiveTeamId(teamId)) {
+      alert('That team is not active under the current Auto/Manual team setting.');
+      renderCaptainTeamsPage();
       return;
     }
 
@@ -3045,6 +3058,11 @@ async function toggleCaptain(id, makeCaptain) {
         }
 
         const nextTeamId = parseInt(teamId, 10);
+        if (!isActiveTeamId(nextTeamId)) {
+          alert('That team is not active under the current Auto/Manual team setting.');
+          renderAdminPlayers();
+          return;
+        }
         const targetTeam = appState.teams.find(t => String(t.id) === String(nextTeamId));
         const oldTeamCaptainId = targetTeam?.captain_id ? String(targetTeam.captain_id) : '';
 
@@ -3288,6 +3306,11 @@ async function toggleCaptain(id, makeCaptain) {
 
     async function assignPlayerToTeam(playerId, teamId) {
       if (!playerId) return;
+      if (!teamId || !isActiveTeamId(teamId)) {
+        alert('That team is not active under the current Auto/Manual team setting.');
+        renderAdminTeams();
+        return;
+      }
       try {
         await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
         appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
