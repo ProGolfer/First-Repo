@@ -4,6 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golf Money Game</title>
+
+  <!--
+    Golf Money Game
+    Version: 1.0.0 Foundation
+
+    Current Stable Features:
+    - Dashboard / Game Overview
+    - Registration
+    - Admin Control Center
+    - Auto / Manual Team Mode
+    - Captains Only QR Unlock
+    - Captain Active Team Dropdowns
+    - Live Scoring
+    - Score Management
+    - Player Scorecards
+
+    Foundation Goal:
+    - Organize code into clear sections without changing current behavior.
+  -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1483,13 +1502,31 @@
       <button class="btn logout-soft" style="margin-top:14px;" onclick="logout()">← Log Out</button>
     </div>
   <script>
+    // ======================================================
+    // CONFIG / CONSTANTS
+    // ======================================================
+
     const SUPABASE_URL = 'https://uwkmmrqnpnhlustrxees.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
 
+    // ======================================================
+
+    // SUPABASE CLIENT
+
+    // ======================================================
+
+
     window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ======================================================
+
+    // GLOBAL APP STATE
+
+    // ======================================================
+
 
     let appState = {
       players: [],
@@ -1503,6 +1540,13 @@
       selectedNumTeams: 4,
       teamsSubmitted: false
     };
+
+    // ======================================================
+
+    // UTILITIES
+
+    // ======================================================
+
 
     function formatError(err) {
       if (!err) return 'Unknown error';
@@ -1536,6 +1580,13 @@
         throw new Error(msg);
       }
     }
+
+    // ======================================================
+
+    // DATA LOADING / SUPABASE
+
+    // ======================================================
+
 
     async function ensureBaseData() {
       const teamsResult = await db(window.supabaseClient.from('teams').select('*').order('id'), 'Load teams');
@@ -1613,6 +1664,13 @@
       updateAdminMiniStats();
     }
 
+// ======================================================
+
+// PLAYER HISTORY / STATS
+
+// ======================================================
+
+
 async function loadPlayerHistory() {
   const mount = document.getElementById('player-history');
   if (!mount) return;
@@ -1669,6 +1727,13 @@ async function loadPlayerHistory() {
     mount.innerHTML = 'Player averages unavailable';
   }
 }
+
+    // ======================================================
+
+    // TEAM HELPERS
+
+    // ======================================================
+
 
     function getTeamName(teamId) {
       const team = appState.teams.find(t => String(t.id) === String(teamId));
@@ -1734,6 +1799,13 @@ function getMyPlayerName() {
     ''
   );
 }
+
+    // ======================================================
+
+    // REGISTRATION
+
+    // ======================================================
+
 
     async function registerPlayer(){
       try {
@@ -1806,6 +1878,10 @@ function getMyPlayerName() {
       const h12 = h % 12 || 12;
       return `${h12}:${minutes} ${ampm}`;
     }
+// ======================================================
+// PLAYERS / TEAM DISPLAY
+// ======================================================
+
 function renderTeamGroupCards(players, options = {}) {
   const clickable = !!options.clickable;
   const clickTarget = options.clickTarget || 'view-teams';
@@ -1911,6 +1987,13 @@ function showTeamsPage() {
 
   showView('view-teams');
 }
+
+// ======================================================
+
+// CAPTAINS / QR UNLOCK / TEAM ASSIGNMENT
+
+// ======================================================
+
 
 function isCaptainPlayer(player) {
   if (!player) return false;
@@ -2201,6 +2284,13 @@ function submitCaptainNumTeams() {
   renderHome();
 }
 
+// ======================================================
+
+// DASHBOARD / HOME
+
+// ======================================================
+
+
 function renderHome() {
   const approved = appState.players.filter(p => p.status === 'approved');
   const pending = appState.players.filter(p => p.status === 'pending');
@@ -2406,6 +2496,13 @@ const teamCount = getActiveTeamCount();
       if (t === 'otherteams') renderLiveStandings();
       if (t === 'results') renderLiveResults();
     }
+
+    // ======================================================
+
+    // LIVE SCORING
+
+    // ======================================================
+
 
     function loadGameView() {
       const myPlayer = getMyPlayer();
@@ -2824,6 +2921,13 @@ const teamCount = getActiveTeamCount();
 
     let playerScorecardBackView = 'view-game';
 
+// ======================================================
+
+// PLAYER SCORECARDS
+
+// ======================================================
+
+
 function backFromPlayerScorecard() {
   if (playerScorecardBackView === 'view-teams') {
     showTeamsPage();
@@ -2891,6 +2995,13 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
       renderLeaderboard();
       showView('view-leaderboard');
     }
+
+    // ======================================================
+
+    // ADMIN CONTROL CENTER
+
+    // ======================================================
+
 
     function adminLogin(){
       if(document.getElementById('admin-password').value === ADMIN_PASSWORD){
@@ -3124,6 +3235,13 @@ async function toggleCaptain(id, makeCaptain) {
         alert(`Could not delete player: ${formatError(err)}`);
       }
     }
+
+    // ======================================================
+
+    // ADMIN TEAM MANAGEMENT
+
+    // ======================================================
+
 
     function renderAdminTeams(){
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
@@ -3499,6 +3617,13 @@ async function toggleCaptain(id, makeCaptain) {
       return parseInt(document.getElementById('score-admin-hole')?.value || '1', 10);
     }
 
+    // ======================================================
+
+    // SCORE MANAGEMENT
+
+    // ======================================================
+
+
     function renderScoreManagement() {
       populateScoreManagementSelectors();
       const mount = document.getElementById('score-admin-editor');
@@ -3873,6 +3998,13 @@ async function toggleCaptain(id, makeCaptain) {
   return map[code] || 'Weather';
 }
 
+// ======================================================
+
+// WEATHER
+
+// ======================================================
+
+
 async function loadWeather() {
   try {
     const lat = 39.2667;
@@ -3933,6 +4065,10 @@ async function resetDailyGameIfNeeded() {
   localStorage.removeItem(getAdminCaptainOverrideKey());
   localStorage.removeItem('gmg_open_captain_after_load');
 }
+    // ======================================================
+    // STARTUP / INITIALIZATION
+    // ======================================================
+
     async function initApp() {
       try {
         setStatus('Connecting...');
