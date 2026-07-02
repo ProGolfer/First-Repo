@@ -20,6 +20,7 @@
     - Live Scoring
     - Score Management
     - Player Scorecards
+    - Captain Team Builder Quick Add
 
     Foundation Goal:
     - Organize code into clear sections without changing current behavior.
@@ -2163,6 +2164,23 @@ function showCaptainTeamsPage() {
   showView('view-captain-teams');
 }
 
+function getCaptainTeamTargets(activeTeams = getActiveTeams(), players = getApprovedPlayers()) {
+  const teamCount = Math.max(1, activeTeams.length || getActiveTeamCount());
+  const playerCount = players.length;
+  const base = Math.floor(playerCount / teamCount);
+  const extra = playerCount % teamCount;
+
+  return activeTeams.map((team, index) => ({
+    teamId: String(team.id),
+    target: Math.max(1, base + (index < extra ? 1 : 0))
+  }));
+}
+
+function getCaptainTeamTarget(teamId, targets) {
+  const found = targets.find(t => String(t.teamId) === String(teamId));
+  return found ? found.target : 4;
+}
+
 function renderCaptainTeamsPage() {
   const approvedPlayers = appState.players.filter(p => p.status === 'approved');
   const activeTeams = getActiveTeams();
@@ -2172,6 +2190,7 @@ function renderCaptainTeamsPage() {
   const accessTeamRaw = getCaptainAccessTeam();
   const accessTeam = accessTeamRaw && activeTeamIds.has(String(accessTeamRaw.id)) ? accessTeamRaw : null;
   const isAdminOverride = hasAdminCaptainOverride();
+  const teamTargets = getCaptainTeamTargets(activeTeams, approvedPlayers);
 
   const count = document.getElementById('captain-player-count');
   const list = document.getElementById('captain-team-assignment-list');
@@ -2186,8 +2205,17 @@ function renderCaptainTeamsPage() {
   const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
 
   const unlockNote = isAdminOverride
-    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Dropdowns only show active teams.`
-    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Dropdowns only show active teams.`;
+    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`
+    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`;
+
+  const getTeamPlayers = (teamId) => approvedPlayers
+    .filter(p => String(p.team || '') === String(teamId))
+    .sort((a, b) => {
+      const aCaptain = isCaptainPlayer(a) ? 0 : 1;
+      const bCaptain = isCaptainPlayer(b) ? 0 : 1;
+      if (aCaptain !== bCaptain) return aCaptain - bCaptain;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   let draftRows = '';
 
@@ -2197,24 +2225,55 @@ function renderCaptainTeamsPage() {
     draftRows = '<div class="empty-state">No teams are available. Ask admin to assign captains first.</div>';
   } else {
     draftRows = availablePlayers.map(p => {
-      const defaultTeamId = accessTeam?.id || activeTeams[0]?.id || '';
+      const buttons = activeTeams.map(t => {
+        const teamPlayers = getTeamPlayers(t.id);
+        const target = getCaptainTeamTarget(t.id, teamTargets);
+        const isFull = teamPlayers.length >= target;
+        const isPreferred = accessTeam && String(accessTeam.id) === String(t.id);
+        const label = `${isPreferred ? '★ ' : ''}+ ${getTeamName(t.id).replace('Team ', 'T')}`;
+
+        return isFull
+          ? `<button class="btn btn-secondary btn-small" disabled style="opacity:.45;cursor:not-allowed;">${getTeamName(t.id).replace('Team ', 'T')} Full</button>`
+          : `<button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}', '${t.id}')">${label}</button>`;
+      }).join('');
+
       return `
         <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-          <div style="min-width:130px;">
-            <div style="font-weight:900;color:#f8fafc;">${p.name}</div>
+          <div style="min-width:130px;flex:1;">
+            <div style="font-weight:900;color:#f8fafc;">👤 ${p.name}</div>
             <div class="muted">Available</div>
           </div>
-          <div style="flex:1;min-width:150px;">
-            <select id="captain-pick-team-${p.id}">
-              <option value="">-- Select Team --</option>
-              ${activeTeams.map(t => `<option value="${t.id}" ${String(t.id) === String(defaultTeamId) ? 'selected' : ''}>${getTeamName(t.id)}</option>`).join('')}
-            </select>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+            ${buttons}
           </div>
-          <button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
         </div>
       `;
     }).join('');
   }
+
+  const teamCards = activeTeams.map(t => {
+    const teamPlayers = getTeamPlayers(t.id);
+    const target = getCaptainTeamTarget(t.id, teamTargets);
+    const isFull = teamPlayers.length >= target;
+    const captain = teamPlayers.find(p => isCaptainPlayer(p));
+
+    return `
+      <div style="background:rgba(15,30,44,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="font-size:18px;font-weight:950;color:#54e86f;">🏌️ ${getTeamName(t.id)}</div>
+          <div style="font-size:13px;color:${isFull ? '#54e86f' : '#ffb020'};font-weight:950;">${teamPlayers.length}/${target}${isFull ? ' ✅' : ''}</div>
+        </div>
+        ${captain ? `<div style="padding:9px 0;border-top:1px solid rgba(148,163,184,.12);font-weight:900;color:#f8fafc;">👑 ${captain.name}</div>` : ''}
+        ${teamPlayers.filter(p => !isCaptainPlayer(p)).map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid rgba(148,163,184,.12);">
+            <span style="font-weight:850;color:#f8fafc;">${p.name}</span>
+            <button class="btn btn-secondary btn-small" onclick="unassignPlayer('${p.id}'); setTimeout(renderCaptainTeamsPage, 400);">Remove</button>
+          </div>
+        `).join('')}
+        ${!teamPlayers.length ? '<div class="empty-state" style="padding:8px 0;">No players yet</div>' : ''}
+      </div>
+    `;
+  }).join('');
 
   list.innerHTML = `
     <div class="captain-unlock-banner">
@@ -2230,16 +2289,14 @@ function renderCaptainTeamsPage() {
     ${draftRows}
 
     <div class="section-title">Selected Teams</div>
-    <ul class="player-list">
-      ${renderTeamGroupCards(approvedPlayers, { clickable: false })}
-    </ul>
+    ${teamCards || '<div class="empty-state">No active teams yet.</div>'}
   `;
 }
 
-async function captainSubmitPlayerToTeam(playerId) {
+async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
   try {
     const select = document.getElementById(`captain-pick-team-${playerId}`);
-    const teamId = select?.value || '';
+    const teamId = teamIdOverride || select?.value || '';
 
     if (!teamId) {
       alert('Select a team first.');
@@ -2261,6 +2318,17 @@ async function captainSubmitPlayerToTeam(playerId) {
     if (player.team) {
       alert(`${player.name} is already on a team.`);
       await loadAllData();
+      renderCaptainTeamsPage();
+      return;
+    }
+
+    const activeTeams = getActiveTeams();
+    const teamTargets = getCaptainTeamTargets(activeTeams, getApprovedPlayers());
+    const target = getCaptainTeamTarget(teamId, teamTargets);
+    const currentCount = appState.players.filter(p => p.status === 'approved' && String(p.team || '') === String(teamId)).length;
+
+    if (currentCount >= target) {
+      alert(`${getTeamName(teamId)} is already full (${currentCount}/${target}).`);
       renderCaptainTeamsPage();
       return;
     }
