@@ -1327,8 +1327,16 @@
             </div>
 
             <div class="admin-section">
-              <div class="form-group" style="margin-bottom:0;">
-                <label>🏌️ Number of Teams</label>
+              <div class="form-group">
+                <label>🏌️ Team Mode</label>
+                <select id="team-mode" onchange="updateTeamMode()">
+                  <option value="auto">Auto (1 Team per 4 Players)</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </div>
+
+              <div id="manual-team-selector" class="form-group" style="display:none; margin-top:12px;">
+                <label>Manual Team Count</label>
                 <select id="num-teams" onchange="updateNumTeams()">
                   <option value="1">1 Team</option>
                   <option value="2">2 Teams</option>
@@ -1340,7 +1348,12 @@
                   <option value="8">8 Teams</option>
                 </select>
               </div>
-              <button class="btn btn-primary" onclick="submitNumTeams()">Submit Number of Teams</button>
+
+              <div class="muted" id="team-mode-summary" style="font-weight:800;margin:8px 0 12px;line-height:1.35;">
+                Auto mode is active. Team count is based on approved players.
+              </div>
+
+              <button class="btn btn-primary" onclick="submitNumTeams()">Save Team Settings</button>
             </div>
 
             <div class="section-title">Players Waiting for Team</div>
@@ -1485,11 +1498,11 @@
       myTeam: null,
       myPlayerName: '',
       settingsLiveEnabled: false,
-    teamMode: 'auto',
-numTeams: 4,
-selectedNumTeams: 4,
-teamsSubmitted: false
-   };
+      teamMode: 'auto',
+      numTeams: 4,
+      selectedNumTeams: 4,
+      teamsSubmitted: false
+    };
 
     function formatError(err) {
       if (!err) return 'Unknown error';
@@ -3004,22 +3017,11 @@ async function toggleCaptain(id, makeCaptain) {
     }
 
     function getRecommendedTeamCount() {
-      const approvedCount = appState.players.filter(p => p.status === 'approved').length;
-      const teamsByPlayers = Math.max(1, Math.ceil(approvedCount / 4));
-
-      const captainTeamNumbers = appState.teams
-        .filter(t => t.captain_id)
-        .map(t => Number(t.team_number || t.id || 0))
-        .filter(n => Number.isFinite(n) && n > 0);
-
-      const teamsByCaptains = captainTeamNumbers.length ? Math.max(...captainTeamNumbers) : 0;
-      const maxTeamsAvailable = appState.teams.length || 4;
-
-      return Math.min(maxTeamsAvailable, Math.max(teamsByPlayers, teamsByCaptains));
+      return getAutoTeamCount();
     }
 
     function getActiveTeams() {
-      const activeTeamCount = getRecommendedTeamCount();
+      const activeTeamCount = getActiveTeamCount();
       return appState.teams
         .slice()
         .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
@@ -3109,8 +3111,23 @@ async function toggleCaptain(id, makeCaptain) {
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
       const availableTeams = getActiveTeams();
 
+      const teamModeSelect = document.getElementById('team-mode');
+      if (teamModeSelect) teamModeSelect.value = appState.teamMode || 'auto';
+
+      const manualSelector = document.getElementById('manual-team-selector');
+      if (manualSelector) manualSelector.style.display = appState.teamMode === 'manual' ? 'block' : 'none';
+
       const numTeamsSelect = document.getElementById('num-teams');
-      if (numTeamsSelect) numTeamsSelect.value = String(getRecommendedTeamCount());
+      if (numTeamsSelect) numTeamsSelect.value = String(appState.selectedNumTeams || appState.numTeams || getActiveTeamCount());
+
+      const teamModeSummary = document.getElementById('team-mode-summary');
+      if (teamModeSummary) {
+        const activeCount = getActiveTeamCount();
+        const approvedCount = approvedPlayers.length;
+        teamModeSummary.textContent = appState.teamMode === 'manual'
+          ? `Manual mode is active. Captains will only see ${activeCount} team${activeCount === 1 ? '' : 's'}.`
+          : `Auto mode is active. ${approvedCount} approved player${approvedCount === 1 ? '' : 's'} = ${activeCount} team${activeCount === 1 ? '' : 's'}.`;
+      }
 
       const teamAssignmentList = document.getElementById('team-assignment-list');
       if (teamAssignmentList) {
@@ -3174,23 +3191,57 @@ async function toggleCaptain(id, makeCaptain) {
       await loadAllData();
     }
 
+    function updateTeamMode() {
+      const modeSelect = document.getElementById('team-mode');
+      appState.teamMode = modeSelect?.value || 'auto';
+
+      const manualSelector = document.getElementById('manual-team-selector');
+      if (manualSelector) {
+        manualSelector.style.display = appState.teamMode === 'manual' ? 'block' : 'none';
+      }
+
+      const summary = document.getElementById('team-mode-summary');
+      if (summary) {
+        const activeCount = getActiveTeamCount();
+        const approvedCount = getApprovedPlayerCount();
+        summary.textContent = appState.teamMode === 'manual'
+          ? `Manual mode is active. Captains will only see ${activeCount} team${activeCount === 1 ? '' : 's'}.`
+          : `Auto mode is active. ${approvedCount} approved player${approvedCount === 1 ? '' : 's'} = ${activeCount} team${activeCount === 1 ? '' : 's'}.`;
+      }
+
+      renderHome();
+      renderAdminTeams();
+    }
+
     function updateNumTeams() {
       const select = document.getElementById('num-teams');
       appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
+      if (appState.teamMode === 'manual') {
+        appState.numTeams = appState.selectedNumTeams;
+      }
     }
 
     function submitNumTeams() {
-      appState.numTeams = appState.selectedNumTeams || 4;
-      const allowedTeamIds = new Set(
-        appState.teams
-          .slice()
-          .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
-          .slice(0, appState.numTeams)
-          .map(t => String(t.id))
-      );
+      const modeSelect = document.getElementById('team-mode');
+      const numTeamsSelect = document.getElementById('num-teams');
+
+      appState.teamMode = modeSelect?.value || appState.teamMode || 'auto';
+      appState.selectedNumTeams = parseInt(numTeamsSelect?.value || appState.selectedNumTeams || appState.numTeams || 4, 10);
+
+      if (appState.teamMode === 'manual') {
+        appState.numTeams = appState.selectedNumTeams;
+      } else {
+        appState.numTeams = getAutoTeamCount();
+      }
+
+      const allowedTeamIds = new Set(getActiveTeams().map(t => String(t.id)));
       appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
       appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
+
+      renderHome();
       renderAdminTeams();
+      renderCaptainTeamsPage();
+      alert(`Team settings saved: ${appState.teamMode === 'manual' ? 'Manual' : 'Auto'} mode, ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
     }
 
     function submitTeams() {
