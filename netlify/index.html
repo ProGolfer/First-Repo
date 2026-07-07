@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.1.0 Money Game Central
+    Version: 1.1.1 Team-Finished Results Unlock
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -22,7 +22,7 @@
     - Player Scorecards
     - Captain Team Builder Quick Add
     - Backup & Restore Pro / Multiple Auto Saves
-    - Money Game Central / Final Standings Reveal
+    - Money Game Central / Team-Finished Results Unlock
 
     Foundation Goal:
     - Organize code into clear sections without changing current behavior.
@@ -1644,10 +1644,8 @@
 
             <div class="admin-section">
               <h3 style="margin-bottom:10px;">🏆 Money Game Central</h3>
-              <p class="muted" style="margin-bottom:12px;">Keep standings hidden during the round. Reveal final standings only after all teams submit.</p>
-              <button class="btn btn-success" onclick="revealFinalStandings()">🏆 Reveal Final Standings</button>
-              <button class="btn btn-secondary" onclick="hideFinalStandings()">🔒 Hide Final Standings</button>
-              <div class="muted" id="final-standings-status" style="font-weight:800;margin-top:8px;line-height:1.35;">Final standings hidden.</div>
+              <p class="muted" style="margin-bottom:12px;">Results now unlock automatically by team. A team sees submitted results only after that team submits its official final score.</p>
+              <div class="muted" id="final-standings-status" style="font-weight:800;margin-top:8px;line-height:1.35;">Team-finished unlock is active.</div>
             </div>
 
             <div class="admin-section">
@@ -3016,6 +3014,7 @@ const teamCount = getActiveTeamCount();
         renderLiveStandings();
         renderLiveResults();
         renderLeaderboard();
+        renderMoneyGameCentral();
 
       } catch (err) {
         alert(`Could not save score: ${formatError(err)}`);
@@ -3231,7 +3230,8 @@ const teamCount = getActiveTeamCount();
 // ======================================================
 
 function areFinalStandingsRevealed() {
-  return appState.settings && appState.settings.game_started === true;
+  const rows = getTeamScoreRows();
+  return rows.length > 0 && rows.every(r => r.submitted);
 }
 
 function getTeamScoreRows() {
@@ -3249,6 +3249,22 @@ function getTeamScoreRows() {
       submitted: scoreValues.length > 0
     };
   }).filter(row => row.players.length);
+}
+
+function getMyTeamScoreRow() {
+  const myPlayer = getMyPlayer();
+  if (!myPlayer?.team) return null;
+  return getTeamScoreRows().find(row => String(row.team.id) === String(myPlayer.team)) || null;
+}
+
+function myTeamHasSubmittedFinalScore() {
+  const row = getMyTeamScoreRow();
+  return !!row?.submitted;
+}
+
+function getVisibleFinishedRowsForMyTeam() {
+  if (!myTeamHasSubmittedFinalScore()) return [];
+  return getTeamScoreRows().filter(row => row.submitted);
 }
 
 function getTeamProgress(teamId) {
@@ -3276,7 +3292,7 @@ function renderMoneyCentralDuringRound() {
     return `
       <div class="mgc-hero">
         <div class="mgc-title">Cliffside <span>Money Game</span></div>
-        <div style="margin-top:12px;"><span class="mgc-live-pill"><span class="mgc-dot"></span> Hidden Standings</span></div>
+        <div style="margin-top:12px;"><span class="mgc-live-pill"><span class="mgc-dot"></span> Hidden Results</span></div>
       </div>
       <div class="mgc-lock-card">
         <div class="mgc-lock-icon">👤</div>
@@ -3298,7 +3314,7 @@ function renderMoneyCentralDuringRound() {
       <div class="mgc-lock-card">
         <div class="mgc-lock-icon">⏳</div>
         <div class="section-title">Waiting for team assignment</div>
-        <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">Once captains build teams, this page will show your team only. Other teams stay hidden until final standings are revealed.</p>
+        <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">Once captains build teams, this page will show your team only. Other teams stay hidden until your team submits its official final score.</p>
       </div>`;
   }
 
@@ -3312,8 +3328,8 @@ function renderMoneyCentralDuringRound() {
       return (a.name || '').localeCompare(b.name || '');
     });
   const progress = getTeamProgress(teamId);
-  const submittedOfficial = teamPlayers.some(p => p.score !== null && p.score !== undefined && p.score !== '');
-  const officialScore = submittedOfficial ? Math.max(...teamPlayers.map(p => p.score).filter(v => v !== null && v !== undefined && v !== '').map(Number)) : null;
+  const row = getMyTeamScoreRow();
+  const officialScore = row?.submitted ? row.total : null;
 
   const scorecardRows = teamPlayers.map(p => `
     <div class="mgc-scorecard-row">
@@ -3325,12 +3341,12 @@ function renderMoneyCentralDuringRound() {
     <div class="mgc-hero">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
         <div class="mgc-title">Cliffside <span>Money Game</span></div>
-        <span class="mgc-live-pill"><span class="mgc-dot"></span> Live</span>
+        <span class="mgc-live-pill"><span class="mgc-dot"></span> In Progress</span>
       </div>
       <div class="mgc-stat-grid">
         <div class="mgc-stat"><strong>${progress.submittedCount}/9</strong><small>Holes</small></div>
-        <div class="mgc-stat"><strong>${officialScore !== null ? officialScore : progress.totalPoints}</strong><small>Team Pts</small></div>
-        <div class="mgc-stat"><strong>🔒</strong><small>Hidden</small></div>
+        <div class="mgc-stat"><strong>${officialScore !== null ? officialScore : progress.totalPoints}</strong><small>Your Pts</small></div>
+        <div class="mgc-stat"><strong>🔒</strong><small>Others Hidden</small></div>
       </div>
       ${renderHoleTracker(progress)}
     </div>
@@ -3348,34 +3364,20 @@ function renderMoneyCentralDuringRound() {
 
     <div class="mgc-lock-card">
       <div class="mgc-lock-icon">🔒</div>
-      <div class="section-title">Final standings are hidden</div>
-      <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">Other teams, rankings, and the 💩 last-place badge unlock only after the Admin taps <strong>Reveal Final Standings</strong>.</p>
+      <div class="section-title">Results unlock after you finish</div>
+      <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">Other teams stay hidden until your captain submits your official final team score. Once your team is finished, you can see only the teams that are also finished.</p>
     </div>`;
 }
 
-function renderFinalStandings() {
-  const rows = getTeamScoreRows();
-  const submittedCount = rows.filter(r => r.submitted).length;
-  const allSubmitted = rows.length > 0 && rows.every(r => r.submitted);
+function renderVisibleFinishedStandings() {
+  const allRows = getTeamScoreRows();
+  const visibleRows = getVisibleFinishedRowsForMyTeam();
+  const submittedCount = allRows.filter(r => r.submitted).length;
+  const allSubmitted = allRows.length > 0 && allRows.every(r => r.submitted);
 
-  if (!allSubmitted) {
-    return `
-      <div class="mgc-hero">
-        <div class="mgc-title">Final Standings <span>Waiting</span></div>
-        <div class="mgc-stat-grid">
-          <div class="mgc-stat"><strong>${submittedCount}/${rows.length}</strong><small>Submitted</small></div>
-          <div class="mgc-stat"><strong>${getApprovedPlayerCount()}</strong><small>Players</small></div>
-          <div class="mgc-stat"><strong>${getActiveTeamCount()}</strong><small>Teams</small></div>
-        </div>
-      </div>
-      <div class="mgc-lock-card">
-        <div class="mgc-lock-icon">⏳</div>
-        <div class="section-title">Not every team has submitted</div>
-        <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">Final results were revealed, but the standings will complete after every team submits an official score.</p>
-      </div>`;
-  }
+  if (!visibleRows.length) return renderMoneyCentralDuringRound();
 
-  const sorted = rows.slice().sort((a, b) => Number(b.total) - Number(a.total));
+  const sorted = visibleRows.slice().sort((a, b) => Number(b.total) - Number(a.total));
   const lowest = Math.min(...sorted.map(r => Number(r.total)));
   const medals = ['🥇', '🥈', '🥉'];
 
@@ -3407,26 +3409,34 @@ function renderFinalStandings() {
       </div>`;
   }).join('');
 
-  const winner = sorted[0];
+  const leader = sorted[0];
   return `
     <div class="mgc-hero">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-        <div class="mgc-title">Final <span>Results</span></div>
-        <span class="mgc-live-pill" style="background:rgba(34,197,94,.14);color:#bbf7d0;border-color:rgba(34,197,94,.28);"><span class="mgc-dot" style="background:#22c55e;box-shadow:0 0 16px rgba(34,197,94,.8);"></span> Revealed</span>
+        <div class="mgc-title">${allSubmitted ? 'Final' : 'Finished Team'} <span>Results</span></div>
+        <span class="mgc-live-pill" style="background:rgba(34,197,94,.14);color:#bbf7d0;border-color:rgba(34,197,94,.28);"><span class="mgc-dot" style="background:#22c55e;box-shadow:0 0 16px rgba(34,197,94,.8);"></span> ${allSubmitted ? 'Final' : 'Unlocked'}</span>
       </div>
       <div class="mgc-stat-grid">
-        <div class="mgc-stat"><strong>${winner ? getTeamName(winner.team.id) : '-'}</strong><small>Champions</small></div>
-        <div class="mgc-stat"><strong>${winner ? winner.total : '-'}</strong><small>Winning Pts</small></div>
-        <div class="mgc-stat"><strong>${rows.length}</strong><small>Teams</small></div>
+        <div class="mgc-stat"><strong>${leader ? getTeamName(leader.team.id) : '-'}</strong><small>${allSubmitted ? 'Leader' : 'Visible Leader'}</small></div>
+        <div class="mgc-stat"><strong>${leader ? leader.total : '-'}</strong><small>Top Pts</small></div>
+        <div class="mgc-stat"><strong>${submittedCount}/${allRows.length}</strong><small>Finished</small></div>
       </div>
     </div>
+
+    ${!allSubmitted ? `
+      <div class="mgc-lock-card">
+        <div class="mgc-lock-icon">🔒</div>
+        <div class="section-title">Unfinished teams are still hidden</div>
+        <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">You can see teams that have submitted final scores. Teams still playing stay hidden until they finish.</p>
+      </div>` : ''}
+
     ${cards}`;
 }
 
 function renderMoneyGameCentral() {
   const mount = document.getElementById('money-game-central-display');
   if (!mount) return;
-  mount.innerHTML = areFinalStandingsRevealed() ? renderFinalStandings() : renderMoneyCentralDuringRound();
+  mount.innerHTML = myTeamHasSubmittedFinalScore() ? renderVisibleFinishedStandings() : renderMoneyCentralDuringRound();
 }
 
 function showMoneyGameCentral() {
@@ -3435,43 +3445,19 @@ function showMoneyGameCentral() {
 }
 
 async function revealFinalStandings() {
-  try {
-    const rows = getTeamScoreRows();
-    const submittedCount = rows.filter(r => r.submitted).length;
-    if (rows.length && submittedCount < rows.length) {
-      if (!confirm(`Only ${submittedCount}/${rows.length} teams have submitted official scores. Reveal anyway?`)) return;
-    }
-    saveAutoBackup('before-reveal-final-standings');
-    appState.settings.game_started = true;
-    if (appState.settingsLiveEnabled) {
-      await db(window.supabaseClient.from('settings').update({ game_started: true }).eq('key', SETTINGS_KEY), 'Reveal final standings');
-    }
-    updateFinalStandingsStatus();
-    renderMoneyGameCentral();
-    alert('Final standings revealed!');
-  } catch (err) {
-    alert(`Could not reveal final standings: ${formatError(err)}`);
-  }
+  alert('Money Game Central now unlocks automatically when each team submits its official final score.');
 }
 
 async function hideFinalStandings() {
-  try {
-    if (!confirm('Hide final standings again?')) return;
-    appState.settings.game_started = false;
-    if (appState.settingsLiveEnabled) {
-      await db(window.supabaseClient.from('settings').update({ game_started: false }).eq('key', SETTINGS_KEY), 'Hide final standings');
-    }
-    updateFinalStandingsStatus();
-    renderMoneyGameCentral();
-    alert('Final standings hidden.');
-  } catch (err) {
-    alert(`Could not hide final standings: ${formatError(err)}`);
-  }
+  alert('There is no manual reveal anymore. Unfinished teams stay hidden automatically.');
 }
 
 function updateFinalStandingsStatus() {
   const el = document.getElementById('final-standings-status');
-  if (el) el.textContent = areFinalStandingsRevealed() ? 'Final standings are revealed.' : 'Final standings hidden.';
+  if (!el) return;
+  const rows = getTeamScoreRows();
+  const submittedCount = rows.filter(r => r.submitted).length;
+  el.textContent = `Team-finished unlock active. ${submittedCount}/${rows.length || 0} teams finished.`;
 }
 
 // ======================================================
