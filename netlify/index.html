@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.1 Notification DB Engine
+    Version: 1.2.2 Realtime Notification Sync
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1405,7 +1405,7 @@
 
         <div class="form-group">
           <label>Your Name</label>
-          <input type="text" id="reg-name" placeholder="Enter your name">
+          <input type="text" id="reg-name" name="gmg-player-name" placeholder="Enter your name" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" inputmode="text">
         </div>
 
         <button class="btn btn-primary" onclick="registerPlayer()">Register for Today's Game</button>
@@ -1935,6 +1935,7 @@
 
     let notificationRealtimeChannel = null;
     let notificationDbAvailable = true;
+    let notificationSyncTimer = null;
 
     function isAdminDevice() {
       return localStorage.getItem(ADMIN_DEVICE_KEY) === 'true';
@@ -2116,9 +2117,13 @@
       return createLocalNotification(type, title, message, options);
     }
 
-    async function loadNotificationsFromDb() {
-      if (!isAdminDevice() || !notificationDbAvailable) return;
+    async function syncNotificationsFromDb(options = {}) {
+      if (!isAdminDevice()) return;
+
       try {
+        const before = getNotifications();
+        const knownRemoteIds = new Set(before.filter(n => n.remoteId).map(n => String(n.remoteId)));
+
         const result = await window.supabaseClient
           .from(NOTIFICATIONS_TABLE)
           .select('*')
@@ -2129,50 +2134,97 @@
         if (result?.error) throw result.error;
 
         const remoteList = (result.data || []).map(normalizeNotification);
-        const localOnly = getNotifications().filter(n => !n.remoteId);
+        const localOnly = before.filter(n => !n.remoteId);
+
+        const newRemoteItems = remoteList.filter(n => n.remoteId && !knownRemoteIds.has(String(n.remoteId)));
+
         saveNotifications([...remoteList, ...localOnly]);
         notificationDbAvailable = true;
+
+        if (options.announceNew) {
+          newRemoteItems
+            .slice()
+            .reverse()
+            .forEach(n => {
+              const ageMs = Date.now() - new Date(n.createdAt).getTime();
+              if (ageMs < 10 * 60 * 1000) {
+                showToast(n.title, n.message);
+                playNotificationSound();
+                showBrowserNotification(n.title, n.message);
+              }
+            });
+        }
       } catch (err) {
         notificationDbAvailable = false;
-        console.warn('Could not load notifications table yet.', err);
+        console.warn('Could not sync notifications table yet.', err);
       }
     }
 
+    async function loadNotificationsFromDb() {
+      await syncNotificationsFromDb({ announceNew: false });
+    }
+
+    function startNotificationSyncTimer() {
+      if (notificationSyncTimer) return;
+      notificationSyncTimer = setInterval(() => {
+        if (isAdminDevice()) syncNotificationsFromDb({ announceNew: true });
+      }, 8000);
+    }
+
     function subscribeToNotificationUpdates() {
-      if (notificationRealtimeChannel) return;
+      if (notificationRealtimeChannel) {
+        startNotificationSyncTimer();
+        return;
+      }
 
       notificationRealtimeChannel = window.supabaseClient
-        .channel('notifications-live')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: NOTIFICATIONS_TABLE }, (payload) => {
+        .channel('notifications-live-' + Math.random().toString(16).slice(2))
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: NOTIFICATIONS_TABLE }, async (payload) => {
           const n = normalizeNotification(payload.new || {});
           if (n.target !== 'admin' && n.target !== 'all') return;
-          createLocalNotification(n.type, n.title, n.message, {
-            remoteId: n.remoteId,
-            createdAt: n.createdAt,
-            target: n.target
-          });
+
+          if (isAdminDevice()) {
+            createLocalNotification(n.type, n.title, n.message, {
+              remoteId: n.remoteId,
+              createdAt: n.createdAt,
+              target: n.target
+            });
+          }
+
+          // Also sync from the table so every admin device catches up even if
+          // the realtime payload arrives out of order or a device just became admin.
+          await syncNotificationsFromDb({ announceNew: false });
         })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: NOTIFICATIONS_TABLE }, (payload) => {
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: NOTIFICATIONS_TABLE }, async (payload) => {
           const updated = normalizeNotification(payload.new || {});
           const list = getNotifications().map(n =>
             String(n.remoteId || '') === String(updated.remoteId || '') ? { ...n, read: updated.read } : n
           );
           saveNotifications(list);
+          await syncNotificationsFromDb({ announceNew: false });
         })
         .subscribe((status) => {
-          if (status === 'SUBSCRIBED') console.log('Notification realtime subscribed');
+          console.log('Notification realtime status:', status);
+          if (status === 'SUBSCRIBED') {
+            notificationDbAvailable = true;
+            if (isAdminDevice()) syncNotificationsFromDb({ announceNew: false });
+          }
         });
+
+      startNotificationSyncTimer();
     }
 
     async function enableAdminNotifications() {
       localStorage.setItem(ADMIN_DEVICE_KEY, 'true');
+      notificationDbAvailable = true;
       try {
         if ('Notification' in window && Notification.permission === 'default') {
           await Notification.requestPermission();
         }
       } catch (_) {}
-      await loadNotificationsFromDb();
       subscribeToNotificationUpdates();
+      await loadNotificationsFromDb();
+      startNotificationSyncTimer();
       updateNotificationBadge();
       renderNotificationCenter();
     }
