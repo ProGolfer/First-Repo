@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.0 Notification Center
+    Version: 1.2.1 Notification DB Engine
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1794,6 +1794,12 @@
             </div>
 
             <div class="admin-section">
+              <h3 style="margin-bottom:10px;">🔔 Notification Tools</h3>
+              <p class="muted" style="margin-bottom:12px;">Send a test notification to this Admin device and any other Admin device listening in real time.</p>
+              <button class="btn btn-secondary" onclick="testAdminNotification()">🔔 Send Test Notification</button>
+            </div>
+
+            <div class="admin-section">
               <h3 style="margin-bottom:10px;">👥 Player Management</h3>
               <p class="muted" style="margin-bottom:12px;">Delete one player if someone registered twice, typed the wrong name, or backed out.</p>
 
@@ -1919,29 +1925,71 @@
 
     // ======================================================
 
-    // NOTIFICATION CENTER
+    // NOTIFICATION CENTER / DATABASE ENGINE
 
     // ======================================================
 
-    const NOTIFICATIONS_KEY = 'gmg_notifications_v1';
+    const NOTIFICATIONS_KEY = 'gmg_notifications_v2';
     const ADMIN_DEVICE_KEY = 'gmg_admin_device';
+    const NOTIFICATIONS_TABLE = 'notifications';
+
+    let notificationRealtimeChannel = null;
+    let notificationDbAvailable = true;
 
     function isAdminDevice() {
       return localStorage.getItem(ADMIN_DEVICE_KEY) === 'true';
+    }
+
+    function normalizeNotification(row) {
+      return {
+        id: row?.local_id || row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        remoteId: row?.id || row?.remoteId || null,
+        type: row?.type || 'system',
+        title: row?.title || 'Notification',
+        message: row?.message || row?.content || '',
+        target: row?.target || 'admin',
+        createdAt: row?.created_at || row?.createdAt || new Date().toISOString(),
+        read: !!(row?.is_read ?? row?.read)
+      };
     }
 
     function getNotifications() {
       try {
         const raw = localStorage.getItem(NOTIFICATIONS_KEY);
         const list = raw ? JSON.parse(raw) : [];
-        return Array.isArray(list) ? list : [];
+        return Array.isArray(list) ? list.map(normalizeNotification) : [];
       } catch (_) {
         return [];
       }
     }
 
+    function isDuplicateNotification(list, item) {
+      const itemTime = new Date(item.createdAt).getTime();
+      return list.some(n => {
+        if (item.remoteId && n.remoteId && String(item.remoteId) === String(n.remoteId)) return true;
+        const nTime = new Date(n.createdAt).getTime();
+        return n.type === item.type &&
+          n.title === item.title &&
+          n.message === item.message &&
+          Math.abs(nTime - itemTime) < 15000;
+      });
+    }
+
     function saveNotifications(list) {
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify((list || []).slice(0, 75)));
+      const normalized = (list || []).map(normalizeNotification);
+      const seen = new Set();
+      const deduped = [];
+
+      normalized
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .forEach(n => {
+          const key = n.remoteId ? `remote_${n.remoteId}` : `${n.type}_${n.title}_${n.message}_${n.createdAt}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          deduped.push(n);
+        });
+
+      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(deduped.slice(0, 100)));
       renderNotificationCenter();
       updateNotificationBadge();
     }
@@ -1998,25 +2046,122 @@
       } catch (_) {}
     }
 
-    function createNotification(type, title, message, options = {}) {
-      if (!isAdminDevice() && !options.forceLocal) return;
+    function createLocalNotification(type, title, message, options = {}) {
+      if (!isAdminDevice() && !options.forceLocal) return null;
 
-      const item = {
-        id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-        type: type || 'system',
-        title: title || 'Notification',
-        message: message || '',
-        createdAt: new Date().toISOString(),
-        read: false
-      };
+      const item = normalizeNotification({
+        local_id: options.localId,
+        id: options.remoteId || null,
+        type,
+        title,
+        message,
+        target: options.target || 'admin',
+        created_at: options.createdAt || new Date().toISOString(),
+        is_read: false
+      });
 
       const list = getNotifications();
+      if (isDuplicateNotification(list, item)) return item;
+
       list.unshift(item);
       saveNotifications(list);
 
-      showToast(title, message);
-      playNotificationSound();
-      showBrowserNotification(title, message);
+      if (!options.silent) {
+        showToast(title, message);
+        playNotificationSound();
+        showBrowserNotification(title, message);
+      }
+
+      return item;
+    }
+
+    async function createNotification(type, title, message, options = {}) {
+      const item = {
+        type: type || 'system',
+        title: title || 'Notification',
+        message: message || '',
+        target: options.target || 'admin',
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+
+      if (options.remote !== false && notificationDbAvailable) {
+        try {
+          const result = await window.supabaseClient
+            .from(NOTIFICATIONS_TABLE)
+            .insert([item])
+            .select()
+            .single();
+
+          if (result?.error) throw result.error;
+
+          // If this is the admin's own device, show it immediately. Other admin devices
+          // will receive it through the realtime subscription.
+          if (isAdminDevice()) {
+            createLocalNotification(type, title, message, {
+              remoteId: result.data?.id,
+              createdAt: result.data?.created_at,
+              target: item.target
+            });
+          }
+
+          return result.data;
+        } catch (err) {
+          notificationDbAvailable = false;
+          console.warn('Notification table unavailable. Using local fallback.', err);
+        }
+      }
+
+      // Fallback keeps the app usable even before the database table is created.
+      return createLocalNotification(type, title, message, options);
+    }
+
+    async function loadNotificationsFromDb() {
+      if (!isAdminDevice() || !notificationDbAvailable) return;
+      try {
+        const result = await window.supabaseClient
+          .from(NOTIFICATIONS_TABLE)
+          .select('*')
+          .in('target', ['admin', 'all'])
+          .order('created_at', { ascending: false })
+          .limit(75);
+
+        if (result?.error) throw result.error;
+
+        const remoteList = (result.data || []).map(normalizeNotification);
+        const localOnly = getNotifications().filter(n => !n.remoteId);
+        saveNotifications([...remoteList, ...localOnly]);
+        notificationDbAvailable = true;
+      } catch (err) {
+        notificationDbAvailable = false;
+        console.warn('Could not load notifications table yet.', err);
+      }
+    }
+
+    function subscribeToNotificationUpdates() {
+      if (notificationRealtimeChannel) return;
+
+      notificationRealtimeChannel = window.supabaseClient
+        .channel('notifications-live')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: NOTIFICATIONS_TABLE }, (payload) => {
+          const n = normalizeNotification(payload.new || {});
+          if (n.target !== 'admin' && n.target !== 'all') return;
+          createLocalNotification(n.type, n.title, n.message, {
+            remoteId: n.remoteId,
+            createdAt: n.createdAt,
+            target: n.target
+          });
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: NOTIFICATIONS_TABLE }, (payload) => {
+          const updated = normalizeNotification(payload.new || {});
+          const list = getNotifications().map(n =>
+            String(n.remoteId || '') === String(updated.remoteId || '') ? { ...n, read: updated.read } : n
+          );
+          saveNotifications(list);
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') console.log('Notification realtime subscribed');
+        });
     }
 
     async function enableAdminNotifications() {
@@ -2026,6 +2171,8 @@
           await Notification.requestPermission();
         }
       } catch (_) {}
+      await loadNotificationsFromDb();
+      subscribeToNotificationUpdates();
       updateNotificationBadge();
       renderNotificationCenter();
     }
@@ -2069,17 +2216,44 @@
       renderNotificationCenter();
     }
 
-    function markNotificationRead(id) {
-      const list = getNotifications().map(n => n.id === id ? { ...n, read: true } : n);
-      saveNotifications(list);
+    async function markNotificationRead(id) {
+      const list = getNotifications();
+      const item = list.find(n => String(n.id) === String(id));
+      saveNotifications(list.map(n => String(n.id) === String(id) ? { ...n, read: true } : n));
+
+      if (item?.remoteId && notificationDbAvailable) {
+        try {
+          await window.supabaseClient
+            .from(NOTIFICATIONS_TABLE)
+            .update({ is_read: true })
+            .eq('id', item.remoteId);
+        } catch (_) {}
+      }
     }
 
-    function markAllNotificationsRead() {
-      saveNotifications(getNotifications().map(n => ({ ...n, read: true })));
+    async function markAllNotificationsRead() {
+      const list = getNotifications();
+      saveNotifications(list.map(n => ({ ...n, read: true })));
+
+      if (notificationDbAvailable) {
+        try {
+          const remoteIds = list.filter(n => n.remoteId).map(n => n.remoteId);
+          if (remoteIds.length) {
+            await window.supabaseClient
+              .from(NOTIFICATIONS_TABLE)
+              .update({ is_read: true })
+              .in('id', remoteIds);
+          }
+        } catch (_) {}
+      }
     }
 
     function clearReadNotifications() {
       saveNotifications(getNotifications().filter(n => !n.read));
+    }
+
+    async function testAdminNotification() {
+      await createNotification('test', '🔔 Test Notification', 'Money Game Central notifications are working.', { target: 'admin' });
     }
 
     // ======================================================
@@ -2364,6 +2538,13 @@ function getMyPlayerName() {
           is_captain: false,
           device_token: null
         }]), 'Register player');
+
+        createNotification(
+          'registration',
+          '👤 New Registration',
+          `${name} is waiting for approval.`,
+          { target: 'admin' }
+        );
 
         saveThisDevicePlayerName(name);
         document.getElementById('reg-name').value = '';
@@ -5255,6 +5436,8 @@ async function resetDailyGameIfNeeded() {
         await loadAllData();
         renderNotificationCenter();
         updateNotificationBadge();
+        subscribeToNotificationUpdates();
+        if (isAdminDevice()) await loadNotificationsFromDb();
         if (localStorage.getItem('gmg_open_captain_after_load') === 'true') {
           localStorage.removeItem('gmg_open_captain_after_load');
           renderCaptainTeamsPage();
@@ -5268,11 +5451,15 @@ async function resetDailyGameIfNeeded() {
           .channel('players-live')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async (payload) => {
             if (payload?.eventType === 'INSERT' && payload?.new?.status === 'pending') {
-              createNotification(
-                'registration',
-                '👤 New Registration',
-                `${payload.new.name || 'A player'} is waiting for approval.`
-              );
+              // Fallback notification if the dedicated notifications table has not been created yet.
+              // When the notifications table exists, the real notification comes from notifications-live.
+              if (!notificationDbAvailable) {
+                createLocalNotification(
+                  'registration',
+                  '👤 New Registration',
+                  `${payload.new.name || 'A player'} is waiting for approval.`
+                );
+              }
             }
             setStatus('Live: players updated');
             await loadAllData();
