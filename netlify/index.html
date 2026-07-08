@@ -1987,6 +1987,8 @@
 
     const NOTIFICATIONS_KEY = 'gmg_notifications_v2';
     const NOTIFICATIONS_CLEARED_KEY = 'gmg_notifications_cleared_remote_ids_v1';
+    const NOTIFICATIONS_READ_KEY = 'gmg_notifications_read_remote_ids_v1';
+    const NOTIFICATIONS_ANNOUNCED_KEY = 'gmg_notifications_announced_remote_ids_v1';
     const ADMIN_DEVICE_KEY = 'gmg_admin_device';
     const NOTIFICATIONS_TABLE = 'notifications';
 
@@ -2012,6 +2014,49 @@
       return id;
     }
 
+    function getDeviceScopedKey(baseKey) {
+      return baseKey + '_' + getAdminDeviceId();
+    }
+
+    function getIdSet(key) {
+      try {
+        const raw = localStorage.getItem(getDeviceScopedKey(key));
+        const list = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(list) ? list.map(String) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveIdSet(key, ids, max = 500) {
+      try {
+        const arr = Array.from(ids || []).map(String).slice(-max);
+        localStorage.setItem(getDeviceScopedKey(key), JSON.stringify(arr));
+      } catch (_) {}
+    }
+
+    function addToIdSet(key, ids, max = 500) {
+      const set = getIdSet(key);
+      (ids || []).filter(Boolean).forEach(id => set.add(String(id)));
+      saveIdSet(key, set, max);
+    }
+
+    function getReadNotificationRemoteIds() {
+      return getIdSet(NOTIFICATIONS_READ_KEY);
+    }
+
+    function addReadNotificationRemoteIds(ids) {
+      addToIdSet(NOTIFICATIONS_READ_KEY, ids, 500);
+    }
+
+    function getAnnouncedNotificationRemoteIds() {
+      return getIdSet(NOTIFICATIONS_ANNOUNCED_KEY);
+    }
+
+    function addAnnouncedNotificationRemoteIds(ids) {
+      addToIdSet(NOTIFICATIONS_ANNOUNCED_KEY, ids, 500);
+    }
+
     function setDebugText(id, value) {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
@@ -2022,7 +2067,7 @@
       const last = list[0];
       setDebugText('debug-db-status', notificationDbAvailable ? 'Connected / available' : 'Unavailable or permission error');
       setDebugText('debug-realtime-status', notificationRealtimeStatus || 'not started');
-      setDebugText('debug-polling-status', notificationSyncTimer ? 'Running every 2.5 seconds' : 'Not running');
+      setDebugText('debug-polling-status', notificationSyncTimer ? 'Running every 5 seconds' : 'Not running');
       setDebugText('debug-admin-status', isAdminDevice() ? 'Yes — this device is Admin-enabled' : 'No — login as Admin on this device');
       setDebugText('debug-unread-count', String(list.filter(n => !n.read).length));
       setDebugText('debug-last-notification', last ? `${last.title}: ${last.message}` : 'None loaded');
@@ -2060,26 +2105,11 @@
     }
 
     function getClearedNotificationRemoteIds() {
-      try {
-        const raw = localStorage.getItem(NOTIFICATIONS_CLEARED_KEY);
-        const list = raw ? JSON.parse(raw) : [];
-        return new Set(Array.isArray(list) ? list.map(String) : []);
-      } catch (_) {
-        return new Set();
-      }
-    }
-
-    function saveClearedNotificationRemoteIds(ids) {
-      try {
-        const arr = Array.from(ids || []).map(String).slice(-300);
-        localStorage.setItem(NOTIFICATIONS_CLEARED_KEY, JSON.stringify(arr));
-      } catch (_) {}
+      return getIdSet(NOTIFICATIONS_CLEARED_KEY);
     }
 
     function addClearedNotificationRemoteIds(ids) {
-      const cleared = getClearedNotificationRemoteIds();
-      (ids || []).filter(Boolean).forEach(id => cleared.add(String(id)));
-      saveClearedNotificationRemoteIds(cleared);
+      addToIdSet(NOTIFICATIONS_CLEARED_KEY, ids, 500);
     }
 
     function isDuplicateNotification(list, item) {
@@ -2217,7 +2247,7 @@
 
           // Sync through the same DB path used by every device.
           // This prevents local-only notifications and duplicate bell entries.
-          await syncNotificationsFromDb({ announceNew: true, force: true });
+          await syncNotificationsFromDb({ announceNew: false, force: true });
           return result.data;
         } catch (err) {
           notificationDbAvailable = false;
@@ -2238,9 +2268,8 @@
       try {
         const before = getNotifications();
         const knownRemoteIds = new Set(before.filter(n => n.remoteId).map(n => String(n.remoteId)));
-        const localReadByRemoteId = new Map(
-          before.filter(n => n.remoteId).map(n => [String(n.remoteId), !!n.read])
-        );
+        const readRemoteIds = getReadNotificationRemoteIds();
+        const announcedRemoteIds = getAnnouncedNotificationRemoteIds();
 
         const result = await window.supabaseClient
           .from(NOTIFICATIONS_TABLE)
@@ -2258,14 +2287,16 @@
             // v1.2.8: read/cleared state is device-specific.
             // Supabase stores the notification itself, but each phone/PC controls
             // whether that notification is read or hidden on that device.
-            n.read = localReadByRemoteId.has(String(n.remoteId))
-              ? localReadByRemoteId.get(String(n.remoteId))
-              : false;
+            n.read = n.remoteId ? readRemoteIds.has(String(n.remoteId)) : !!n.read;
             return n;
           })
           .filter(n => !n.remoteId || !clearedRemoteIds.has(String(n.remoteId)));
 
-        const newRemoteItems = remoteList.filter(n => n.remoteId && !knownRemoteIds.has(String(n.remoteId)));
+        const newRemoteItems = remoteList.filter(n =>
+          n.remoteId &&
+          !knownRemoteIds.has(String(n.remoteId)) &&
+          !announcedRemoteIds.has(String(n.remoteId))
+        );
         const localOnly = before.filter(n => !n.remoteId);
 
         saveNotifications([...remoteList, ...localOnly]);
@@ -2274,7 +2305,8 @@
         refreshNotificationDebugPanel();
 
         const shouldAnnounce = options.announceNew && shouldAutoAnnounceNotifications();
-        if (shouldAnnounce) {
+        if (shouldAnnounce && newRemoteItems.length) {
+          addAnnouncedNotificationRemoteIds(newRemoteItems.map(n => n.remoteId));
           newRemoteItems
             .slice()
             .reverse()
@@ -2303,7 +2335,7 @@
       if (notificationSyncTimer) return;
       notificationSyncTimer = setInterval(() => {
         syncNotificationsFromDb({ announceNew: true });
-      }, 2500);
+      }, 5000);
     }
 
     function subscribeToNotificationUpdates() {
@@ -2414,18 +2446,21 @@
     }
 
     async function markNotificationRead(id) {
-      // v1.2.8: Mark read only on this device.
+      // v1.2.9: Mark read only on this device.
       // Do not update Supabase is_read, or another Admin device may miss it.
       const list = getNotifications();
+      const item = list.find(n => String(n.id) === String(id));
+      if (item?.remoteId) addReadNotificationRemoteIds([item.remoteId]);
       saveNotifications(list.map(n => String(n.id) === String(id) ? { ...n, read: true } : n));
       renderNotificationCenter();
       updateNotificationBadge();
     }
 
     async function markAllNotificationsRead() {
-      // v1.2.8: Mark all read only on this device.
+      // v1.2.9: Mark all read only on this device.
       // Supabase remains untouched so other Admin devices still see unread alerts.
       const list = getNotifications();
+      addReadNotificationRemoteIds(list.filter(n => n.remoteId).map(n => n.remoteId));
       saveNotifications(list.map(n => ({ ...n, read: true })));
       renderNotificationCenter();
       updateNotificationBadge();
@@ -2436,7 +2471,7 @@
       const readItems = list.filter(n => n.read);
       const unreadItems = list.filter(n => !n.read);
 
-      // v1.2.8: Clear Read is device-specific.
+      // v1.2.9: Clear Read is device-specific.
       // Store cleared remote IDs locally so Supabase polling/realtime cannot
       // reload them on THIS device, but other devices still see them.
       const clearedRemoteIds = readItems
@@ -2793,7 +2828,7 @@ function getMyPlayerName() {
           device_token: null
         }]), 'Register player');
 
-        createNotification(
+        await createNotification(
           'registration',
           '👤 New Registration',
           `${name} is waiting for approval.`,
