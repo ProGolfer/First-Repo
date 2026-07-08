@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central</title>
+  <title>Money Game Central v1.2.8</title>
 
   <!--
     Golf Money Game
@@ -1986,6 +1986,7 @@
     // ======================================================
 
     const NOTIFICATIONS_KEY = 'gmg_notifications_v2';
+    const NOTIFICATIONS_CLEARED_KEY = 'gmg_notifications_cleared_remote_ids_v1';
     const ADMIN_DEVICE_KEY = 'gmg_admin_device';
     const NOTIFICATIONS_TABLE = 'notifications';
 
@@ -2056,6 +2057,29 @@
       } catch (_) {
         return [];
       }
+    }
+
+    function getClearedNotificationRemoteIds() {
+      try {
+        const raw = localStorage.getItem(NOTIFICATIONS_CLEARED_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(list) ? list.map(String) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveClearedNotificationRemoteIds(ids) {
+      try {
+        const arr = Array.from(ids || []).map(String).slice(-300);
+        localStorage.setItem(NOTIFICATIONS_CLEARED_KEY, JSON.stringify(arr));
+      } catch (_) {}
+    }
+
+    function addClearedNotificationRemoteIds(ids) {
+      const cleared = getClearedNotificationRemoteIds();
+      (ids || []).filter(Boolean).forEach(id => cleared.add(String(id)));
+      saveClearedNotificationRemoteIds(cleared);
     }
 
     function isDuplicateNotification(list, item) {
@@ -2227,15 +2251,19 @@
 
         if (result?.error) throw result.error;
 
-        const remoteList = (result.data || []).map(row => {
-          const n = normalizeNotification(row);
-          // Keep this device's read state so one device reading a notification
-          // does not instantly hide it as unread/read on every other device.
-          if (localReadByRemoteId.has(String(n.remoteId))) {
-            n.read = localReadByRemoteId.get(String(n.remoteId));
-          }
-          return n;
-        });
+        const clearedRemoteIds = getClearedNotificationRemoteIds();
+        const remoteList = (result.data || [])
+          .map(row => {
+            const n = normalizeNotification(row);
+            // v1.2.8: read/cleared state is device-specific.
+            // Supabase stores the notification itself, but each phone/PC controls
+            // whether that notification is read or hidden on that device.
+            n.read = localReadByRemoteId.has(String(n.remoteId))
+              ? localReadByRemoteId.get(String(n.remoteId))
+              : false;
+            return n;
+          })
+          .filter(n => !n.remoteId || !clearedRemoteIds.has(String(n.remoteId)));
 
         const newRemoteItems = remoteList.filter(n => n.remoteId && !knownRemoteIds.has(String(n.remoteId)));
         const localOnly = before.filter(n => !n.remoteId);
@@ -2306,11 +2334,7 @@
           notificationLastEventAt = new Date().toLocaleTimeString();
           notificationRealtimeStatus = 'UPDATE received ' + notificationLastEventAt;
           refreshNotificationDebugPanel();
-          const updated = normalizeNotification(payload.new || {});
-          const list = getNotifications().map(n =>
-            String(n.remoteId || '') === String(updated.remoteId || '') ? { ...n, read: updated.read } : n
-          );
-          saveNotifications(list);
+          // v1.2.8: ignore global is_read updates. Read/cleared state is per device.
           await syncNotificationsFromDb({ announceNew: false });
         })
         .subscribe((status) => {
@@ -2390,44 +2414,19 @@
     }
 
     async function markNotificationRead(id) {
+      // v1.2.8: Mark read only on this device.
+      // Do not update Supabase is_read, or another Admin device may miss it.
       const list = getNotifications();
-      const item = list.find(n => String(n.id) === String(id));
       saveNotifications(list.map(n => String(n.id) === String(id) ? { ...n, read: true } : n));
-
-      if (item?.remoteId && notificationDbAvailable) {
-        try {
-          await window.supabaseClient
-            .from(NOTIFICATIONS_TABLE)
-            .update({ is_read: true })
-            .eq('id', item.remoteId);
-        } catch (_) {}
-      }
+      renderNotificationCenter();
+      updateNotificationBadge();
     }
 
     async function markAllNotificationsRead() {
+      // v1.2.8: Mark all read only on this device.
+      // Supabase remains untouched so other Admin devices still see unread alerts.
       const list = getNotifications();
       saveNotifications(list.map(n => ({ ...n, read: true })));
-      renderNotificationCenter();
-      updateNotificationBadge();
-
-      if (notificationDbAvailable) {
-        try {
-          const remoteIds = list.filter(n => n.remoteId).map(n => n.remoteId);
-          if (remoteIds.length) {
-            const result = await window.supabaseClient
-              .from(NOTIFICATIONS_TABLE)
-              .update({ is_read: true })
-              .in('id', remoteIds);
-
-            if (result?.error) throw result.error;
-          }
-        } catch (err) {
-          notificationLastError = formatError(err);
-          refreshNotificationDebugPanel();
-          console.warn('Could not mark notifications read in Supabase.', err);
-        }
-      }
-
       renderNotificationCenter();
       updateNotificationBadge();
     }
@@ -2437,38 +2436,19 @@
       const readItems = list.filter(n => n.read);
       const unreadItems = list.filter(n => !n.read);
 
-      // Clear immediately on this device.
+      // v1.2.8: Clear Read is device-specific.
+      // Store cleared remote IDs locally so Supabase polling/realtime cannot
+      // reload them on THIS device, but other devices still see them.
+      const clearedRemoteIds = readItems
+        .filter(n => n.remoteId)
+        .map(n => n.remoteId);
+
+      addClearedNotificationRemoteIds(clearedRemoteIds);
       saveNotifications(unreadItems);
-      renderNotificationCenter();
-      updateNotificationBadge();
-
-      // Also delete cleared read notifications from Supabase so realtime/polling
-      // cannot reload the same notifications back into the bell.
-      if (notificationDbAvailable) {
-        try {
-          const remoteIds = readItems
-            .filter(n => n.remoteId)
-            .map(n => n.remoteId);
-
-          if (remoteIds.length) {
-            const result = await window.supabaseClient
-              .from(NOTIFICATIONS_TABLE)
-              .delete()
-              .in('id', remoteIds);
-
-            if (result?.error) throw result.error;
-          }
-
-          await syncNotificationsFromDb({ announceNew: false, force: true });
-        } catch (err) {
-          notificationLastError = formatError(err);
-          refreshNotificationDebugPanel();
-          console.warn('Could not clear read notifications from Supabase.', err);
-        }
-      }
 
       renderNotificationCenter();
       updateNotificationBadge();
+      refreshNotificationDebugPanel();
     }
 
     async function testAdminNotification() {
