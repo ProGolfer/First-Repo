@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.2 Realtime Notification Sync
+    Version: 1.2.3 Notification Bell Sync Fix
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -2118,7 +2118,7 @@
     }
 
     async function syncNotificationsFromDb(options = {}) {
-      if (!isAdminDevice()) return;
+      if (!isAdminDevice() && !options.force) return;
 
       try {
         const before = getNotifications();
@@ -2168,7 +2168,7 @@
       if (notificationSyncTimer) return;
       notificationSyncTimer = setInterval(() => {
         if (isAdminDevice()) syncNotificationsFromDb({ announceNew: true });
-      }, 8000);
+      }, 4000);
     }
 
     function subscribeToNotificationUpdates() {
@@ -2183,17 +2183,9 @@
           const n = normalizeNotification(payload.new || {});
           if (n.target !== 'admin' && n.target !== 'all') return;
 
-          if (isAdminDevice()) {
-            createLocalNotification(n.type, n.title, n.message, {
-              remoteId: n.remoteId,
-              createdAt: n.createdAt,
-              target: n.target
-            });
-          }
-
-          // Also sync from the table so every admin device catches up even if
-          // the realtime payload arrives out of order or a device just became admin.
-          await syncNotificationsFromDb({ announceNew: false });
+          // Sync first, then announce only if this row is new to this device.
+          // This keeps the bell list, badge, toast, and sound in one path.
+          await syncNotificationsFromDb({ announceNew: true });
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: NOTIFICATIONS_TABLE }, async (payload) => {
           const updated = normalizeNotification(payload.new || {});
@@ -2260,11 +2252,18 @@
       `).join('');
     }
 
-    function toggleNotificationCenter(force) {
+    async function toggleNotificationCenter(force) {
       const panel = document.getElementById('notification-panel');
       if (!panel) return;
       if (typeof force === 'boolean') panel.classList.toggle('active', force);
       else panel.classList.toggle('active');
+
+      // Always refresh from Supabase before showing the bell list.
+      // This fixes cases where a browser/system notification fires but
+      // the bell panel has not caught up yet.
+      if (panel.classList.contains('active')) {
+        await syncNotificationsFromDb({ announceNew: false, force: true });
+      }
       renderNotificationCenter();
     }
 
