@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Golf Money Game</title>
+  <title>Money Game Central</title>
 
   <!--
     Golf Money Game
-    Version: 1.2.3 Notification Bell Sync Fix
+    Version: 1.2.5 Notification Sync
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1208,7 +1208,7 @@
       <div class="header">
         <div class="header-logo">
           <div class="logo-mark">⛳</div>
-          <h1>GOLF <span>MONEY GAME</span></h1>
+          <h1>CLIFFSIDE <span>Money Game Central</span></h1>
         </div>
         <div class="header-actions">
           <button class="icon-btn" onclick="toggleNotificationCenter(); return false;">🔔<span class="notify-badge" id="top-pending-badge">0</span></button>
@@ -1941,6 +1941,12 @@
       return localStorage.getItem(ADMIN_DEVICE_KEY) === 'true';
     }
 
+    function shouldAutoAnnounceNotifications() {
+      // Automatic toast/sound/browser notifications are for Admin devices.
+      // The bell list itself can still sync from Supabase on any device.
+      return isAdminDevice();
+    }
+
     function normalizeNotification(row) {
       return {
         id: row?.local_id || row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -2096,16 +2102,9 @@
 
           if (result?.error) throw result.error;
 
-          // If this is the admin's own device, show it immediately. Other admin devices
-          // will receive it through the realtime subscription.
-          if (isAdminDevice()) {
-            createLocalNotification(type, title, message, {
-              remoteId: result.data?.id,
-              createdAt: result.data?.created_at,
-              target: item.target
-            });
-          }
-
+          // Sync through the same DB path used by every device.
+          // This prevents local-only notifications and duplicate bell entries.
+          await syncNotificationsFromDb({ announceNew: true, force: true });
           return result.data;
         } catch (err) {
           notificationDbAvailable = false;
@@ -2118,30 +2117,43 @@
     }
 
     async function syncNotificationsFromDb(options = {}) {
-      if (!isAdminDevice() && !options.force) return;
-
+      // v1.2.5: Supabase is the source of truth for the bell list.
+      // Any device can refresh the bell from the database, but only Admin
+      // devices automatically toast/chime/browser-notify.
       try {
         const before = getNotifications();
         const knownRemoteIds = new Set(before.filter(n => n.remoteId).map(n => String(n.remoteId)));
+        const localReadByRemoteId = new Map(
+          before.filter(n => n.remoteId).map(n => [String(n.remoteId), !!n.read])
+        );
 
         const result = await window.supabaseClient
           .from(NOTIFICATIONS_TABLE)
           .select('*')
           .in('target', ['admin', 'all'])
           .order('created_at', { ascending: false })
-          .limit(75);
+          .limit(100);
 
         if (result?.error) throw result.error;
 
-        const remoteList = (result.data || []).map(normalizeNotification);
-        const localOnly = before.filter(n => !n.remoteId);
+        const remoteList = (result.data || []).map(row => {
+          const n = normalizeNotification(row);
+          // Keep this device's read state so one device reading a notification
+          // does not instantly hide it as unread/read on every other device.
+          if (localReadByRemoteId.has(String(n.remoteId))) {
+            n.read = localReadByRemoteId.get(String(n.remoteId));
+          }
+          return n;
+        });
 
         const newRemoteItems = remoteList.filter(n => n.remoteId && !knownRemoteIds.has(String(n.remoteId)));
+        const localOnly = before.filter(n => !n.remoteId);
 
         saveNotifications([...remoteList, ...localOnly]);
         notificationDbAvailable = true;
 
-        if (options.announceNew) {
+        const shouldAnnounce = options.announceNew && shouldAutoAnnounceNotifications();
+        if (shouldAnnounce) {
           newRemoteItems
             .slice()
             .reverse()
@@ -2167,8 +2179,8 @@
     function startNotificationSyncTimer() {
       if (notificationSyncTimer) return;
       notificationSyncTimer = setInterval(() => {
-        if (isAdminDevice()) syncNotificationsFromDb({ announceNew: true });
-      }, 4000);
+        syncNotificationsFromDb({ announceNew: true });
+      }, 2500);
     }
 
     function subscribeToNotificationUpdates() {
@@ -2199,7 +2211,7 @@
           console.log('Notification realtime status:', status);
           if (status === 'SUBSCRIBED') {
             notificationDbAvailable = true;
-            if (isAdminDevice()) syncNotificationsFromDb({ announceNew: false });
+            syncNotificationsFromDb({ announceNew: false });
           }
         });
 
@@ -5539,7 +5551,7 @@ async function resetDailyGameIfNeeded() {
         renderNotificationCenter();
         updateNotificationBadge();
         subscribeToNotificationUpdates();
-        if (isAdminDevice()) await loadNotificationsFromDb();
+        await loadNotificationsFromDb();
         if (localStorage.getItem('gmg_open_captain_after_load') === 'true') {
           localStorage.removeItem('gmg_open_captain_after_load');
           renderCaptainTeamsPage();
