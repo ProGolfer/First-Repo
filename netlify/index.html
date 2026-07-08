@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.5 Notification Sync
+    Version: 1.2.6 Notification Debug Panel
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -249,6 +249,45 @@
     @keyframes toastIn {
       from { opacity:0; transform:translateY(-10px) scale(.98); }
       to { opacity:1; transform:translateY(0) scale(1); }
+    }
+
+
+
+    .debug-grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .debug-cell {
+      background:rgba(2,8,14,.42);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:12px;
+      padding:10px;
+      font-weight:850;
+      color:#e5e7eb;
+      min-height:58px;
+    }
+
+    .debug-cell small {
+      display:block;
+      color:#54e86f;
+      font-weight:950;
+      text-transform:uppercase;
+      font-size:11px;
+      margin-bottom:4px;
+    }
+
+    .debug-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:12px;
+      word-break:break-word;
+      color:#cbd5e1;
+    }
+
+    @media (max-width: 760px) {
+      .debug-grid { grid-template-columns:1fr; }
     }
 
     .status-line {
@@ -1800,6 +1839,23 @@
             </div>
 
             <div class="admin-section">
+              <h3 style="margin-bottom:10px;">🧪 Notification Debug Panel</h3>
+              <p class="muted" style="margin-bottom:12px;">Use this if notifications do not show on every device. It checks the database, realtime channel, polling backup, and local bell state.</p>
+              <button class="btn btn-primary" onclick="runNotificationDiagnostics()">Run Notification Diagnostics</button>
+              <button class="btn btn-secondary" onclick="testRealtimeOnlyNotification()">Insert Test DB Notification</button>
+              <div class="debug-grid">
+                <div class="debug-cell"><small>Database Table</small><div id="debug-db-status">Not checked</div></div>
+                <div class="debug-cell"><small>Realtime Channel</small><div id="debug-realtime-status">Not checked</div></div>
+                <div class="debug-cell"><small>Polling Backup</small><div id="debug-polling-status">Not checked</div></div>
+                <div class="debug-cell"><small>Admin Device</small><div id="debug-admin-status">Not checked</div></div>
+                <div class="debug-cell"><small>Unread Count</small><div id="debug-unread-count">Not checked</div></div>
+                <div class="debug-cell"><small>Last Notification</small><div id="debug-last-notification">Not checked</div></div>
+                <div class="debug-cell"><small>Device ID</small><div class="debug-code" id="debug-device-id">Not checked</div></div>
+                <div class="debug-cell"><small>Last Error</small><div class="debug-code" id="debug-last-error">None</div></div>
+              </div>
+            </div>
+
+            <div class="admin-section">
               <h3 style="margin-bottom:10px;">👥 Player Management</h3>
               <p class="muted" style="margin-bottom:12px;">Delete one player if someone registered twice, typed the wrong name, or backed out.</p>
 
@@ -1933,12 +1989,44 @@
     const ADMIN_DEVICE_KEY = 'gmg_admin_device';
     const NOTIFICATIONS_TABLE = 'notifications';
 
+    const ADMIN_DEVICE_ID_KEY = 'gmg_admin_device_id';
+
     let notificationRealtimeChannel = null;
     let notificationDbAvailable = true;
     let notificationSyncTimer = null;
+    let notificationRealtimeStatus = 'not started';
+    let notificationLastError = '';
+    let notificationLastEventAt = '';
 
     function isAdminDevice() {
       return localStorage.getItem(ADMIN_DEVICE_KEY) === 'true';
+    }
+
+    function getAdminDeviceId() {
+      let id = localStorage.getItem(ADMIN_DEVICE_ID_KEY);
+      if (!id) {
+        id = 'device_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        localStorage.setItem(ADMIN_DEVICE_ID_KEY, id);
+      }
+      return id;
+    }
+
+    function setDebugText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function refreshNotificationDebugPanel() {
+      const list = getNotifications();
+      const last = list[0];
+      setDebugText('debug-db-status', notificationDbAvailable ? 'Connected / available' : 'Unavailable or permission error');
+      setDebugText('debug-realtime-status', notificationRealtimeStatus || 'not started');
+      setDebugText('debug-polling-status', notificationSyncTimer ? 'Running every 2.5 seconds' : 'Not running');
+      setDebugText('debug-admin-status', isAdminDevice() ? 'Yes — this device is Admin-enabled' : 'No — login as Admin on this device');
+      setDebugText('debug-unread-count', String(list.filter(n => !n.read).length));
+      setDebugText('debug-last-notification', last ? `${last.title}: ${last.message}` : 'None loaded');
+      setDebugText('debug-device-id', getAdminDeviceId());
+      setDebugText('debug-last-error', notificationLastError || 'None');
     }
 
     function shouldAutoAnnounceNotifications() {
@@ -1999,6 +2087,7 @@
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(deduped.slice(0, 100)));
       renderNotificationCenter();
       updateNotificationBadge();
+      refreshNotificationDebugPanel();
     }
 
     function timeAgo(ts) {
@@ -2108,6 +2197,8 @@
           return result.data;
         } catch (err) {
           notificationDbAvailable = false;
+          notificationLastError = formatError(err);
+          refreshNotificationDebugPanel();
           console.warn('Notification table unavailable. Using local fallback.', err);
         }
       }
@@ -2151,6 +2242,8 @@
 
         saveNotifications([...remoteList, ...localOnly]);
         notificationDbAvailable = true;
+        notificationLastError = '';
+        refreshNotificationDebugPanel();
 
         const shouldAnnounce = options.announceNew && shouldAutoAnnounceNotifications();
         if (shouldAnnounce) {
@@ -2168,6 +2261,8 @@
         }
       } catch (err) {
         notificationDbAvailable = false;
+        notificationLastError = formatError(err);
+        refreshNotificationDebugPanel();
         console.warn('Could not sync notifications table yet.', err);
       }
     }
@@ -2185,13 +2280,21 @@
 
     function subscribeToNotificationUpdates() {
       if (notificationRealtimeChannel) {
+        notificationRealtimeStatus = 'already started';
+        refreshNotificationDebugPanel();
         startNotificationSyncTimer();
         return;
       }
 
+      notificationRealtimeStatus = 'starting';
+      refreshNotificationDebugPanel();
+
       notificationRealtimeChannel = window.supabaseClient
         .channel('notifications-live-' + Math.random().toString(16).slice(2))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: NOTIFICATIONS_TABLE }, async (payload) => {
+          notificationLastEventAt = new Date().toLocaleTimeString();
+          notificationRealtimeStatus = 'INSERT received ' + notificationLastEventAt;
+          refreshNotificationDebugPanel();
           const n = normalizeNotification(payload.new || {});
           if (n.target !== 'admin' && n.target !== 'all') return;
 
@@ -2200,6 +2303,9 @@
           await syncNotificationsFromDb({ announceNew: true });
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: NOTIFICATIONS_TABLE }, async (payload) => {
+          notificationLastEventAt = new Date().toLocaleTimeString();
+          notificationRealtimeStatus = 'UPDATE received ' + notificationLastEventAt;
+          refreshNotificationDebugPanel();
           const updated = normalizeNotification(payload.new || {});
           const list = getNotifications().map(n =>
             String(n.remoteId || '') === String(updated.remoteId || '') ? { ...n, read: updated.read } : n
@@ -2208,6 +2314,8 @@
           await syncNotificationsFromDb({ announceNew: false });
         })
         .subscribe((status) => {
+          notificationRealtimeStatus = status;
+          refreshNotificationDebugPanel();
           console.log('Notification realtime status:', status);
           if (status === 'SUBSCRIBED') {
             notificationDbAvailable = true;
@@ -2220,7 +2328,9 @@
 
     async function enableAdminNotifications() {
       localStorage.setItem(ADMIN_DEVICE_KEY, 'true');
+      getAdminDeviceId();
       notificationDbAvailable = true;
+      refreshNotificationDebugPanel();
       try {
         if ('Notification' in window && Notification.permission === 'default') {
           await Notification.requestPermission();
@@ -2317,6 +2427,61 @@
 
     async function testAdminNotification() {
       await createNotification('test', '🔔 Test Notification', 'Money Game Central notifications are working.', { target: 'admin' });
+    }
+
+    async function testRealtimeOnlyNotification() {
+      try {
+        notificationDbAvailable = true;
+        const result = await window.supabaseClient
+          .from(NOTIFICATIONS_TABLE)
+          .insert([{
+            type: 'debug',
+            title: '🧪 Debug Test',
+            message: 'Inserted directly into Supabase from ' + getAdminDeviceId(),
+            target: 'admin',
+            is_read: false,
+            created_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (result?.error) throw result.error;
+        notificationLastError = '';
+        await syncNotificationsFromDb({ announceNew: true, force: true });
+        refreshNotificationDebugPanel();
+        alert('Debug notification inserted. Check the other device bell within 3 seconds.');
+      } catch (err) {
+        notificationLastError = formatError(err);
+        refreshNotificationDebugPanel();
+        alert('Debug insert failed: ' + formatError(err));
+      }
+    }
+
+    async function runNotificationDiagnostics() {
+      localStorage.setItem(ADMIN_DEVICE_KEY, 'true');
+      getAdminDeviceId();
+      notificationDbAvailable = true;
+      subscribeToNotificationUpdates();
+      startNotificationSyncTimer();
+
+      try {
+        const result = await window.supabaseClient
+          .from(NOTIFICATIONS_TABLE)
+          .select('*')
+          .in('target', ['admin', 'all'])
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (result?.error) throw result.error;
+        notificationDbAvailable = true;
+        notificationLastError = '';
+        await syncNotificationsFromDb({ announceNew: false, force: true });
+      } catch (err) {
+        notificationDbAvailable = false;
+        notificationLastError = formatError(err);
+      }
+
+      refreshNotificationDebugPanel();
     }
 
     // ======================================================
