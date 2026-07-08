@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.6 Notification Debug Panel
+    Version: 1.2.7 Notification Clear Fix
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -2407,22 +2407,68 @@
     async function markAllNotificationsRead() {
       const list = getNotifications();
       saveNotifications(list.map(n => ({ ...n, read: true })));
+      renderNotificationCenter();
+      updateNotificationBadge();
 
       if (notificationDbAvailable) {
         try {
           const remoteIds = list.filter(n => n.remoteId).map(n => n.remoteId);
           if (remoteIds.length) {
-            await window.supabaseClient
+            const result = await window.supabaseClient
               .from(NOTIFICATIONS_TABLE)
               .update({ is_read: true })
               .in('id', remoteIds);
+
+            if (result?.error) throw result.error;
           }
-        } catch (_) {}
+        } catch (err) {
+          notificationLastError = formatError(err);
+          refreshNotificationDebugPanel();
+          console.warn('Could not mark notifications read in Supabase.', err);
+        }
       }
+
+      renderNotificationCenter();
+      updateNotificationBadge();
     }
 
-    function clearReadNotifications() {
-      saveNotifications(getNotifications().filter(n => !n.read));
+    async function clearReadNotifications() {
+      const list = getNotifications();
+      const readItems = list.filter(n => n.read);
+      const unreadItems = list.filter(n => !n.read);
+
+      // Clear immediately on this device.
+      saveNotifications(unreadItems);
+      renderNotificationCenter();
+      updateNotificationBadge();
+
+      // Also delete cleared read notifications from Supabase so realtime/polling
+      // cannot reload the same notifications back into the bell.
+      if (notificationDbAvailable) {
+        try {
+          const remoteIds = readItems
+            .filter(n => n.remoteId)
+            .map(n => n.remoteId);
+
+          if (remoteIds.length) {
+            const result = await window.supabaseClient
+              .from(NOTIFICATIONS_TABLE)
+              .delete()
+              .in('id', remoteIds);
+
+            if (result?.error) throw result.error;
+          }
+
+          await syncNotificationsFromDb({ announceNew: false, force: true });
+        } catch (err) {
+          notificationLastError = formatError(err);
+          refreshNotificationDebugPanel();
+          console.warn('Could not clear read notifications from Supabase.', err);
+        }
+      }
+
+      renderNotificationCenter();
+      updateNotificationBadge();
     }
 
     async function testAdminNotification() {
