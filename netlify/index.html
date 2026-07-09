@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.3.1 Phase 2 Announcements Label Polish
+    Version: 1.3.2 Announcement Notifications / Privacy Rules
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1767,7 +1767,7 @@
 
             <div class="approval-note">
               <div class="title">📢 Phase 2 Communication Hub</div>
-              <div>Announcements show on the home page. This does not touch Best 3, Front, Back, Total, or live scoring.</div>
+              <div>Announcements show on the home page and send a notification when a new one is posted. This does not touch Best 3, Front, Back, Total, or live scoring.</div>
             </div>
 
             <div class="admin-section">
@@ -2025,7 +2025,7 @@
     const SETTINGS_KEY = 'app';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const ANNOUNCEMENTS_TABLE = 'announcements';
-    const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_league_announcements_v1';
+    const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_announcements_v1';
 
     // ======================================================
 
@@ -2203,9 +2203,10 @@
       setDebugText('debug-last-error', notificationLastError || 'None');
     }
 
-    function shouldAutoAnnounceNotifications() {
-      // Automatic toast/sound/browser notifications are for Admin devices.
-      // The bell list itself can still sync from Supabase on any device.
+    function shouldAutoAnnounceNotifications(item) {
+      // Registration/admin alerts should only pop for Admin devices.
+      // Announcements are league-wide messages, so they can pop for every device.
+      if (item && (item.target === 'all' || item.type === 'announcement')) return true;
       return isAdminDevice();
     }
 
@@ -2432,10 +2433,10 @@
         notificationLastError = '';
         refreshNotificationDebugPanel();
 
-        const shouldAnnounce = options.announceNew && shouldAutoAnnounceNotifications();
-        if (shouldAnnounce && newRemoteItems.length) {
-          addAnnouncedNotificationRemoteIds(newRemoteItems.map(n => n.remoteId));
-          newRemoteItems
+        if (options.announceNew && newRemoteItems.length) {
+          const announceableItems = newRemoteItems.filter(n => shouldAutoAnnounceNotifications(n));
+          if (announceableItems.length) addAnnouncedNotificationRemoteIds(announceableItems.map(n => n.remoteId));
+          announceableItems
             .slice()
             .reverse()
             .forEach(n => {
@@ -2765,6 +2766,7 @@
 
     // ======================================================
     // PHASE 2: ANNOUNCEMENTS
+    // Privacy rule: live status and scores stay limited to the player's own team until other teams submit final results.
     // ======================================================
 
     function getAnnouncementIcon(priority) {
@@ -2839,7 +2841,7 @@
               <div>
                 <div class="announcement-title">${escapeHtml(a.title)}</div>
                 <div class="announcement-message">${escapeHtml(a.message)}</div>
-                <div class="announcement-meta">${a.priority === 'pinned' ? 'Pinned' : a.priority === 'important' ? 'Important' : 'League note'}</div>
+                <div class="announcement-meta">${a.priority === 'pinned' ? 'Pinned' : a.priority === 'important' ? 'Important' : 'Announcement'}</div>
               </div>
               <div class="announcement-pin">${a.pinned || a.priority === 'pinned' ? 'Pinned' : ''}</div>
             </div>
@@ -2930,6 +2932,7 @@
           } else {
             const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).insert([{ ...payload, created_by: 'admin' }]);
             if (result?.error) throw result.error;
+            await createNotification('announcement', '📢 New Announcement', title, { target: 'all' });
           }
           await loadAnnouncements();
         } else {
@@ -2939,6 +2942,7 @@
             if (idx >= 0) list[idx] = normalizeAnnouncement({ ...list[idx], ...payload });
           } else {
             list.unshift(normalizeAnnouncement({ ...payload, created_at: new Date().toISOString() }));
+            createLocalNotification('announcement', '📢 New Announcement', title, { target: 'all', forceLocal: true });
           }
           saveLocalAnnouncements(list);
           appState.announcements = sortAnnouncements(list);
