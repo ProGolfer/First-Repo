@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.3.2 Announcement Notifications / Privacy Rules
+    Version: 1.3.3 Track 1 / Continuous Dashboard Foundation
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -343,6 +343,105 @@
       .announcement-item { grid-template-columns:36px 1fr; }
       .announcement-item .announcement-pin { grid-column:2; }
       .announcement-admin-row { grid-template-columns:1fr; align-items:stretch; }
+    }
+
+
+    /* Track 1: Continuous Event Dashboard Foundation */
+    .event-status-panel {
+      background:
+        radial-gradient(circle at top right, rgba(84,232,111,.20), transparent 42%),
+        linear-gradient(180deg, rgba(15,30,44,.98), rgba(4,12,22,.98));
+      border:1px solid rgba(84,232,111,.30);
+      border-radius:24px;
+      padding:18px;
+      margin-bottom:14px;
+      box-shadow:0 0 34px rgba(34,197,94,.12), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .event-status-top {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .event-stage-pill {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(34,197,94,.14);
+      border:1px solid rgba(34,197,94,.28);
+      color:#bbf7d0;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      font-size:12px;
+    }
+
+    .event-status-title {
+      font-size:30px;
+      line-height:1.05;
+      font-weight:950;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      color:#fff;
+      margin-top:10px;
+    }
+
+    .event-status-title span { color:#54e86f; display:block; }
+
+    .event-status-subtitle {
+      color:#cbd5e1;
+      font-weight:850;
+      line-height:1.4;
+      margin-top:8px;
+    }
+
+    .event-status-grid {
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .event-mini-stat {
+      background:rgba(2,8,14,.42);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:16px;
+      padding:12px;
+      text-align:center;
+    }
+
+    .event-mini-stat strong { display:block; font-size:26px; color:#fff; }
+    .event-mini-stat small { color:#54e86f; font-weight:950; text-transform:uppercase; font-size:11px; }
+
+    .my-team-live-panel {
+      background:linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:20px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .my-team-live-row {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+      align-items:center;
+      padding:10px 0;
+      border-top:1px solid rgba(148,163,184,.14);
+      font-weight:850;
+    }
+
+    @media (max-width: 760px) {
+      .event-status-grid { grid-template-columns:1fr 1fr; }
+      .event-status-title { font-size:26px; }
+      .my-team-live-row { grid-template-columns:1fr; }
     }
 
     .status-line {
@@ -1364,6 +1463,33 @@
             <span>SETTINGS</span>
             <small>Admin locked</small>
           </button>
+        </div>
+      </div>
+
+      <div id="event-status-dashboard" class="event-status-panel">
+        <div class="event-status-top">
+          <div>
+            <div class="event-stage-pill" id="event-stage-pill">☀️ Loading Today</div>
+            <div class="event-status-title" id="event-status-title">Money Game <span>Today</span></div>
+            <div class="event-status-subtitle" id="event-status-subtitle">Checking registration, teams, and today's game status.</div>
+          </div>
+          <button class="btn btn-small btn-secondary" onclick="showMoneyGameCentral()">Money Game →</button>
+        </div>
+        <div class="event-status-grid">
+          <div class="event-mini-stat"><strong id="event-stat-players">0</strong><small>Players</small></div>
+          <div class="event-mini-stat"><strong id="event-stat-pending">0</strong><small>Pending</small></div>
+          <div class="event-mini-stat"><strong id="event-stat-teams">0</strong><small>Teams</small></div>
+          <div class="event-mini-stat"><strong id="event-stat-clock">--</strong><small>Status</small></div>
+        </div>
+      </div>
+
+      <div id="my-team-live-dashboard" class="my-team-live-panel">
+        <div class="players-header">
+          <h3>🏌️ My Team Live Status</h3>
+          <span class="players-count" id="my-team-live-badge">Private</span>
+        </div>
+        <div id="my-team-live-content" class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
+          Register this device to see your team status. Other team scores stay hidden until they submit.
         </div>
       </div>
 
@@ -3700,6 +3826,161 @@ function submitCaptainNumTeams() {
 // ======================================================
 
 
+function getRegistrationWindowState() {
+  const openTime = appState.settings.open_time || '06:00';
+  const cutoffTime = appState.settings.cutoff_time || '09:30';
+  const now = new Date();
+  const openDate = new Date();
+  const cutoffDate = new Date();
+  const [openH, openM] = openTime.split(':').map(Number);
+  const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
+  openDate.setHours(openH, openM, 0, 0);
+  cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+  const open = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+  return { open, now, openDate, cutoffDate, openTime, cutoffTime };
+}
+
+function formatCountdown(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return 'Now';
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
+function getSubmittedTeamCountSafe() {
+  try { return getTeamScoreRows().filter(r => r.submitted).length; } catch (_) { return 0; }
+}
+
+function getEventStageInfo(approved, pending, teamCount) {
+  const reg = getRegistrationWindowState();
+  const assigned = approved.filter(p => p.team).length;
+  const activeTeams = getActiveTeams().length || teamCount || 0;
+  const submitted = getSubmittedTeamCountSafe();
+  const allSubmitted = activeTeams > 0 && submitted >= activeTeams;
+
+  if (allSubmitted) {
+    return {
+      pill: '🏆 Final Results',
+      title: 'Saturday <span>Recap Ready</span>',
+      subtitle: 'All teams are finished. Money Game can now show the full day recap and final standings.',
+      clock: 'Final'
+    };
+  }
+
+  if (submitted > 0) {
+    return {
+      pill: '🏁 Teams Finishing',
+      title: 'Results <span>Unlocking</span>',
+      subtitle: `${submitted} of ${activeTeams || teamCount} teams have submitted. Finished teams unlock only after your team submits.`,
+      clock: `${submitted}/${activeTeams || teamCount}`
+    };
+  }
+
+  if (assigned > 0 && activeTeams > 0) {
+    return {
+      pill: '🏌️ Live Play',
+      title: 'Your Team <span>Live Only</span>',
+      subtitle: 'Live status stays private to your team. Other team scores remain hidden until they submit.',
+      clock: 'Private'
+    };
+  }
+
+  if (!reg.open && approved.length > 0 && reg.now > reg.cutoffDate) {
+    return {
+      pill: '🚩 Captains Selecting',
+      title: 'Teams <span>Being Built</span>',
+      subtitle: `${approved.length} approved players. Captains can build teams when ready.`,
+      clock: `${assigned}/${approved.length}`
+    };
+  }
+
+  if (reg.open) {
+    return {
+      pill: '🟢 Registration Open',
+      title: 'Money Game <span>Registration</span>',
+      subtitle: `${approved.length} approved players and ${pending.length} waiting for approval. Registration closes at ${formatTime12(reg.cutoffTime)}.`,
+      clock: formatCountdown(reg.cutoffDate - reg.now)
+    };
+  }
+
+  if (reg.now < reg.openDate) {
+    return {
+      pill: '☀️ Before Registration',
+      title: 'Saturday <span>Morning</span>',
+      subtitle: `Registration opens at ${formatTime12(reg.openTime)}. Weather, announcements, and notifications are ready.`,
+      clock: formatCountdown(reg.openDate - reg.now)
+    };
+  }
+
+  return {
+    pill: '🔒 Registration Closed',
+    title: 'Registration <span>Closed</span>',
+    subtitle: 'Registration is closed. Admin can reopen it from Settings if needed.',
+    clock: 'Closed'
+  };
+}
+
+function renderEventStatusDashboard(approved, pending, teamCount) {
+  const info = getEventStageInfo(approved, pending, teamCount);
+  const setHtml = (id, value) => { const el = document.getElementById(id); if (el) el.innerHTML = value; };
+  const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  setText('event-stage-pill', info.pill);
+  setHtml('event-status-title', info.title);
+  setText('event-status-subtitle', info.subtitle);
+  setText('event-stat-players', approved.length);
+  setText('event-stat-pending', pending.length);
+  setText('event-stat-teams', teamCount);
+  setText('event-stat-clock', info.clock);
+}
+
+function renderMyTeamLiveDashboard() {
+  const badge = document.getElementById('my-team-live-badge');
+  const mount = document.getElementById('my-team-live-content');
+  if (!mount) return;
+
+  const myPlayer = getMyPlayer();
+  if (!myPlayer) {
+    if (badge) badge.textContent = 'Private';
+    mount.innerHTML = 'Register this device to see your team status. Other team scores stay hidden until they submit.';
+    return;
+  }
+
+  if (!myPlayer.team) {
+    if (badge) badge.textContent = 'Waiting';
+    mount.innerHTML = `You are registered as <strong>${escapeHtml(myPlayer.name)}</strong>, but you have not been assigned to a team yet.`;
+    return;
+  }
+
+  const progress = getTeamProgress(myPlayer.team);
+  const row = getMyTeamScoreRow();
+  const teamName = getTeamName(myPlayer.team);
+  if (badge) badge.textContent = row?.submitted ? 'Submitted' : 'Private Live';
+
+  mount.innerHTML = `
+    <div class="my-team-live-row">
+      <div>
+        <div style="font-size:20px;font-weight:950;color:#fff;">${escapeHtml(teamName)}</div>
+        <div class="muted" style="font-weight:800;margin-top:4px;">Only your team sees this live status.</div>
+      </div>
+      <div style="text-align:right;font-weight:950;color:#54e86f;">${row?.submitted ? 'Final Submitted' : `Hole ${progress.currentHole}`}</div>
+    </div>
+    <div class="my-team-live-row">
+      <span>Progress</span>
+      <strong>${progress.submittedCount}/18 holes saved</strong>
+    </div>
+    <div class="my-team-live-row">
+      <span>Front / Back / Total</span>
+      <strong>${progress.front} / ${progress.back} / ${progress.total}</strong>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-primary" onclick="showView('view-game'); loadGameView();">Open My Live Scorecard</button>
+    </div>
+  `;
+}
+
+
 function renderHome() {
   const approved = appState.players.filter(p => p.status === 'approved');
   const pending = appState.players.filter(p => p.status === 'pending');
@@ -3709,6 +3990,8 @@ function renderHome() {
   if (pendingCount) pendingCount.textContent = pending.length;
 
 const teamCount = getActiveTeamCount();
+  renderEventStatusDashboard(approved, pending, teamCount);
+  renderMyTeamLiveDashboard();
   const setText = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -3743,15 +4026,12 @@ const teamCount = getActiveTeamCount();
   const registrationOpenStatus = document.getElementById('registration-open-status');
   const settingsRegistrationState = document.getElementById('settings-registration-state');
 
-  const now = new Date();
-  const openDate = new Date();
-  const cutoffDate = new Date();
-  const [openH, openM] = openTime.split(':').map(Number);
-  const [cutoffH, cutoffM] = cutoffTime.split(':').map(Number);
-  openDate.setHours(openH, openM, 0, 0);
-  cutoffDate.setHours(cutoffH, cutoffM, 0, 0);
+  const regState = getRegistrationWindowState();
+  const now = regState.now;
+  const openDate = regState.openDate;
+  const cutoffDate = regState.cutoffDate;
 
-  const isRegistrationOpen = !appState.settings.registration_closed && now >= openDate && now <= cutoffDate;
+  const isRegistrationOpen = regState.open;
   if (registrationOpenStatus) {
     registrationOpenStatus.textContent = isRegistrationOpen ? 'OPEN' : 'CLOSED';
     registrationOpenStatus.className = isRegistrationOpen ? 'green' : 'orange';
