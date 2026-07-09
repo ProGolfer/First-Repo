@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.3.3 Track 1 / Continuous Dashboard Foundation
+    Version: 1.3.4 Track 1 / Event Engine
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -2181,7 +2181,8 @@
       selectedNumTeams: 4,
       teamsSubmitted: false,
       announcements: [],
-      announcementsDbAvailable: false
+      announcementsDbAvailable: false,
+      eventEngine: null
     };
 
     // ======================================================
@@ -3853,85 +3854,110 @@ function getSubmittedTeamCountSafe() {
   try { return getTeamScoreRows().filter(r => r.submitted).length; } catch (_) { return 0; }
 }
 
-function getEventStageInfo(approved, pending, teamCount) {
+function getEventEngineSnapshot() {
+  const approved = appState.players.filter(p => p.status === 'approved');
+  const pending = appState.players.filter(p => p.status === 'pending');
   const reg = getRegistrationWindowState();
-  const assigned = approved.filter(p => p.team).length;
+  const teamCount = getActiveTeamCount();
   const activeTeams = getActiveTeams().length || teamCount || 0;
+  const assigned = approved.filter(p => p.team).length;
   const submitted = getSubmittedTeamCountSafe();
   const allSubmitted = activeTeams > 0 && submitted >= activeTeams;
+  const hasAnyScores = getTeamScoreRows().some(r => Number(r.completed || 0) > 0 || r.submitted);
+
+  let stage = 'REGISTRATION_CLOSED';
+  let pill = '🔒 Registration Closed';
+  let title = 'Registration <span>Closed</span>';
+  let subtitle = 'Registration is closed. Admin can reopen it from Settings if needed.';
+  let clock = 'Closed';
+  let nextAction = 'Admin can reopen registration or begin team setup.';
 
   if (allSubmitted) {
-    return {
-      pill: '🏆 Final Results',
-      title: 'Saturday <span>Recap Ready</span>',
-      subtitle: 'All teams are finished. Money Game can now show the full day recap and final standings.',
-      clock: 'Final'
-    };
-  }
-
-  if (submitted > 0) {
-    return {
-      pill: '🏁 Teams Finishing',
-      title: 'Results <span>Unlocking</span>',
-      subtitle: `${submitted} of ${activeTeams || teamCount} teams have submitted. Finished teams unlock only after your team submits.`,
-      clock: `${submitted}/${activeTeams || teamCount}`
-    };
-  }
-
-  if (assigned > 0 && activeTeams > 0) {
-    return {
-      pill: '🏌️ Live Play',
-      title: 'Your Team <span>Live Only</span>',
-      subtitle: 'Live status stays private to your team. Other team scores remain hidden until they submit.',
-      clock: 'Private'
-    };
-  }
-
-  if (!reg.open && approved.length > 0 && reg.now > reg.cutoffDate) {
-    return {
-      pill: '🚩 Captains Selecting',
-      title: 'Teams <span>Being Built</span>',
-      subtitle: `${approved.length} approved players. Captains can build teams when ready.`,
-      clock: `${assigned}/${approved.length}`
-    };
-  }
-
-  if (reg.open) {
-    return {
-      pill: '🟢 Registration Open',
-      title: 'Money Game <span>Registration</span>',
-      subtitle: `${approved.length} approved players and ${pending.length} waiting for approval. Registration closes at ${formatTime12(reg.cutoffTime)}.`,
-      clock: formatCountdown(reg.cutoffDate - reg.now)
-    };
-  }
-
-  if (reg.now < reg.openDate) {
-    return {
-      pill: '☀️ Before Registration',
-      title: 'Saturday <span>Morning</span>',
-      subtitle: `Registration opens at ${formatTime12(reg.openTime)}. Weather, announcements, and notifications are ready.`,
-      clock: formatCountdown(reg.openDate - reg.now)
-    };
+    stage = 'FINAL_RESULTS';
+    pill = '🏆 Final Results';
+    title = 'Money Game <span>Recap Ready</span>';
+    subtitle = 'All teams are finished. The Money Game overview can now become the final Recap.';
+    clock = 'Final';
+    nextAction = 'Open Money Game to review final results and Recap.';
+  } else if (submitted > 0) {
+    stage = 'RESULTS_UNLOCKING';
+    pill = '🏁 Teams Finishing';
+    title = 'Results <span>Unlocking</span>';
+    subtitle = `${submitted} of ${activeTeams || teamCount} teams have submitted. Finished teams unlock only after your team submits.`;
+    clock = `${submitted}/${activeTeams || teamCount}`;
+    nextAction = 'Teams that have not submitted still only see their own live status.';
+  } else if (hasAnyScores || appState.settings.game_started || (assigned > 0 && activeTeams > 0 && assigned >= Math.min(approved.length, activeTeams))) {
+    stage = 'LIVE_PLAY';
+    pill = '🏌️ Live Play';
+    title = 'Your Team <span>Live Only</span>';
+    subtitle = 'Live status stays private to your team. Other team scores remain hidden until they submit.';
+    clock = 'Private';
+    nextAction = 'Captains continue entering scores for their own team.';
+  } else if (assigned > 0 || (!reg.open && approved.length > 0 && reg.now > reg.cutoffDate)) {
+    stage = 'CAPTAINS_PICKING';
+    pill = '🚩 Captains Selecting';
+    title = 'Teams <span>Being Built</span>';
+    subtitle = `${approved.length} approved players. Captains can build teams when ready.`;
+    clock = `${assigned}/${approved.length}`;
+    nextAction = 'Captains assign players, then teams move into live play.';
+  } else if (reg.open) {
+    stage = 'REGISTRATION_OPEN';
+    pill = '🟢 Registration Open';
+    title = 'Money Game <span>Registration</span>';
+    subtitle = `${approved.length} approved players and ${pending.length} waiting for approval. Registration closes at ${formatTime12(reg.cutoffTime)}.`;
+    clock = formatCountdown(reg.cutoffDate - reg.now);
+    nextAction = pending.length ? 'Admin should review pending players.' : 'Waiting for more players to register.';
+  } else if (reg.now < reg.openDate) {
+    stage = 'BEFORE_REGISTRATION';
+    pill = '☀️ Before Registration';
+    title = 'Money Game <span>Morning</span>';
+    subtitle = `Registration opens at ${formatTime12(reg.openTime)}. Weather, announcements, and notifications are ready.`;
+    clock = formatCountdown(reg.openDate - reg.now);
+    nextAction = 'Registration will open automatically at the scheduled time.';
   }
 
   return {
-    pill: '🔒 Registration Closed',
-    title: 'Registration <span>Closed</span>',
-    subtitle: 'Registration is closed. Admin can reopen it from Settings if needed.',
-    clock: 'Closed'
+    stage,
+    pill,
+    title,
+    subtitle,
+    clock,
+    nextAction,
+    privacy: 'Only your team sees live scores. Other teams unlock after they submit.',
+    counts: {
+      approved: approved.length,
+      pending: pending.length,
+      teamCount,
+      activeTeams,
+      assigned,
+      submitted
+    },
+    registration: reg
   };
 }
 
+function getEventStageInfo(approved, pending, teamCount) {
+  // Compatibility wrapper for older dashboard calls.
+  return getEventEngineSnapshot();
+}
+
+function updateEventEngine() {
+  const snapshot = getEventEngineSnapshot();
+  appState.eventEngine = snapshot;
+  document.body.setAttribute('data-event-stage', snapshot.stage);
+  return snapshot;
+}
+
 function renderEventStatusDashboard(approved, pending, teamCount) {
-  const info = getEventStageInfo(approved, pending, teamCount);
+  const info = updateEventEngine();
   const setHtml = (id, value) => { const el = document.getElementById(id); if (el) el.innerHTML = value; };
   const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
   setText('event-stage-pill', info.pill);
   setHtml('event-status-title', info.title);
   setText('event-status-subtitle', info.subtitle);
-  setText('event-stat-players', approved.length);
-  setText('event-stat-pending', pending.length);
-  setText('event-stat-teams', teamCount);
+  setText('event-stat-players', info.counts.approved);
+  setText('event-stat-pending', info.counts.pending);
+  setText('event-stat-teams', info.counts.teamCount);
   setText('event-stat-clock', info.clock);
 }
 
