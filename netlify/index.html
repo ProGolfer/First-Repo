@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.2.7 Notification Clear Fix
+    Version: 1.3.0 Phase 2 League Announcements
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -288,6 +288,61 @@
 
     @media (max-width: 760px) {
       .debug-grid { grid-template-columns:1fr; }
+    }
+
+
+
+    /* Phase 2: League Announcements */
+    .announcements-panel {
+      background:linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
+      border:1px solid rgba(84,232,111,.24);
+      border-radius:20px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 24px rgba(34,197,94,.08);
+    }
+
+    .announcement-item {
+      display:grid;
+      grid-template-columns:42px 1fr auto;
+      gap:10px;
+      align-items:start;
+      padding:12px 0;
+      border-bottom:1px solid rgba(148,163,184,.13);
+    }
+
+    .announcement-item:last-child { border-bottom:none; }
+
+    .announcement-icon {
+      width:36px;
+      height:36px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(34,197,94,.14);
+      border:1px solid rgba(34,197,94,.26);
+      font-size:20px;
+    }
+
+    .announcement-title { font-weight:950; color:#fff; margin-bottom:4px; }
+    .announcement-message { color:#cbd5e1; font-weight:750; line-height:1.35; white-space:pre-wrap; }
+    .announcement-meta { color:#54e86f; font-size:12px; font-weight:950; text-transform:uppercase; margin-top:5px; }
+    .announcement-pin { color:#ffb020; font-weight:950; font-size:12px; text-transform:uppercase; }
+
+    .announcement-admin-row {
+      display:grid;
+      grid-template-columns:1fr auto auto auto;
+      gap:8px;
+      align-items:center;
+      padding:12px 0;
+      border-bottom:1px solid rgba(148,163,184,.14);
+    }
+
+    @media (max-width: 760px) {
+      .announcement-item { grid-template-columns:36px 1fr; }
+      .announcement-item .announcement-pin { grid-column:2; }
+      .announcement-admin-row { grid-template-columns:1fr; align-items:stretch; }
     }
 
     .status-line {
@@ -611,7 +666,8 @@
     }
 
     .form-group input,
-    .form-group select {
+    .form-group select,
+    .form-group textarea {
       width:100%;
       padding:14px;
       border:1px solid rgba(148,163,184,.28);
@@ -619,6 +675,13 @@
       background:#142232;
       color:#f8fafc;
       outline:none;
+    }
+
+    .form-group textarea {
+      min-height:96px;
+      resize:vertical;
+      font-family:inherit;
+      line-height:1.4;
     }
 
     .form-group input::placeholder { color:#91a3b7; }
@@ -1304,6 +1367,16 @@
         </div>
       </div>
 
+      <div class="announcements-panel">
+        <div class="players-header">
+          <h3>📢 League Announcements</h3>
+          <span class="players-count" id="announcement-count">0</span>
+        </div>
+        <div id="home-announcements-list">
+          <div class="empty-state">No league announcements yet.</div>
+        </div>
+      </div>
+
       <div class="game-row">
         <div class="dashboard-panel today-card">
           <div class="section-title green">TODAY'S GAME</div>
@@ -1645,6 +1718,7 @@
         <div class="admin-sidebar">
           <div class="admin-sidebar-title">Admin Control</div>
           <button class="admin-side-btn active" onclick="switchAdminTab('players', event)"><span>👥</span><span>Manage Players</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('announcements', event)"><span>📢</span><span>Announcements</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('teams', event)"><span>🚩</span><span>Team Management</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('scores', event)"><span>🏆</span><span>Score Management</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>Settings</span></button>
@@ -1681,6 +1755,47 @@
               <div id="captain-qr-list"></div>
               <div id="captain-qr-display" class="captain-qr-box"></div>
             </div>
+          </div>
+
+          <div id="admin-announcements" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>League Announcements</h2>
+                <p>Add clubhouse notes, closest-to-pin info, lunch plans, tee time reminders, and Saturday updates.</p>
+              </div>
+            </div>
+
+            <div class="approval-note">
+              <div class="title">📢 Phase 2 Communication Hub</div>
+              <div>Announcements show on the home page. This does not touch Best 3, Front, Back, Total, or live scoring.</div>
+            </div>
+
+            <div class="admin-section">
+              <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="announcement-title-input" placeholder="Example: Closest to Pin Hole #5">
+              </div>
+
+              <div class="form-group">
+                <label>Message</label>
+                <textarea id="announcement-message-input" placeholder="Write the announcement here..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Priority</label>
+                <select id="announcement-priority-input">
+                  <option value="normal">ℹ️ Normal</option>
+                  <option value="important">🔥 Important</option>
+                  <option value="pinned">📌 Pinned</option>
+                </select>
+              </div>
+
+              <button class="btn btn-primary" onclick="saveAnnouncement()">Add Announcement</button>
+              <div class="muted" id="announcement-save-status" style="font-weight:800;margin-top:8px;">Ready.</div>
+            </div>
+
+            <div class="section-title">Current Announcements</div>
+            <div id="admin-announcements-list"></div>
           </div>
 
           <div id="admin-teams" class="admin-panel">
@@ -1909,6 +2024,8 @@
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
+    const ANNOUNCEMENTS_TABLE = 'announcements';
+    const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_league_announcements_v1';
 
     // ======================================================
 
@@ -1936,7 +2053,9 @@
       teamMode: 'auto',
       numTeams: 4,
       selectedNumTeams: 4,
-      teamsSubmitted: false
+      teamsSubmitted: false,
+      announcements: [],
+      announcementsDbAvailable: false
     };
 
     // ======================================================
@@ -1956,6 +2075,15 @@
 
     function setStatus(text) {
       document.getElementById('live-status').textContent = text;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
 
     function showView(v){
@@ -2616,9 +2744,10 @@
         appState.settingsLiveEnabled = false;
       }
 
+      await loadAnnouncements();
 
-      
       renderHome();
+      renderAnnouncements();
       renderAdminPlayers();
       renderCaptainQRList();
       renderAdminTeams();
@@ -2630,6 +2759,234 @@
       renderMoneyGameCentral();
       renderNotificationCenter();
       updateNotificationBadge();
+    }
+
+
+
+    // ======================================================
+    // PHASE 2: LEAGUE ANNOUNCEMENTS
+    // ======================================================
+
+    function getAnnouncementIcon(priority) {
+      if (priority === 'pinned') return '📌';
+      if (priority === 'important') return '🔥';
+      return 'ℹ️';
+    }
+
+    function normalizeAnnouncement(row) {
+      return {
+        id: row.id || ('local-' + Date.now() + '-' + Math.random().toString(16).slice(2)),
+        title: row.title || 'League Announcement',
+        message: row.message || '',
+        priority: row.priority || 'normal',
+        pinned: !!row.pinned || row.priority === 'pinned',
+        created_at: row.created_at || new Date().toISOString()
+      };
+    }
+
+    function sortAnnouncements(list) {
+      return [...list].sort((a, b) => {
+        const ap = a.pinned || a.priority === 'pinned' ? 1 : 0;
+        const bp = b.pinned || b.priority === 'pinned' ? 1 : 0;
+        if (bp !== ap) return bp - ap;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
+    }
+
+    function getLocalAnnouncements() {
+      try {
+        return JSON.parse(localStorage.getItem(ANNOUNCEMENTS_LOCAL_KEY) || '[]').map(normalizeAnnouncement);
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function saveLocalAnnouncements(list) {
+      localStorage.setItem(ANNOUNCEMENTS_LOCAL_KEY, JSON.stringify(sortAnnouncements(list)));
+    }
+
+    async function loadAnnouncements() {
+      try {
+        const result = await window.supabaseClient
+          .from(ANNOUNCEMENTS_TABLE)
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (result?.error) throw result.error;
+        appState.announcementsDbAvailable = true;
+        appState.announcements = sortAnnouncements((result.data || []).map(normalizeAnnouncement));
+        saveLocalAnnouncements(appState.announcements);
+      } catch (err) {
+        appState.announcementsDbAvailable = false;
+        appState.announcements = sortAnnouncements(getLocalAnnouncements());
+        console.warn('Announcements table not available yet. Using local announcements fallback.', err);
+      }
+    }
+
+    function renderAnnouncements() {
+      const list = sortAnnouncements(appState.announcements || []);
+      const countEl = document.getElementById('announcement-count');
+      if (countEl) countEl.textContent = list.length;
+
+      const home = document.getElementById('home-announcements-list');
+      if (home) {
+        if (!list.length) {
+          home.innerHTML = '<div class="empty-state">No league announcements yet.</div>';
+        } else {
+          home.innerHTML = list.slice(0, 4).map(a => `
+            <div class="announcement-item">
+              <div class="announcement-icon">${getAnnouncementIcon(a.priority)}</div>
+              <div>
+                <div class="announcement-title">${escapeHtml(a.title)}</div>
+                <div class="announcement-message">${escapeHtml(a.message)}</div>
+                <div class="announcement-meta">${a.priority === 'pinned' ? 'Pinned' : a.priority === 'important' ? 'Important' : 'League note'}</div>
+              </div>
+              <div class="announcement-pin">${a.pinned || a.priority === 'pinned' ? 'Pinned' : ''}</div>
+            </div>
+          `).join('');
+        }
+      }
+
+      renderAdminAnnouncements();
+    }
+
+    function renderAdminAnnouncements() {
+      const box = document.getElementById('admin-announcements-list');
+      if (!box) return;
+      const list = sortAnnouncements(appState.announcements || []);
+      if (!list.length) {
+        box.innerHTML = '<div class="empty-state">No announcements yet.</div>';
+        return;
+      }
+      box.innerHTML = list.map(a => `
+        <div class="announcement-admin-row">
+          <div>
+            <strong>${getAnnouncementIcon(a.priority)} ${escapeHtml(a.title)}</strong>
+            <div class="muted" style="font-weight:800;margin-top:4px;white-space:pre-wrap;">${escapeHtml(a.message)}</div>
+            <div class="announcement-meta">${a.priority}</div>
+          </div>
+          <button class="btn btn-small btn-secondary" onclick="toggleAnnouncementPinned('${a.id}')">${a.priority === 'pinned' ? 'Unpin' : 'Pin'}</button>
+          <button class="btn btn-small btn-warning" onclick="loadAnnouncementIntoForm('${a.id}')">Edit</button>
+          <button class="btn btn-small btn-danger" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    function getAnnouncementFormId() {
+      return document.getElementById('announcement-title-input')?.dataset?.editId || '';
+    }
+
+    function clearAnnouncementForm() {
+      const title = document.getElementById('announcement-title-input');
+      const message = document.getElementById('announcement-message-input');
+      const priority = document.getElementById('announcement-priority-input');
+      const status = document.getElementById('announcement-save-status');
+      if (title) { title.value = ''; delete title.dataset.editId; }
+      if (message) message.value = '';
+      if (priority) priority.value = 'normal';
+      if (status) status.textContent = 'Ready.';
+    }
+
+    function loadAnnouncementIntoForm(id) {
+      const a = (appState.announcements || []).find(x => String(x.id) === String(id));
+      if (!a) return;
+      const title = document.getElementById('announcement-title-input');
+      const message = document.getElementById('announcement-message-input');
+      const priority = document.getElementById('announcement-priority-input');
+      const status = document.getElementById('announcement-save-status');
+      if (title) { title.value = a.title || ''; title.dataset.editId = a.id; }
+      if (message) message.value = a.message || '';
+      if (priority) priority.value = a.priority || 'normal';
+      if (status) status.textContent = 'Editing announcement. Save to update it.';
+    }
+
+    async function saveAnnouncement() {
+      const titleEl = document.getElementById('announcement-title-input');
+      const messageEl = document.getElementById('announcement-message-input');
+      const priorityEl = document.getElementById('announcement-priority-input');
+      const status = document.getElementById('announcement-save-status');
+      const title = (titleEl?.value || '').trim();
+      const message = (messageEl?.value || '').trim();
+      const priority = priorityEl?.value || 'normal';
+      const editId = getAnnouncementFormId();
+
+      if (!title || !message) {
+        if (status) status.textContent = 'Add a title and message first.';
+        return;
+      }
+
+      const payload = {
+        title,
+        message,
+        priority,
+        pinned: priority === 'pinned'
+      };
+
+      try {
+        if (appState.announcementsDbAvailable) {
+          if (editId && !String(editId).startsWith('local-')) {
+            const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update(payload).eq('id', editId);
+            if (result?.error) throw result.error;
+          } else {
+            const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).insert([{ ...payload, created_by: 'admin' }]);
+            if (result?.error) throw result.error;
+          }
+          await loadAnnouncements();
+        } else {
+          const list = getLocalAnnouncements();
+          if (editId) {
+            const idx = list.findIndex(a => String(a.id) === String(editId));
+            if (idx >= 0) list[idx] = normalizeAnnouncement({ ...list[idx], ...payload });
+          } else {
+            list.unshift(normalizeAnnouncement({ ...payload, created_at: new Date().toISOString() }));
+          }
+          saveLocalAnnouncements(list);
+          appState.announcements = sortAnnouncements(list);
+        }
+        clearAnnouncementForm();
+        renderAnnouncements();
+      } catch (err) {
+        if (status) status.textContent = 'Could not save announcement: ' + formatError(err);
+        console.warn('saveAnnouncement error', err);
+      }
+    }
+
+    async function toggleAnnouncementPinned(id) {
+      const a = (appState.announcements || []).find(x => String(x.id) === String(id));
+      if (!a) return;
+      const nextPriority = a.priority === 'pinned' ? 'normal' : 'pinned';
+      try {
+        if (appState.announcementsDbAvailable && !String(id).startsWith('local-')) {
+          const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update({ priority: nextPriority, pinned: nextPriority === 'pinned' }).eq('id', id);
+          if (result?.error) throw result.error;
+          await loadAnnouncements();
+        } else {
+          const list = getLocalAnnouncements().map(x => String(x.id) === String(id) ? normalizeAnnouncement({ ...x, priority: nextPriority, pinned: nextPriority === 'pinned' }) : x);
+          saveLocalAnnouncements(list);
+          appState.announcements = sortAnnouncements(list);
+        }
+        renderAnnouncements();
+      } catch (err) {
+        console.warn('toggleAnnouncementPinned error', err);
+      }
+    }
+
+    async function deleteAnnouncement(id) {
+      if (!confirm('Delete this announcement?')) return;
+      try {
+        if (appState.announcementsDbAvailable && !String(id).startsWith('local-')) {
+          const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).delete().eq('id', id);
+          if (result?.error) throw result.error;
+          await loadAnnouncements();
+        } else {
+          const list = getLocalAnnouncements().filter(x => String(x.id) !== String(id));
+          saveLocalAnnouncements(list);
+          appState.announcements = sortAnnouncements(list);
+        }
+        renderAnnouncements();
+      } catch (err) {
+        console.warn('deleteAnnouncement error', err);
+      }
     }
 
 // ======================================================
@@ -5665,6 +6022,7 @@ async function toggleCaptain(id, makeCaptain) {
 
       updateAdminMiniStats();
       if(t==='players') renderAdminPlayers();
+      if(t==='announcements') renderAdminAnnouncements();
       if(t==='teams') renderAdminTeams();
       if(t==='scores') { updateSettingsView(); renderScoreManagement(); }
       if(t==='settings') updateSettingsView();
@@ -5811,6 +6169,11 @@ async function resetDailyGameIfNeeded() {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
             setStatus('Live: settings updated');
             await loadAllData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: ANNOUNCEMENTS_TABLE }, async () => {
+            setStatus('Live: announcements updated');
+            await loadAnnouncements();
+            renderAnnouncements();
           })
           .subscribe((status) => {
             setStatus('Status: ' + status);
