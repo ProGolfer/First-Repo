@@ -1486,6 +1486,20 @@
       .admin-command-grid,.admin-command-health{grid-template-columns:1fr;}
     }
 
+
+    /* Activity Timeline v1.3.8 */
+    .activity-timeline { position:relative; padding-left:18px; }
+    .activity-timeline::before { content:""; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:rgba(84,232,111,.22); }
+    .activity-event { position:relative; display:grid; grid-template-columns:74px 34px 1fr; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid rgba(148,163,184,.12); }
+    .activity-event::before { content:""; position:absolute; left:-15px; top:18px; width:10px; height:10px; border-radius:999px; background:#54e86f; box-shadow:0 0 12px rgba(84,232,111,.55); }
+    .activity-event-time { color:#94a3b8; font-size:12px; font-weight:900; padding-top:4px; }
+    .activity-event-icon { width:32px; height:32px; border-radius:10px; background:rgba(34,197,94,.12); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .activity-event-title { color:#f8fafc; font-weight:950; margin-bottom:3px; }
+    .activity-event-message { color:#cbd5e1; font-weight:750; line-height:1.35; }
+    .activity-event-meta { color:#54e86f; font-size:11px; font-weight:900; text-transform:uppercase; margin-top:4px; }
+    .activity-filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    @media (max-width:760px) { .activity-event { grid-template-columns:58px 30px 1fr; gap:8px; } }
+
   </style>
 </head>
 <body>
@@ -2277,14 +2291,29 @@
           <div id="admin-log" class="admin-panel">
             <div class="admin-panel-header">
               <div>
-                <h2>Activity Log</h2>
-                <p>Phase 3 will show approvals, captain changes, team submissions, and score fixes.</p>
+                <h2>Activity Timeline</h2>
+                <p>A running timeline of today's registrations, approvals, announcements, captain changes, and team actions.</p>
               </div>
+              <button class="btn btn-small btn-secondary" onclick="loadActivityTimeline()">Refresh</button>
             </div>
 
             <div class="admin-section">
-              <h3 style="margin-bottom:10px;">📊 Recent Activity</h3>
-              <div class="empty-state">Activity log will be added after the admin layout is tested.</div>
+              <div class="activity-filter-row">
+                <button class="btn btn-small btn-primary" onclick="setActivityFilter('all', event)">All</button>
+                <button class="btn btn-small btn-secondary" onclick="setActivityFilter('player', event)">Players</button>
+                <button class="btn btn-small btn-secondary" onclick="setActivityFilter('team', event)">Teams</button>
+                <button class="btn btn-small btn-secondary" onclick="setActivityFilter('announcement', event)">Announcements</button>
+                <button class="btn btn-small btn-secondary" onclick="setActivityFilter('system', event)">System</button>
+              </div>
+              <div id="activity-timeline-list" class="activity-timeline">
+                <div class="empty-state">Loading today's activity...</div>
+              </div>
+            </div>
+
+            <div class="admin-section admin-danger-zone">
+              <h3 style="margin-bottom:10px;">🧹 Timeline Cleanup</h3>
+              <p class="muted" style="margin-bottom:12px;">Clears the timeline only on this device when the database activity table is unavailable.</p>
+              <button class="btn btn-warning" onclick="clearLocalActivityTimeline()">Clear Local Timeline</button>
             </div>
           </div>
         </div>
@@ -2304,6 +2333,10 @@
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const ANNOUNCEMENTS_TABLE = 'announcements';
     const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_announcements_v1';
+    const ACTIVITY_TABLE = 'activity_log';
+    const ACTIVITY_LOCAL_KEY = 'gmg_activity_timeline_v1';
+    let activityDbAvailable = true;
+    let activityFilter = 'all';
 
     // ======================================================
 
@@ -2999,6 +3032,109 @@
       }
     }
 
+    // ======================================================
+    // ACTIVITY TIMELINE v1.3.8
+    // Separate experience layer. No scoring calculations are changed.
+    // ======================================================
+
+    function getLocalActivityTimeline() {
+      try { return JSON.parse(localStorage.getItem(ACTIVITY_LOCAL_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+
+    function saveLocalActivityTimeline(list) {
+      localStorage.setItem(ACTIVITY_LOCAL_KEY, JSON.stringify((list || []).slice(0, 250)));
+    }
+
+    function normalizeActivity(row) {
+      return {
+        id: row.id || ('local-' + Date.now() + '-' + Math.random().toString(16).slice(2)),
+        type: row.type || 'system',
+        title: row.title || 'Activity',
+        message: row.message || '',
+        icon: row.icon || '📌',
+        actor: row.actor || 'Money Game Central',
+        created_at: row.created_at || new Date().toISOString()
+      };
+    }
+
+    function activityIcon(type) {
+      return ({ player:'👤', team:'🚩', announcement:'📢', captain:'👑', system:'⚙️', registration:'📝' })[type] || '📌';
+    }
+
+    async function recordActivity(type, title, message, options = {}) {
+      const payload = normalizeActivity({
+        type, title, message,
+        icon: options.icon || activityIcon(type),
+        actor: options.actor || (appState.adminAuthenticated ? 'Admin' : (getMyPlayerName() || 'Money Game Central')),
+        created_at: new Date().toISOString()
+      });
+
+      const local = [payload, ...getLocalActivityTimeline().filter(x => x.id !== payload.id)];
+      saveLocalActivityTimeline(local);
+      if (activityDbAvailable) {
+        try {
+          const result = await window.supabaseClient.from(ACTIVITY_TABLE).insert([{
+            type: payload.type, title: payload.title, message: payload.message, icon: payload.icon, actor: payload.actor, created_at: payload.created_at
+          }]);
+          if (result?.error) throw result.error;
+        } catch (err) {
+          activityDbAvailable = false;
+          console.warn('Activity database table unavailable; using local timeline.', err);
+        }
+      }
+      renderActivityTimeline();
+    }
+
+    async function loadActivityTimeline() {
+      let list = getLocalActivityTimeline();
+      if (activityDbAvailable) {
+        try {
+          const since = new Date(); since.setHours(0,0,0,0);
+          const result = await window.supabaseClient.from(ACTIVITY_TABLE).select('*').gte('created_at', since.toISOString()).order('created_at', { ascending:false }).limit(250);
+          if (result?.error) throw result.error;
+          activityDbAvailable = true;
+          list = (result.data || []).map(normalizeActivity);
+          saveLocalActivityTimeline(list);
+        } catch (err) {
+          activityDbAvailable = false;
+          console.warn('Could not load activity table; showing this device timeline.', err);
+        }
+      }
+      appState.activityTimeline = list.sort((a,b) => new Date(b.created_at)-new Date(a.created_at));
+      renderActivityTimeline();
+    }
+
+    function renderActivityTimeline() {
+      const mount = document.getElementById('activity-timeline-list');
+      if (!mount) return;
+      const all = appState.activityTimeline || getLocalActivityTimeline();
+      const list = activityFilter === 'all' ? all : all.filter(x => x.type === activityFilter || (activityFilter === 'player' && ['player','registration'].includes(x.type)));
+      if (!list.length) { mount.innerHTML = '<div class="empty-state">No activity recorded for this filter yet.</div>'; return; }
+      mount.innerHTML = list.map(item => {
+        const d = new Date(item.created_at);
+        return `<div class="activity-event">
+          <div class="activity-event-time">${d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>
+          <div class="activity-event-icon">${escapeHtml(item.icon || activityIcon(item.type))}</div>
+          <div><div class="activity-event-title">${escapeHtml(item.title)}</div><div class="activity-event-message">${escapeHtml(item.message)}</div><div class="activity-event-meta">${escapeHtml(item.actor || '')}</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function setActivityFilter(filter, event) {
+      activityFilter = filter || 'all';
+      document.querySelectorAll('.activity-filter-row .btn').forEach(btn => { btn.classList.remove('btn-primary'); btn.classList.add('btn-secondary'); });
+      if (event?.currentTarget) { event.currentTarget.classList.remove('btn-secondary'); event.currentTarget.classList.add('btn-primary'); }
+      renderActivityTimeline();
+    }
+
+    function clearLocalActivityTimeline() {
+      if (!confirm('Clear the activity timeline stored on this device?')) return;
+      localStorage.removeItem(ACTIVITY_LOCAL_KEY);
+      appState.activityTimeline = [];
+      renderActivityTimeline();
+    }
+
     async function loadAllData() {
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
@@ -3025,6 +3161,7 @@
       }
 
       await loadAnnouncements();
+      await loadActivityTimeline();
 
       renderHome();
       renderAnnouncements();
@@ -3262,6 +3399,7 @@
           saveLocalAnnouncements(list);
           appState.announcements = sortAnnouncements(list);
         }
+        await recordActivity('announcement', editId ? 'Announcement Updated' : 'Announcement Published', `${title}: ${message}`, { icon:'📢', actor:'Admin' });
         clearAnnouncementForm();
         renderAnnouncements();
         const done = document.getElementById('announcement-save-status');
@@ -3500,6 +3638,8 @@ function getMyPlayerName() {
           is_captain: false,
           device_token: null
         }]), 'Register player');
+
+        await recordActivity('registration', 'Player Registered', `${name} registered and is waiting for approval.`, { icon:'📝', actor:name });
 
         await createNotification(
           'registration',
@@ -5485,7 +5625,9 @@ async function toggleCaptain(id, makeCaptain) {
     async function approve(id){
       try {
         await db(window.supabaseClient.from('players').update({ status: 'approved' }).eq('id', id), 'Approve player');
+        const approvedPlayer = appState.players.find(p => String(p.id) === String(id));
         appState.players = appState.players.map(p => String(p.id) === String(id) ? { ...p, status: 'approved' } : p);
+        await recordActivity('player', 'Player Approved', `${approvedPlayer?.name || 'Player'} was approved for today’s game.`, { icon:'✅', actor:'Admin' });
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -5499,7 +5641,9 @@ async function toggleCaptain(id, makeCaptain) {
       if(!confirm('Delete?')) return;
       try {
         await db(window.supabaseClient.from('players').delete().eq('id', id), 'Delete player');
+        const deletedPlayer = appState.players.find(p => String(p.id) === String(id));
         appState.players = appState.players.filter(p => String(p.id) !== String(id));
+        await recordActivity('player', 'Player Removed', `${deletedPlayer?.name || 'A player'} was removed from today’s game.`, { icon:'🗑️', actor:'Admin' });
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
@@ -5659,6 +5803,7 @@ async function toggleCaptain(id, makeCaptain) {
       saveAutoBackup('after-submit-teams');
       renderHome();
       renderAdminTeams();
+      recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
       alert('Teams submitted successfully! Auto-save backup updated.');
     }
 
@@ -5689,6 +5834,7 @@ async function toggleCaptain(id, makeCaptain) {
           appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: false } : p);
         }
 
+        await recordActivity('captain', value === 'yes' ? 'Captain Assigned' : 'Captain Removed', `${player.name} ${value === 'yes' ? 'was assigned as a captain' : 'is no longer a captain'}.`, { icon:'👑', actor:'Admin' });
         await loadAllData();
         renderCaptainTeamsPage();
       } catch (err) {
@@ -5705,7 +5851,9 @@ async function toggleCaptain(id, makeCaptain) {
       }
       try {
         await db(window.supabaseClient.from('players').update({ team: parseInt(teamId, 10) }).eq('id', playerId), 'Assign player to team');
+        const assignedPlayer = appState.players.find(p => String(p.id) === String(playerId));
         appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, team: parseInt(teamId, 10) } : p);
+        await recordActivity('team', 'Player Assigned to Team', `${assignedPlayer?.name || 'Player'} was added to ${getTeamName(teamId)}.`, { icon:'🚩', actor:'Admin' });
         renderHome();
         renderAdminPlayers();
         renderAdminTeams();
