@@ -1427,6 +1427,52 @@
       .mgc-hole { min-height:34px; font-size:13px; }
     }
 
+
+    /* Admin Command Center v1.3.6 */
+    .admin-command-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+    .admin-command-card {
+      background:linear-gradient(180deg,rgba(15,30,44,.94),rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:18px;
+      padding:16px;
+      cursor:pointer;
+      text-align:left;
+      color:#f8fafc;
+      min-height:132px;
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+    }
+    .admin-command-card:hover {
+      transform:translateY(-2px);
+      border-color:rgba(84,232,111,.55);
+      box-shadow:0 12px 28px rgba(0,0,0,.25),0 0 20px rgba(34,197,94,.10);
+    }
+    .admin-command-card .admin-command-icon { font-size:30px; display:block; margin-bottom:10px; }
+    .admin-command-card strong { display:block; font-size:18px; margin-bottom:5px; }
+    .admin-command-card small { color:#a8b4c5; font-weight:800; line-height:1.35; }
+    .admin-command-health {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin:12px 0 2px;
+    }
+    .admin-health-card {
+      background:rgba(2,8,14,.42);
+      border:1px solid rgba(148,163,184,.15);
+      border-radius:15px;
+      padding:12px;
+      text-align:center;
+    }
+    .admin-health-card strong { display:block; font-size:24px; color:#fff; }
+    .admin-health-card small { color:#54e86f; font-weight:950; text-transform:uppercase; font-size:11px; }
+    @media (max-width:760px){
+      .admin-command-grid,.admin-command-health{grid-template-columns:1fr;}
+    }
+
   </style>
 </head>
 <body>
@@ -1887,18 +1933,49 @@
 
       <div class="admin-control-shell">
         <div class="admin-sidebar">
-          <div class="admin-sidebar-title">Admin Control</div>
-          <button class="admin-side-btn active" onclick="switchAdminTab('players', event)"><span>👥</span><span>Manage Players</span></button>
+          <div class="admin-sidebar-title">Command Center</div>
+          <button class="admin-side-btn active" onclick="switchAdminTab('dashboard', event)"><span>🏠</span><span>Dashboard</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('players', event)"><span>👥</span><span>Players</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('teams', event)"><span>🚩</span><span>Teams</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('announcements', event)"><span>📢</span><span>Announcements</span></button>
-          <button class="admin-side-btn" onclick="switchAdminTab('teams', event)"><span>🚩</span><span>Team Management</span></button>
-          <button class="admin-side-btn" onclick="switchAdminTab('scores', event)"><span>🏆</span><span>Score Management</span></button>
-          <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>Settings</span></button>
-          <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🛠️</span><span>System Tools</span></button>
-          <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity Log</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('scores', event)"><span>🏆</span><span>Score Control</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🔔</span><span>Notifications & Backup</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>System</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity</span></button>
         </div>
 
         <div class="admin-main-panel">
-          <div id="admin-players" class="admin-panel active">
+
+          <div id="admin-dashboard" class="admin-panel active">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Command Center</h2>
+                <p>Run today's Money Game from one place. Choose a module below or use the permanent sidebar.</p>
+              </div>
+            </div>
+
+            <div class="approval-note">
+              <div class="title">🛠️ Today's Event Health</div>
+              <div id="admin-dashboard-stage">Loading current game stage...</div>
+            </div>
+
+            <div class="admin-command-health">
+              <div class="admin-health-card"><strong id="command-approved-count">0</strong><small>Approved</small></div>
+              <div class="admin-health-card"><strong id="command-pending-count">0</strong><small>Pending</small></div>
+              <div class="admin-health-card"><strong id="command-team-count">0</strong><small>Teams</small></div>
+            </div>
+
+            <div class="admin-command-grid">
+              <button class="admin-command-card" onclick="switchAdminTab('players')"><span class="admin-command-icon">👥</span><strong>Players</strong><small>Approve registrations, assign captains, remove duplicates, and manage QR access.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('teams')"><span class="admin-command-icon">🚩</span><strong>Teams</strong><small>Control auto/manual team count and manage today’s team assignments.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('announcements')"><span class="admin-command-icon">📢</span><strong>Announcements</strong><small>Post updates that appear on the dashboard and notify connected devices.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('scores')"><span class="admin-command-icon">🏆</span><strong>Score Control</strong><small>Correct saved scores without changing the Best 3 scoring engine.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('tools')"><span class="admin-command-icon">🔔</span><strong>Notifications & Backup</strong><small>Diagnostics, test alerts, backups, restore tools, and safe cleanup controls.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('settings')"><span class="admin-command-icon">⚙️</span><strong>System</strong><small>Registration times and the manual open/close control.</small></button>
+            </div>
+          </div>
+
+          <div id="admin-players" class="admin-panel">
             <div class="admin-panel-header">
               <div>
                 <h2>Manage Players</h2>
@@ -5140,8 +5217,8 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
         showView('view-admin-dashboard');
         enableAdminNotifications();
         updateAdminMiniStats();
-        switchAdminTab('players');
-        renderAdminPlayers();
+        switchAdminTab('dashboard');
+        renderAdminCommandDashboard();
       } else alert('Invalid password');
     }
 
@@ -6426,16 +6503,36 @@ async function toggleCaptain(id, makeCaptain) {
       updateNotificationBadge();
     }
 
+    function renderAdminCommandDashboard(){
+      const approved = appState.players.filter(p => p.status === 'approved').length;
+      const pending = appState.players.filter(p => p.status === 'pending').length;
+      const teamCount = getActiveTeamCount();
+      const stage = typeof getEventStage === 'function' ? getEventStage() : null;
+      const stageText = stage?.label || stage?.title || 'Today’s game is connected and ready.';
+      const set = (id, value) => { const el = document.getElementById(id); if(el) el.textContent = value; };
+      set('command-approved-count', approved);
+      set('command-pending-count', pending);
+      set('command-team-count', teamCount);
+      set('admin-dashboard-stage', stageText);
+    }
+
     function switchAdminTab(t, ev){
       document.querySelectorAll('.admin-side-btn').forEach(b=>b.classList.remove('active'));
       if (ev?.currentTarget) ev.currentTarget.classList.add('active');
       else if (ev?.target) ev.target.closest('.admin-side-btn')?.classList.add('active');
+      else {
+        document.querySelectorAll('.admin-side-btn').forEach(btn => {
+          const click = btn.getAttribute('onclick') || '';
+          if(click.includes("'" + t + "'")) btn.classList.add('active');
+        });
+      }
 
       document.querySelectorAll('.admin-panel').forEach(panel => panel.classList.remove('active'));
       const panel = document.getElementById('admin-' + t);
       if (panel) panel.classList.add('active');
 
       updateAdminMiniStats();
+      if(t==='dashboard') renderAdminCommandDashboard();
       if(t==='players') renderAdminPlayers();
       if(t==='announcements') renderAdminAnnouncements();
       if(t==='teams') renderAdminTeams();
