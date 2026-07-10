@@ -339,10 +339,23 @@
       border-bottom:1px solid rgba(148,163,184,.14);
     }
 
+    .announcement-status-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:7px; }
+    .announcement-status-pill {
+      display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border-radius:999px;
+      font-size:11px; font-weight:950; text-transform:uppercase; border:1px solid rgba(148,163,184,.18);
+      background:rgba(15,23,42,.65); color:#cbd5e1;
+    }
+    .announcement-status-pill.active { color:#bbf7d0; border-color:rgba(34,197,94,.28); background:rgba(34,197,94,.12); }
+    .announcement-status-pill.expired { color:#fecaca; border-color:rgba(239,68,68,.28); background:rgba(239,68,68,.12); }
+    .announcement-form-actions { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:stretch; }
+    .announcement-expired-box { margin-top:18px; opacity:.78; }
+    textarea { width:100%; min-height:110px; resize:vertical; padding:14px; border:1px solid rgba(148,163,184,.28); border-radius:14px; background:#142232; color:#f8fafc; outline:none; font:inherit; }
+
     @media (max-width: 760px) {
       .announcement-item { grid-template-columns:36px 1fr; }
       .announcement-item .announcement-pin { grid-column:2; }
       .announcement-admin-row { grid-template-columns:1fr; align-items:stretch; }
+      .announcement-form-actions { grid-template-columns:1fr; }
     }
 
 
@@ -2038,12 +2051,29 @@
                 </select>
               </div>
 
-              <button class="btn btn-primary" onclick="saveAnnouncement()">Add Announcement</button>
-              <div class="muted" id="announcement-save-status" style="font-weight:800;margin-top:8px;">Ready.</div>
+              <div class="form-group">
+                <label>Expires At <span class="muted">(optional)</span></label>
+                <input type="datetime-local" id="announcement-expires-input">
+              </div>
+
+              <label style="display:flex;align-items:center;gap:10px;margin:4px 0 14px;font-weight:900;">
+                <input type="checkbox" id="announcement-notify-input" checked style="width:20px;height:20px;">
+                Send notification when published
+              </label>
+
+              <div class="announcement-form-actions">
+                <button class="btn btn-primary" id="announcement-save-btn" onclick="saveAnnouncement()">Publish Announcement</button>
+                <button class="btn btn-secondary" id="announcement-cancel-btn" onclick="clearAnnouncementForm()" style="display:none;">Cancel Edit</button>
+              </div>
+              <div class="muted" id="announcement-save-status" style="font-weight:800;margin-top:8px;">Ready to publish.</div>
             </div>
 
-            <div class="section-title">Current Announcements</div>
+            <div class="section-title">Active Announcements</div>
             <div id="admin-announcements-list"></div>
+            <div class="announcement-expired-box">
+              <div class="section-title">Expired Announcements</div>
+              <div id="admin-expired-announcements-list"></div>
+            </div>
           </div>
 
           <div id="admin-teams" class="admin-panel">
@@ -3031,8 +3061,28 @@
         message: row.message || '',
         priority: row.priority || 'normal',
         pinned: !!row.pinned || row.priority === 'pinned',
+        expires_at: row.expires_at || null,
         created_at: row.created_at || new Date().toISOString()
       };
+    }
+
+    function isAnnouncementExpired(a) {
+      return !!a?.expires_at && new Date(a.expires_at).getTime() <= Date.now();
+    }
+
+    function formatAnnouncementDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    }
+
+    function toLocalDateTimeInput(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     function sortAnnouncements(list) {
@@ -3047,9 +3097,7 @@
     function getLocalAnnouncements() {
       try {
         return JSON.parse(localStorage.getItem(ANNOUNCEMENTS_LOCAL_KEY) || '[]').map(normalizeAnnouncement);
-      } catch (_) {
-        return [];
-      }
+      } catch (_) { return []; }
     }
 
     function saveLocalAnnouncements(list) {
@@ -3058,11 +3106,7 @@
 
     async function loadAnnouncements() {
       try {
-        const result = await window.supabaseClient
-          .from(ANNOUNCEMENTS_TABLE)
-          .select('*')
-          .order('created_at', { ascending: false });
-
+        const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).select('*').order('created_at', { ascending: false });
         if (result?.error) throw result.error;
         appState.announcementsDbAvailable = true;
         appState.announcements = sortAnnouncements((result.data || []).map(normalizeAnnouncement));
@@ -3075,52 +3119,57 @@
     }
 
     function renderAnnouncements() {
-      const list = sortAnnouncements(appState.announcements || []);
+      const all = sortAnnouncements(appState.announcements || []);
+      const list = all.filter(a => !isAnnouncementExpired(a));
       const countEl = document.getElementById('announcement-count');
       if (countEl) countEl.textContent = list.length;
 
       const home = document.getElementById('home-announcements-list');
       if (home) {
-        if (!list.length) {
-          home.innerHTML = '<div class="empty-state">No announcements yet.</div>';
-        } else {
-          home.innerHTML = list.slice(0, 4).map(a => `
-            <div class="announcement-item">
-              <div class="announcement-icon">${getAnnouncementIcon(a.priority)}</div>
-              <div>
-                <div class="announcement-title">${escapeHtml(a.title)}</div>
-                <div class="announcement-message">${escapeHtml(a.message)}</div>
-                <div class="announcement-meta">${a.priority === 'pinned' ? 'Pinned' : a.priority === 'important' ? 'Important' : 'Announcement'}</div>
+        home.innerHTML = !list.length ? '<div class="empty-state">No active announcements.</div>' : list.slice(0, 4).map(a => `
+          <div class="announcement-item">
+            <div class="announcement-icon">${getAnnouncementIcon(a.priority)}</div>
+            <div>
+              <div class="announcement-title">${escapeHtml(a.title)}</div>
+              <div class="announcement-message">${escapeHtml(a.message)}</div>
+              <div class="announcement-status-row">
+                <span class="announcement-status-pill active">Active</span>
+                ${a.expires_at ? `<span class="announcement-status-pill">Expires ${escapeHtml(formatAnnouncementDate(a.expires_at))}</span>` : ''}
               </div>
-              <div class="announcement-pin">${a.pinned || a.priority === 'pinned' ? 'Pinned' : ''}</div>
             </div>
-          `).join('');
-        }
+            <div class="announcement-pin">${a.pinned || a.priority === 'pinned' ? 'Pinned' : ''}</div>
+          </div>`).join('');
       }
-
       renderAdminAnnouncements();
     }
 
-    function renderAdminAnnouncements() {
-      const box = document.getElementById('admin-announcements-list');
-      if (!box) return;
-      const list = sortAnnouncements(appState.announcements || []);
-      if (!list.length) {
-        box.innerHTML = '<div class="empty-state">No announcements yet.</div>';
-        return;
-      }
-      box.innerHTML = list.map(a => `
+    function announcementAdminRow(a) {
+      return `
         <div class="announcement-admin-row">
           <div>
             <strong>${getAnnouncementIcon(a.priority)} ${escapeHtml(a.title)}</strong>
             <div class="muted" style="font-weight:800;margin-top:4px;white-space:pre-wrap;">${escapeHtml(a.message)}</div>
-            <div class="announcement-meta">${a.priority}</div>
+            <div class="announcement-status-row">
+              <span class="announcement-status-pill ${isAnnouncementExpired(a) ? 'expired' : 'active'}">${isAnnouncementExpired(a) ? 'Expired' : 'Active'}</span>
+              <span class="announcement-status-pill">${escapeHtml(a.priority)}</span>
+              ${a.expires_at ? `<span class="announcement-status-pill">Expires ${escapeHtml(formatAnnouncementDate(a.expires_at))}</span>` : '<span class="announcement-status-pill">No expiration</span>'}
+            </div>
           </div>
           <button class="btn btn-small btn-secondary" onclick="toggleAnnouncementPinned('${a.id}')">${a.priority === 'pinned' ? 'Unpin' : 'Pin'}</button>
           <button class="btn btn-small btn-warning" onclick="loadAnnouncementIntoForm('${a.id}')">Edit</button>
           <button class="btn btn-small btn-danger" onclick="deleteAnnouncement('${a.id}')">Delete</button>
-        </div>
-      `).join('');
+        </div>`;
+    }
+
+    function renderAdminAnnouncements() {
+      const activeBox = document.getElementById('admin-announcements-list');
+      const expiredBox = document.getElementById('admin-expired-announcements-list');
+      if (!activeBox) return;
+      const list = sortAnnouncements(appState.announcements || []);
+      const active = list.filter(a => !isAnnouncementExpired(a));
+      const expired = list.filter(isAnnouncementExpired);
+      activeBox.innerHTML = active.length ? active.map(announcementAdminRow).join('') : '<div class="empty-state">No active announcements.</div>';
+      if (expiredBox) expiredBox.innerHTML = expired.length ? expired.map(announcementAdminRow).join('') : '<div class="empty-state">No expired announcements.</div>';
     }
 
     function getAnnouncementFormId() {
@@ -3131,11 +3180,19 @@
       const title = document.getElementById('announcement-title-input');
       const message = document.getElementById('announcement-message-input');
       const priority = document.getElementById('announcement-priority-input');
+      const expires = document.getElementById('announcement-expires-input');
+      const notify = document.getElementById('announcement-notify-input');
       const status = document.getElementById('announcement-save-status');
+      const saveBtn = document.getElementById('announcement-save-btn');
+      const cancelBtn = document.getElementById('announcement-cancel-btn');
       if (title) { title.value = ''; delete title.dataset.editId; }
       if (message) message.value = '';
       if (priority) priority.value = 'normal';
-      if (status) status.textContent = 'Ready.';
+      if (expires) expires.value = '';
+      if (notify) notify.checked = true;
+      if (status) status.textContent = 'Ready to publish.';
+      if (saveBtn) saveBtn.textContent = 'Publish Announcement';
+      if (cancelBtn) cancelBtn.style.display = 'none';
     }
 
     function loadAnnouncementIntoForm(id) {
@@ -3144,60 +3201,71 @@
       const title = document.getElementById('announcement-title-input');
       const message = document.getElementById('announcement-message-input');
       const priority = document.getElementById('announcement-priority-input');
+      const expires = document.getElementById('announcement-expires-input');
+      const notify = document.getElementById('announcement-notify-input');
       const status = document.getElementById('announcement-save-status');
-      if (title) { title.value = a.title || ''; title.dataset.editId = a.id; }
+      const saveBtn = document.getElementById('announcement-save-btn');
+      const cancelBtn = document.getElementById('announcement-cancel-btn');
+      if (title) { title.value = a.title || ''; title.dataset.editId = a.id; title.scrollIntoView({ behavior:'smooth', block:'center' }); }
       if (message) message.value = a.message || '';
       if (priority) priority.value = a.priority || 'normal';
-      if (status) status.textContent = 'Editing announcement. Save to update it.';
+      if (expires) expires.value = toLocalDateTimeInput(a.expires_at);
+      if (notify) notify.checked = false;
+      if (status) status.textContent = 'Editing announcement. Save changes when ready.';
+      if (saveBtn) saveBtn.textContent = 'Save Changes';
+      if (cancelBtn) cancelBtn.style.display = '';
+    }
+
+    async function saveAnnouncementPayload(payload, editId) {
+      const table = window.supabaseClient.from(ANNOUNCEMENTS_TABLE);
+      let result = editId && !String(editId).startsWith('local-')
+        ? await table.update(payload).eq('id', editId)
+        : await table.insert([{ ...payload, created_by:'admin' }]);
+      if (result?.error && /expires_at/i.test(result.error.message || '')) {
+        const fallback = { ...payload }; delete fallback.expires_at;
+        result = editId && !String(editId).startsWith('local-')
+          ? await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update(fallback).eq('id', editId)
+          : await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).insert([{ ...fallback, created_by:'admin' }]);
+      }
+      if (result?.error) throw result.error;
     }
 
     async function saveAnnouncement() {
       const titleEl = document.getElementById('announcement-title-input');
       const messageEl = document.getElementById('announcement-message-input');
       const priorityEl = document.getElementById('announcement-priority-input');
+      const expiresEl = document.getElementById('announcement-expires-input');
+      const notifyEl = document.getElementById('announcement-notify-input');
       const status = document.getElementById('announcement-save-status');
       const title = (titleEl?.value || '').trim();
       const message = (messageEl?.value || '').trim();
       const priority = priorityEl?.value || 'normal';
       const editId = getAnnouncementFormId();
-
-      if (!title || !message) {
-        if (status) status.textContent = 'Add a title and message first.';
-        return;
-      }
-
-      const payload = {
-        title,
-        message,
-        priority,
-        pinned: priority === 'pinned'
-      };
-
+      const expiresAt = expiresEl?.value ? new Date(expiresEl.value).toISOString() : null;
+      const shouldNotify = !!notifyEl?.checked;
+      if (!title || !message) { if (status) status.textContent = 'Add a title and message first.'; return; }
+      if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) { if (status) status.textContent = 'Expiration must be in the future.'; return; }
+      const payload = { title, message, priority, pinned: priority === 'pinned', expires_at: expiresAt };
       try {
+        if (status) status.textContent = editId ? 'Saving changes...' : 'Publishing...';
         if (appState.announcementsDbAvailable) {
-          if (editId && !String(editId).startsWith('local-')) {
-            const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update(payload).eq('id', editId);
-            if (result?.error) throw result.error;
-          } else {
-            const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).insert([{ ...payload, created_by: 'admin' }]);
-            if (result?.error) throw result.error;
-            await createNotification('announcement', '📢 New Announcement', title, { target: 'all' });
-          }
+          await saveAnnouncementPayload(payload, editId);
+          if (shouldNotify) await createNotification('announcement', '📢 ' + title, message, { target:'all' });
           await loadAnnouncements();
         } else {
           const list = getLocalAnnouncements();
           if (editId) {
             const idx = list.findIndex(a => String(a.id) === String(editId));
             if (idx >= 0) list[idx] = normalizeAnnouncement({ ...list[idx], ...payload });
-          } else {
-            list.unshift(normalizeAnnouncement({ ...payload, created_at: new Date().toISOString() }));
-            createLocalNotification('announcement', '📢 New Announcement', title, { target: 'all', forceLocal: true });
-          }
+          } else list.unshift(normalizeAnnouncement({ ...payload, created_at:new Date().toISOString() }));
+          if (shouldNotify) createLocalNotification('announcement', '📢 ' + title, message, { target:'all', forceLocal:true });
           saveLocalAnnouncements(list);
           appState.announcements = sortAnnouncements(list);
         }
         clearAnnouncementForm();
         renderAnnouncements();
+        const done = document.getElementById('announcement-save-status');
+        if (done) done.textContent = editId ? 'Announcement updated.' : 'Announcement published.';
       } catch (err) {
         if (status) status.textContent = 'Could not save announcement: ' + formatError(err);
         console.warn('saveAnnouncement error', err);
@@ -3210,18 +3278,15 @@
       const nextPriority = a.priority === 'pinned' ? 'normal' : 'pinned';
       try {
         if (appState.announcementsDbAvailable && !String(id).startsWith('local-')) {
-          const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update({ priority: nextPriority, pinned: nextPriority === 'pinned' }).eq('id', id);
+          const result = await window.supabaseClient.from(ANNOUNCEMENTS_TABLE).update({ priority:nextPriority, pinned:nextPriority === 'pinned' }).eq('id', id);
           if (result?.error) throw result.error;
           await loadAnnouncements();
         } else {
-          const list = getLocalAnnouncements().map(x => String(x.id) === String(id) ? normalizeAnnouncement({ ...x, priority: nextPriority, pinned: nextPriority === 'pinned' }) : x);
-          saveLocalAnnouncements(list);
-          appState.announcements = sortAnnouncements(list);
+          const list = getLocalAnnouncements().map(x => String(x.id) === String(id) ? normalizeAnnouncement({ ...x, priority:nextPriority, pinned:nextPriority === 'pinned' }) : x);
+          saveLocalAnnouncements(list); appState.announcements = sortAnnouncements(list);
         }
         renderAnnouncements();
-      } catch (err) {
-        console.warn('toggleAnnouncementPinned error', err);
-      }
+      } catch (err) { console.warn('toggleAnnouncementPinned error', err); }
     }
 
     async function deleteAnnouncement(id) {
@@ -3233,13 +3298,11 @@
           await loadAnnouncements();
         } else {
           const list = getLocalAnnouncements().filter(x => String(x.id) !== String(id));
-          saveLocalAnnouncements(list);
-          appState.announcements = sortAnnouncements(list);
+          saveLocalAnnouncements(list); appState.announcements = sortAnnouncements(list);
         }
+        if (String(getAnnouncementFormId()) === String(id)) clearAnnouncementForm();
         renderAnnouncements();
-      } catch (err) {
-        console.warn('deleteAnnouncement error', err);
-      }
+      } catch (err) { console.warn('deleteAnnouncement error', err); }
     }
 
 // ======================================================
