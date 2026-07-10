@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.3.5 Track 1 / Smart Dashboard Cards
+    Version: 1.3.9 Dashboard Intelligence
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1498,7 +1498,40 @@
     .activity-event-message { color:#cbd5e1; font-weight:750; line-height:1.35; }
     .activity-event-meta { color:#54e86f; font-size:11px; font-weight:900; text-transform:uppercase; margin-top:4px; }
     .activity-filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
-    @media (max-width:760px) { .activity-event { grid-template-columns:58px 30px 1fr; gap:8px; } }
+
+    /* Dashboard Intelligence v1.3.9 */
+    .intel-status-card {
+      background:linear-gradient(135deg, rgba(34,197,94,.13), rgba(15,23,42,.78));
+      border:1px solid rgba(84,232,111,.28);
+      border-radius:18px;
+      padding:16px;
+      margin:14px 0;
+    }
+    .intel-status-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .intel-stage-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:999px; background:rgba(34,197,94,.14); color:#bbf7d0; border:1px solid rgba(34,197,94,.28); font-size:12px; font-weight:950; text-transform:uppercase; }
+    .intel-status-card h3 { font-size:24px; margin:10px 0 5px; color:#fff; }
+    .intel-status-card p { color:#cbd5e1; font-weight:750; line-height:1.45; }
+    .intel-clock { min-width:94px; text-align:center; padding:10px 12px; border-radius:14px; background:rgba(2,8,14,.45); border:1px solid rgba(148,163,184,.16); }
+    .intel-clock strong { display:block; color:#54e86f; font-size:22px; }
+    .intel-clock small { color:#94a3b8; font-weight:900; text-transform:uppercase; }
+    .intel-progress { height:9px; background:rgba(148,163,184,.14); border-radius:999px; overflow:hidden; margin:14px 0 8px; }
+    .intel-progress > span { display:block; height:100%; width:0; background:linear-gradient(90deg,#22c55e,#54e86f); border-radius:999px; transition:width .25s ease; }
+    .intel-next { margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,.14); color:#f8fafc; font-weight:900; }
+    .intel-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0; }
+    .intel-card { background:rgba(2,8,14,.38); border:1px solid rgba(148,163,184,.16); border-radius:16px; padding:13px; min-height:92px; }
+    .intel-card .intel-icon { font-size:22px; }
+    .intel-card strong { display:block; color:#fff; font-size:19px; margin:6px 0 3px; }
+    .intel-card small { color:#94a3b8; font-weight:850; line-height:1.3; }
+    .intel-health { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+    .health-item { display:flex; gap:9px; align-items:center; background:rgba(15,23,42,.64); border:1px solid rgba(148,163,184,.15); border-radius:14px; padding:11px; }
+    .health-dot { width:11px; height:11px; border-radius:999px; flex:0 0 auto; background:#64748b; box-shadow:none; }
+    .health-dot.good { background:#22c55e; box-shadow:0 0 12px rgba(34,197,94,.5); }
+    .health-dot.warn { background:#f59e0b; box-shadow:0 0 12px rgba(245,158,11,.45); }
+    .health-dot.bad { background:#ef4444; box-shadow:0 0 12px rgba(239,68,68,.45); }
+    .health-item strong { display:block; color:#f8fafc; font-size:13px; }
+    .health-item small { display:block; color:#94a3b8; font-weight:800; margin-top:2px; }
+    @media (max-width:900px) { .intel-grid,.intel-health { grid-template-columns:1fr 1fr; } }
+    @media (max-width:760px) { .activity-event { grid-template-columns:58px 30px 1fr; gap:8px; } .intel-grid,.intel-health { grid-template-columns:1fr; } }
 
   </style>
 </head>
@@ -1990,6 +2023,35 @@
               <div class="admin-health-card"><strong id="command-approved-count">0</strong><small>Approved</small></div>
               <div class="admin-health-card"><strong id="command-pending-count">0</strong><small>Pending</small></div>
               <div class="admin-health-card"><strong id="command-team-count">0</strong><small>Teams</small></div>
+            </div>
+
+            <div class="intel-status-card">
+              <div class="intel-status-top">
+                <div>
+                  <span class="intel-stage-pill" id="intel-stage-pill">Loading stage…</span>
+                  <h3 id="intel-stage-title">Today’s Event</h3>
+                  <p id="intel-stage-subtitle">Reading registrations, teams, and submissions.</p>
+                </div>
+                <div class="intel-clock"><strong id="intel-stage-clock">--</strong><small id="intel-stage-clock-label">Status</small></div>
+              </div>
+              <div class="intel-progress"><span id="intel-progress-bar"></span></div>
+              <div class="muted" id="intel-progress-label" style="font-weight:850;">Preparing event progress…</div>
+              <div class="intel-next" id="intel-next-action">Next action will appear here.</div>
+            </div>
+
+            <div class="intel-grid">
+              <div class="intel-card"><span class="intel-icon">👑</span><strong id="intel-captains-ready">0 / 0</strong><small>Captains assigned</small></div>
+              <div class="intel-card"><span class="intel-icon">👥</span><strong id="intel-players-assigned">0 / 0</strong><small>Approved players on teams</small></div>
+              <div class="intel-card"><span class="intel-icon">🏁</span><strong id="intel-teams-submitted">0 / 0</strong><small>Teams submitted</small></div>
+              <div class="intel-card"><span class="intel-icon">📢</span><strong id="intel-active-announcements">0</strong><small>Active announcements</small></div>
+            </div>
+
+            <div class="section-title">System Health</div>
+            <div class="intel-health">
+              <div class="health-item"><span class="health-dot" id="health-supabase-dot"></span><div><strong>Supabase</strong><small id="health-supabase-text">Checking…</small></div></div>
+              <div class="health-item"><span class="health-dot" id="health-notifications-dot"></span><div><strong>Notifications</strong><small id="health-notifications-text">Checking…</small></div></div>
+              <div class="health-item"><span class="health-dot" id="health-weather-dot"></span><div><strong>Weather</strong><small id="health-weather-text">Checking…</small></div></div>
+              <div class="health-item"><span class="health-dot" id="health-backup-dot"></span><div><strong>Backup</strong><small id="health-backup-text">Checking…</small></div></div>
             </div>
 
             <div class="admin-command-grid">
@@ -6714,17 +6776,89 @@ async function toggleCaptain(id, makeCaptain) {
       updateNotificationBadge();
     }
 
+    function setHealthIndicator(name, state, text) {
+      const dot = document.getElementById(`health-${name}-dot`);
+      const label = document.getElementById(`health-${name}-text`);
+      if (dot) dot.className = `health-dot ${state || ''}`.trim();
+      if (label) label.textContent = text;
+    }
+
+    function getActiveAnnouncementCountSafe() {
+      const now = Date.now();
+      return (appState.announcements || []).filter(a => {
+        if (a.active === false) return false;
+        if (!a.expires_at) return true;
+        const expires = new Date(a.expires_at).getTime();
+        return !Number.isFinite(expires) || expires > now;
+      }).length;
+    }
+
+    function getLatestBackupHealth() {
+      try {
+        const raw = localStorage.getItem(AUTO_BACKUP_LIST_KEY) || localStorage.getItem(AUTO_BACKUP_KEY);
+        if (!raw) return { state:'warn', text:'No auto-save yet' };
+        const parsed = JSON.parse(raw);
+        const item = Array.isArray(parsed) ? parsed[0] : parsed;
+        const created = item?.createdAt ? new Date(item.createdAt) : null;
+        if (!created || Number.isNaN(created.getTime())) return { state:'warn', text:'Backup date unavailable' };
+        const ageMinutes = Math.max(0, Math.round((Date.now() - created.getTime()) / 60000));
+        if (ageMinutes <= 30) return { state:'good', text:`Saved ${ageMinutes || '<1'} min ago` };
+        if (ageMinutes <= 180) return { state:'warn', text:`Saved ${ageMinutes} min ago` };
+        return { state:'warn', text:created.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) };
+      } catch (err) {
+        return { state:'bad', text:'Backup check failed' };
+      }
+    }
+
     function renderAdminCommandDashboard(){
-      const approved = appState.players.filter(p => p.status === 'approved').length;
+      const snapshot = updateEventEngine();
+      const approvedPlayers = appState.players.filter(p => p.status === 'approved');
       const pending = appState.players.filter(p => p.status === 'pending').length;
-      const teamCount = getActiveTeamCount();
-      const stage = typeof getEventStage === 'function' ? getEventStage() : null;
-      const stageText = stage?.label || stage?.title || 'Today’s game is connected and ready.';
+      const captains = approvedPlayers.filter(p => isCaptainPlayer(p)).length;
+      const expectedCaptains = snapshot.counts.activeTeams || snapshot.counts.teamCount || 0;
+      const activeTeams = snapshot.counts.activeTeams || snapshot.counts.teamCount || 0;
+      const assigned = snapshot.counts.assigned || 0;
+      const submitted = snapshot.counts.submitted || 0;
+      const announcements = getActiveAnnouncementCountSafe();
       const set = (id, value) => { const el = document.getElementById(id); if(el) el.textContent = value; };
-      set('command-approved-count', approved);
+
+      set('command-approved-count', approvedPlayers.length);
       set('command-pending-count', pending);
-      set('command-team-count', teamCount);
-      set('admin-dashboard-stage', stageText);
+      set('command-team-count', snapshot.counts.teamCount);
+      set('admin-dashboard-stage', `${snapshot.pill} — ${snapshot.nextAction}`);
+      set('intel-stage-pill', snapshot.pill);
+      set('intel-stage-title', String(snapshot.title || '').replace(/<[^>]*>/g, ''));
+      set('intel-stage-subtitle', snapshot.subtitle);
+      set('intel-stage-clock', snapshot.clock);
+      set('intel-stage-clock-label', snapshot.stage === 'REGISTRATION_OPEN' || snapshot.stage === 'BEFORE_REGISTRATION' ? 'Countdown' : 'Status');
+      set('intel-next-action', `Next: ${snapshot.nextAction}`);
+      set('intel-captains-ready', `${captains} / ${expectedCaptains}`);
+      set('intel-players-assigned', `${assigned} / ${approvedPlayers.length}`);
+      set('intel-teams-submitted', `${submitted} / ${activeTeams}`);
+      set('intel-active-announcements', announcements);
+
+      let progress = 0;
+      let progressLabel = 'Event setup has not started.';
+      if (snapshot.stage === 'BEFORE_REGISTRATION') { progress = 5; progressLabel = 'Waiting for registration to open.'; }
+      else if (snapshot.stage === 'REGISTRATION_OPEN') { progress = 20; progressLabel = `${approvedPlayers.length} approved • ${pending} pending`; }
+      else if (snapshot.stage === 'REGISTRATION_CLOSED') { progress = 32; progressLabel = 'Registration closed; team setup is next.'; }
+      else if (snapshot.stage === 'CAPTAINS_PICKING') { progress = approvedPlayers.length ? 35 + Math.round((assigned / approvedPlayers.length) * 25) : 35; progressLabel = `${assigned} of ${approvedPlayers.length} approved players assigned`; }
+      else if (snapshot.stage === 'LIVE_PLAY') { progress = 68; progressLabel = 'Live play active; scores remain private by team.'; }
+      else if (snapshot.stage === 'RESULTS_UNLOCKING') { progress = activeTeams ? 70 + Math.round((submitted / activeTeams) * 25) : 75; progressLabel = `${submitted} of ${activeTeams} teams submitted`; }
+      else if (snapshot.stage === 'FINAL_RESULTS') { progress = 100; progressLabel = 'All teams submitted. Recap is ready.'; }
+      const bar = document.getElementById('intel-progress-bar');
+      if (bar) bar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+      set('intel-progress-label', progressLabel);
+
+      const supabaseReady = !!window.supabaseClient;
+      setHealthIndicator('supabase', supabaseReady ? 'good' : 'bad', supabaseReady ? 'Connected' : 'Not connected');
+      const notificationReady = notificationDbAvailable && !String(notificationRealtimeStatus || '').toLowerCase().includes('error');
+      setHealthIndicator('notifications', notificationReady ? 'good' : 'warn', notificationReady ? (notificationRealtimeStatus || 'Online') : 'Check diagnostics');
+      const weatherText = document.getElementById('weather-temp')?.textContent || '--';
+      const weatherReady = weatherText && !weatherText.includes('--');
+      setHealthIndicator('weather', weatherReady ? 'good' : 'warn', weatherReady ? `Live ${weatherText}` : 'Waiting for weather');
+      const backup = getLatestBackupHealth();
+      setHealthIndicator('backup', backup.state, backup.text);
     }
 
     function switchAdminTab(t, ev){
@@ -6866,6 +7000,10 @@ async function resetDailyGameIfNeeded() {
         }
         await loadWeather();
         setInterval(loadWeather, 600000);
+        setInterval(() => {
+          const adminDashboard = document.getElementById('admin-dashboard');
+          if (adminDashboard && adminDashboard.classList.contains('active')) renderAdminCommandDashboard();
+        }, 30000);
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
         window.supabaseClient
