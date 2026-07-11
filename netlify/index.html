@@ -5210,13 +5210,129 @@ Total: ${totals.total}`);
         </div>`;
     }
 
-    function findUniqueWinner(rows, field) {
-      const valid = rows.filter(r => typeof r[field] === 'number');
-      if (!valid.length) return { type: 'none' };
-      const best = Math.max(...valid.map(r => r[field]));
-      const winners = valid.filter(r => r[field] === best);
-      if (winners.length !== 1) return { type: 'push', score: best, teams: winners };
-      return { type: 'winner', score: best, team: winners[0] };
+    function formatMoneyAmount(value) {
+      const amount = Number(value || 0);
+      return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+    }
+
+    function splitPoolAmongTeams(pool, winners) {
+      const result = new Map();
+      if (!winners.length) return result;
+
+      const totalCents = Math.round(Number(pool || 0) * 100);
+      const baseCents = Math.floor(totalCents / winners.length);
+      let remainder = totalCents - (baseCents * winners.length);
+
+      winners.forEach((row, index) => {
+        const cents = baseCents + (index < remainder ? 1 : 0);
+        result.set(String(row.team.id), cents / 100);
+      });
+
+      return result;
+    }
+
+    function calculateMoneyGamePayouts(rows, pot) {
+      const frontMoney = Math.round(Number(pot || 0) * 0.25);
+      const backMoney = Math.round(Number(pot || 0) * 0.25);
+      const totalMoney = Number(pot || 0) - frontMoney - backMoney;
+      const payouts = new Map();
+
+      rows.forEach(row => {
+        payouts.set(String(row.team.id), {
+          front: 0,
+          back: 0,
+          total: 0,
+          refund: 0,
+          grandTotal: 0
+        });
+      });
+
+      const submittedTotals = rows
+        .map(row => Number(row.total))
+        .filter(Number.isFinite);
+      const everyTeamTied = rows.length > 1 &&
+        submittedTotals.length === rows.length &&
+        new Set(submittedTotals).size === 1;
+
+      if (everyTeamTied) {
+        rows.forEach(row => {
+          const refund = row.players.length * 20;
+          const item = payouts.get(String(row.team.id));
+          item.refund = refund;
+          item.grandTotal = refund;
+        });
+
+        return {
+          pot,
+          frontMoney,
+          backMoney,
+          totalMoney,
+          everyTeamTied: true,
+          payouts,
+          categories: {}
+        };
+      }
+
+      const categories = {};
+      const awardCategory = (field, pool) => {
+        const valid = rows.filter(row => Number.isFinite(Number(row[field])));
+        if (!valid.length) {
+          categories[field] = { winners: [], score: null, pool };
+          return;
+        }
+
+        const best = Math.max(...valid.map(row => Number(row[field])));
+        const winners = valid.filter(row => Number(row[field]) === best);
+        const split = splitPoolAmongTeams(pool, winners);
+
+        winners.forEach(row => {
+          const id = String(row.team.id);
+          payouts.get(id)[field] += Number(split.get(id) || 0);
+        });
+
+        categories[field] = { winners, score: best, pool };
+      };
+
+      awardCategory('front', frontMoney);
+      awardCategory('back', backMoney);
+      awardCategory('total', totalMoney);
+
+      payouts.forEach(item => {
+        item.grandTotal = item.front + item.back + item.total;
+      });
+
+      return {
+        pot,
+        frontMoney,
+        backMoney,
+        totalMoney,
+        everyTeamTied: false,
+        payouts,
+        categories
+      };
+    }
+
+    function renderPayoutCategoryCard(label, category) {
+      if (!category || !category.winners?.length) {
+        return `<div class="dashboard-panel"><div class="section-title">${label}</div><div class="empty-state">No result available.</div></div>`;
+      }
+
+      const split = splitPoolAmongTeams(category.pool, category.winners);
+      const tied = category.winners.length > 1;
+      const winnerRows = category.winners.map(row => {
+        const amount = split.get(String(row.team.id)) || 0;
+        return `<div class="player-item"><span>${getTeamName(row.team.id)}</span><strong class="green">${formatMoneyAmount(amount)}</strong></div>`;
+      }).join('');
+
+      return `
+        <div class="dashboard-panel">
+          <div class="players-header">
+            <h3>${label}</h3>
+            <span class="players-count">${formatMoneyAmount(category.pool)}</span>
+          </div>
+          <div class="muted" style="font-weight:800;margin-bottom:8px;">${tied ? `Tie at ${category.score} — payout split evenly.` : `Winning score: ${category.score}`}</div>
+          ${winnerRows}
+        </div>`;
     }
 
     function renderLiveResults() {
@@ -5225,16 +5341,13 @@ Total: ${totals.total}`);
 
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
       const pot = approvedPlayers.length * 20;
-      const frontMoney = Math.round(pot * 0.25);
-      const backMoney = Math.round(pot * 0.25);
-      const totalMoney = pot - frontMoney - backMoney;
 
       const teamsWithPlayers = appState.teams.map(team => {
         const players = appState.players.filter(p => p.status === 'approved' && String(p.team) === String(team.id));
         const submittedScore = players.map(p => p.score).filter(v => v !== null && v !== undefined).map(Number);
         const totals = getTeamMoneyTotals(team.id);
         const total = submittedScore.length ? Math.max(...submittedScore) : null;
-        return { team, players, front: totals.front, back: totals.back, total };
+        return { team, players, front: Number(totals.front), back: Number(totals.back), total };
       }).filter(row => row.players.length);
 
       const allSubmitted = teamsWithPlayers.length > 0 && teamsWithPlayers.every(row => row.total !== null);
@@ -5244,13 +5357,10 @@ Total: ${totals.total}`);
         return;
       }
 
-      const totalResult = findUniqueWinner(teamsWithPlayers, 'total');
-
-      const totalCard = totalResult.type === 'push'
-        ? `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#ffb020;">PUSH</div><div class="muted">Tie score: ${totalResult.score}. Money refunded.</div></div>`
-        : `<div class="dashboard-panel"><div class="section-title">Total Winner</div><div style="font-size:28px;font-weight:950;color:#54e86f;">${getTeamName(totalResult.team.team.id)}</div><div class="muted">Score: ${totalResult.score}</div><div style="font-size:22px;font-weight:950;margin-top:8px;">+$${totalMoney}</div></div>`;
+      const payoutData = calculateMoneyGamePayouts(teamsWithPlayers, pot);
 
       const teamCards = teamsWithPlayers.map(row => {
+        const payout = payoutData.payouts.get(String(row.team.id));
         const sortedPlayers = row.players.slice().sort((a, b) => {
           const ac = isCaptainPlayer(a) ? 0 : 1;
           const bc = isCaptainPlayer(b) ? 0 : 1;
@@ -5265,6 +5375,7 @@ Total: ${totals.total}`);
               <span class="players-count">${row.total} pts</span>
             </div>
             ${renderMoneyTotalsMini({ front: row.front, back: row.back, total: row.total })}
+            <div class="player-item"><span>${payoutData.everyTeamTied ? 'Buy-in Refund' : 'Team Payout'}</span><strong class="green">${formatMoneyAmount(payout?.grandTotal || 0)}</strong></div>
             ${sortedPlayers.map(p => `
               <div class="player-item clickable-player" onclick="showPlayerScorecard('${p.id}', 'view-game')">
                 <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
@@ -5274,24 +5385,28 @@ Total: ${totals.total}`);
           </div>`;
       }).join('');
 
+      const resultCards = payoutData.everyTeamTied
+        ? `<div class="dashboard-panel" style="border-color:rgba(245,158,11,.55);">
+            <div class="section-title">🤝 Complete Tie — Full Refund</div>
+            <div class="muted" style="font-weight:850;line-height:1.45;">Every team finished with ${teamsWithPlayers[0]?.total ?? '-'} points. Every player receives their $20 buy-in back.</div>
+          </div>`
+        : `${renderPayoutCategoryCard('Front 9 Payout', payoutData.categories.front)}
+           ${renderPayoutCategoryCard('Back 9 Payout', payoutData.categories.back)}
+           ${renderPayoutCategoryCard('Total Payout', payoutData.categories.total)}`;
+
       mount.innerHTML = `
         <div class="dashboard-panel">
           <div class="players-header">
-            <h3>Final Results</h3>
-            <span class="players-count">$${pot} Pot</span>
+            <h3>Final Results & Payouts</h3>
+            <span class="players-count">${formatMoneyAmount(pot)} Pot</span>
           </div>
-          <div class="player-item"><span>Front 9</span><span>$${frontMoney}</span></div>
-          <div class="player-item"><span>Back 9</span><span>$${backMoney}</span></div>
-          <div class="player-item"><span>Total</span><span>$${totalMoney}</span></div>
+          <div class="player-item"><span>Front 9 Pool</span><span>${formatMoneyAmount(payoutData.frontMoney)}</span></div>
+          <div class="player-item"><span>Back 9 Pool</span><span>${formatMoneyAmount(payoutData.backMoney)}</span></div>
+          <div class="player-item"><span>Total Pool</span><span>${formatMoneyAmount(payoutData.totalMoney)}</span></div>
         </div>
-        <div class="dashboard-panel"><div class="section-title">Front Winner</div><div class="empty-state">Front 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
-        <div class="dashboard-panel"><div class="section-title">Back Winner</div><div class="empty-state">Back 9 payout will calculate after shared hole-by-hole storage is added.</div></div>
-        ${totalCard}
+        ${resultCards}
         <div class="dashboard-panel">
-          <div class="players-header">
-            <h3>Player Scorecards</h3>
-            <span class="players-count">Tap Player</span>
-          </div>
+          <div class="players-header"><h3>Player Scorecards</h3><span class="players-count">Tap Player</span></div>
           <div class="muted" style="font-weight:800;margin-bottom:10px;">Tap any player below to view their golf scorecard.</div>
         </div>
         ${teamCards}`;
@@ -5561,6 +5676,10 @@ function renderVisibleFinishedStandings() {
           <div class="mgc-points">${row.total}<small>Total</small></div>
         </div>
         ${renderMoneyTotalsMini({ front: row.front, back: row.back, total: row.total })}
+        <div class="mgc-scorecard-row">
+          <span>${recap.payoutData.everyTeamTied ? 'Buy-in Refund' : 'Team Payout'}</span>
+          <strong class="green">${formatMoneyAmount(recap.payoutData.payouts.get(String(row.team.id))?.grandTotal || 0)}</strong>
+        </div>
         ${players.map(p => `
           <div class="mgc-scorecard-row">
             <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
@@ -5614,11 +5733,15 @@ function getFinalRecapData() {
   })).sort((a, b) => b.birdies - a.birdies);
   const birdieLeader = birdieRows[0] || null;
 
+  const pot = approvedPlayers.length * 20;
+  const payoutData = calculateMoneyGamePayouts(standings, pot);
+
   return {
     standings,
     players: approvedPlayers.length,
     teams: standings.length,
-    pot: approvedPlayers.length * 20,
+    pot,
+    payoutData,
     mvp,
     lowestRound,
     birdieLeader
@@ -5684,6 +5807,12 @@ function renderFinalRecap() {
         <div class="recap-summary-card"><strong>${recap.teams}</strong><small>Teams</small></div>
       </div>
     </div>
+
+    ${recap.payoutData.everyTeamTied ? `
+      <div class="dashboard-panel" style="border-color:rgba(245,158,11,.55);">
+        <div class="section-title">🤝 Complete Tie — Buy-ins Refunded</div>
+        <div class="muted" style="font-weight:850;line-height:1.45;">Every team tied. Every player receives their $20 buy-in back.</div>
+      </div>` : ''}
 
     <div class="recap-awards">
       ${awardCard('⭐', 'MVP', recap.mvp, `${recap.mvp?.totalPoints || 0} points`)}
