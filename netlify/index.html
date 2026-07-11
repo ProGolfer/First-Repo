@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v1.2.8</title>
+  <title>Money Game Central v1.4.3</title>
 
   <!--
     Golf Money Game
@@ -1692,6 +1692,38 @@
     @media (max-width:420px) {
       .quick-nav-grid { grid-template-columns:1fr; }
       .quick-nav-item.admin-link { grid-column:auto; }
+    }
+
+
+    /* Recap v1.4.3 */
+    .recap-hero {
+      background:
+        radial-gradient(circle at top right, rgba(245,158,11,.20), transparent 38%),
+        radial-gradient(circle at top left, rgba(34,197,94,.16), transparent 34%),
+        linear-gradient(180deg, rgba(15,30,44,.98), rgba(3,10,18,.99));
+      border:1px solid rgba(245,158,11,.34);
+      border-radius:24px;
+      padding:20px;
+      margin-bottom:14px;
+      box-shadow:0 0 34px rgba(245,158,11,.10), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .recap-kicker { color:#54e86f; font-weight:950; letter-spacing:.12em; text-transform:uppercase; font-size:12px; }
+    .recap-heading { font-size:34px; line-height:1; font-weight:950; text-transform:uppercase; margin-top:6px; }
+    .recap-date { color:#cbd5e1; font-weight:850; margin-top:8px; }
+    .recap-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+    .recap-summary-card { background:rgba(2,8,14,.48); border:1px solid rgba(148,163,184,.16); border-radius:16px; padding:13px; text-align:center; }
+    .recap-summary-card strong { display:block; font-size:26px; color:#fff; }
+    .recap-summary-card small { display:block; color:#54e86f; font-weight:950; text-transform:uppercase; margin-top:3px; }
+    .recap-awards { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+    .recap-award { background:linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98)); border:1px solid rgba(148,163,184,.18); border-radius:18px; padding:15px; text-align:center; }
+    .recap-award .icon { font-size:30px; }
+    .recap-award small { display:block; color:#a8b4c5; font-weight:900; text-transform:uppercase; margin-top:7px; }
+    .recap-award strong { display:block; color:#fff; font-size:18px; margin-top:4px; }
+    .recap-award span { display:block; color:#54e86f; font-weight:950; margin-top:3px; }
+    .recap-section-title { font-size:18px; font-weight:950; text-transform:uppercase; letter-spacing:.04em; margin:18px 0 10px; }
+    @media (max-width:760px) {
+      .recap-summary-grid, .recap-awards { grid-template-columns:1fr; }
+      .recap-heading { font-size:29px; }
     }
 
   </style>
@@ -5561,9 +5593,117 @@ function renderVisibleFinishedStandings() {
     ${cards}`;
 }
 
+
+
+function getFinalRecapData() {
+  const rows = getTeamScoreRows();
+  const complete = rows.length > 0 && rows.every(row => row.submitted);
+  if (!complete) return null;
+
+  const standings = rows.slice().sort((a, b) => Number(b.total) - Number(a.total));
+  const approvedPlayers = appState.players.filter(p => p.status === 'approved');
+  const playerRounds = approvedPlayers
+    .map(player => getPlayerScorecardData(player.id))
+    .filter(data => data && data.completed === 18);
+
+  const mvp = playerRounds.slice().sort((a, b) => Number(b.totalPoints) - Number(a.totalPoints))[0] || null;
+  const lowestRound = playerRounds.slice().sort((a, b) => Number(a.totalScore) - Number(b.totalScore))[0] || null;
+  const birdieRows = playerRounds.map(data => ({
+    data,
+    birdies: data.holes.filter(h => h.score !== null && Number(h.score) < Number(h.par)).length
+  })).sort((a, b) => b.birdies - a.birdies);
+  const birdieLeader = birdieRows[0] || null;
+
+  return {
+    standings,
+    players: approvedPlayers.length,
+    teams: standings.length,
+    pot: approvedPlayers.length * 20,
+    mvp,
+    lowestRound,
+    birdieLeader
+  };
+}
+
+function renderFinalRecap() {
+  const recap = getFinalRecapData();
+  if (!recap) return renderVisibleFinishedStandings();
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const lowestTeamTotal = Math.min(...recap.standings.map(row => Number(row.total)));
+  const dateLabel = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+  }).format(new Date());
+
+  const teamCards = recap.standings.map((row, idx) => {
+    const isLast = Number(row.total) === lowestTeamTotal;
+    const rankClass = isLast ? 'last' : idx === 0 ? 'first' : idx === 1 ? 'second' : idx === 2 ? 'third' : '';
+    const badge = isLast ? '💩' : (medals[idx] || `${idx + 1}.`);
+    const players = row.players.slice().sort((a, b) => {
+      const ac = isCaptainPlayer(a) ? 0 : 1;
+      const bc = isCaptainPlayer(b) ? 0 : 1;
+      if (ac !== bc) return ac - bc;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    return `
+      <div class="mgc-team-card ${rankClass}">
+        <div class="mgc-rank-row">
+          <div>
+            <div class="mgc-rank-title">${badge} ${getTeamName(row.team.id)}</div>
+            ${idx === 0 ? '<div class="green" style="font-weight:950;margin-top:4px;">Money Game Winner</div>' : ''}
+            ${isLast ? '<div class="muted" style="font-weight:900;margin-top:4px;">Better luck next time 😄</div>' : ''}
+          </div>
+          <div class="mgc-points">${row.total}<small>Total Points</small></div>
+        </div>
+        ${renderMoneyTotalsMini({ front: row.front, back: row.back, total: row.total })}
+        ${players.map(p => `
+          <div class="mgc-scorecard-row">
+            <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
+            <button class="btn btn-secondary btn-small" onclick="showPlayerScorecard('${p.id}', 'view-money-central')">Scorecard →</button>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
+
+  const awardCard = (icon, label, data, value) => `
+    <div class="recap-award">
+      <div class="icon">${icon}</div>
+      <small>${label}</small>
+      <strong>${data?.player?.name || 'Not available'}</strong>
+      <span>${data ? value : 'No complete scorecard'}</span>
+    </div>`;
+
+  return `
+    <div class="recap-hero">
+      <div class="recap-kicker">🏆 Money Game Central</div>
+      <div class="recap-heading">📋 Recap</div>
+      <div class="recap-date">${dateLabel}</div>
+      <div class="recap-summary-grid">
+        <div class="recap-summary-card"><strong>$${recap.pot}</strong><small>Money Pot</small></div>
+        <div class="recap-summary-card"><strong>${recap.players}</strong><small>Players</small></div>
+        <div class="recap-summary-card"><strong>${recap.teams}</strong><small>Teams</small></div>
+      </div>
+    </div>
+
+    <div class="recap-awards">
+      ${awardCard('⭐', 'MVP', recap.mvp, `${recap.mvp?.totalPoints || 0} points`)}
+      ${awardCard('🔥', 'Lowest Round', recap.lowestRound, `${recap.lowestRound?.totalScore || 0}`)}
+      ${awardCard('🐦', 'Most Birdies', recap.birdieLeader?.data, `${recap.birdieLeader?.birdies || 0} birdies`)}
+    </div>
+
+    <div class="recap-section-title">📊 Final Team Results</div>
+    ${teamCards}
+  `;
+}
+
 function renderMoneyGameCentral() {
   const mount = document.getElementById('money-game-central-display');
   if (!mount) return;
+  const recap = getFinalRecapData();
+  if (recap) {
+    mount.innerHTML = renderFinalRecap();
+    return;
+  }
   mount.innerHTML = myTeamHasSubmittedFinalScore() ? renderVisibleFinishedStandings() : renderMoneyCentralDuringRound();
 }
 
