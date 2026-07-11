@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.4.0 Statistics Foundation
+    Version: 1.4.1 Saturday Dashboard
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1562,6 +1562,70 @@
     .stats-toolbar input { flex:1; min-width:180px; padding:12px; border-radius:12px; background:#142232; color:#fff; border:1px solid rgba(148,163,184,.28); }
     @media (max-width:760px){ .stats-hero-grid{grid-template-columns:1fr 1fr;} }
 
+
+    /* Saturday Dashboard v1.4.1 */
+    .saturday-dashboard-date {
+      color:#a8b4c5; font-weight:850; margin-top:5px; font-size:13px;
+      text-transform:uppercase; letter-spacing:.06em;
+    }
+    .saturday-hero-row {
+      display:grid; grid-template-columns:minmax(0,1.45fr) minmax(210px,.75fr);
+      gap:14px; align-items:stretch; margin-bottom:14px;
+    }
+    .saturday-hero-row .event-status-panel,
+    .saturday-hero-row .weather-card { margin:0; min-height:250px; }
+    .saturday-hero-row .event-status-panel {
+      display:flex; flex-direction:column; justify-content:space-between;
+      background:radial-gradient(circle at top right,rgba(84,232,111,.20),transparent 42%),linear-gradient(180deg,rgba(15,30,44,.98),rgba(4,12,22,.98));
+      border:1px solid rgba(84,232,111,.30); border-radius:24px; padding:20px;
+    }
+    .saturday-hero-row .event-status-top { align-items:stretch; }
+    .saturday-hero-row .event-smart-action { min-height:58px; font-size:17px; }
+    .saturday-card {
+      background:linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.20); border-radius:22px; padding:17px;
+      margin-bottom:14px; box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .saturday-card .players-header { margin-bottom:10px; }
+    .saturday-money-card {
+      cursor:pointer; border-color:rgba(245,158,11,.42);
+      background:radial-gradient(circle at top right,rgba(245,158,11,.16),transparent 42%),linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98));
+    }
+    .saturday-money-main { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .saturday-money-main strong { font-size:24px; color:#fff; display:block; }
+    .saturday-money-main p { color:#a8b4c5; font-weight:800; margin-top:5px; }
+    .saturday-money-arrow { width:46px; height:46px; border-radius:999px; background:rgba(255,255,255,.09); display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto; }
+    .saturday-quick-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+    .saturday-quick-btn { background:rgba(15,30,44,.86); border:1px solid rgba(148,163,184,.18); border-radius:16px; color:#fff; padding:13px 8px; font-weight:900; cursor:pointer; }
+    .saturday-quick-btn span { display:block; font-size:23px; margin-bottom:5px; }
+    .legacy-dashboard-data { display:none !important; }
+    @media (max-width:760px){
+      .saturday-hero-row { grid-template-columns:minmax(0,1.15fr) minmax(135px,.85fr); gap:10px; }
+      .saturday-hero-row .event-status-panel, .saturday-hero-row .weather-card { min-height:230px; }
+      .saturday-hero-row .event-status-panel { padding:14px; }
+      .saturday-hero-row .event-status-grid { grid-template-columns:1fr 1fr; gap:7px; }
+      .saturday-hero-row .event-mini-stat { padding:8px 5px; }
+      .saturday-hero-row .event-mini-stat strong { font-size:20px; }
+      .saturday-hero-row .event-status-title { font-size:25px; }
+      .saturday-hero-row .event-status-subtitle { font-size:13px; }
+      .saturday-hero-row .weather-card { padding:14px 8px; }
+      .saturday-hero-row .weather-card .weather-icon { font-size:42px; }
+      .saturday-hero-row .weather-card .weather-temp { font-size:46px; }
+      .saturday-hero-row .weather-card .weather-meta { font-size:14px; }
+      .saturday-hero-row .weather-card .weather-label { font-size:15px; }
+      .saturday-quick-row { grid-template-columns:repeat(3,1fr); }
+    }
+    @media (max-width:430px){
+      .header h1 { font-size:25px; }
+      .header h1 span { font-size:16px; }
+      .logo-mark { width:48px; height:48px; font-size:26px; }
+      .icon-btn { width:46px; height:46px; }
+      .saturday-hero-row { grid-template-columns:minmax(0,1.2fr) minmax(120px,.8fr); }
+      .saturday-hero-row .event-stage-pill { font-size:10px; }
+      .saturday-hero-row .event-smart-action { min-height:50px; font-size:14px; padding:10px; }
+      .saturday-hero-row .event-action-note { display:none; }
+    }
+
   </style>
 </head>
 <body>
@@ -1586,7 +1650,7 @@
       <div class="header">
         <div class="header-logo">
           <div class="logo-mark">⛳</div>
-          <h1>CLIFFSIDE <span>Money Game Central</span></h1>
+          <div><h1>CLIFFSIDE <span>Money Game Central</span></h1><div class="saturday-dashboard-date" id="saturday-dashboard-date">Today</div></div>
         </div>
         <div class="header-actions">
           <button class="icon-btn" onclick="toggleNotificationCenter(); return false;">🔔<span class="notify-badge" id="top-pending-badge">0</span></button>
@@ -1594,78 +1658,40 @@
         </div>
       </div>
 
-      <div class="dashboard-panel">
-        <div class="section-title">GAME OVERVIEW</div>
-        
-        <div class="overview-grid">
-        
-<button class="home-pill-btn active">
-    <div class="tile-icon">💰</div>
-    <span>MONEY GAME</span>
-</button>
+      <div class="saturday-hero-row">
+        <div id="event-status-dashboard" class="event-status-panel">
+          <div class="event-status-top">
+            <div>
+              <div class="event-stage-pill" id="event-stage-pill">☀️ Loading Today</div>
+              <div class="event-status-title" id="event-status-title">Money Game <span>Today</span></div>
+              <div class="event-status-subtitle" id="event-status-subtitle">Checking registration and today’s game status.</div>
+            </div>
+            <div style="width:min(260px,100%);">
+              <button id="event-smart-action" class="event-smart-action" type="button">Checking Today…</button>
+              <small id="event-action-note" class="event-action-note">Finding your next step.</small>
+            </div>
+          </div>
+          <div class="event-status-grid">
+            <div class="event-mini-stat"><strong id="event-stat-players">0</strong><small>Players</small></div>
+            <div class="event-mini-stat"><strong id="event-stat-pending">0</strong><small>Pending</small></div>
+            <div class="event-mini-stat"><strong id="event-stat-teams">0</strong><small>Teams</small></div>
+            <div class="event-mini-stat"><strong id="event-stat-clock">--</strong><small>Status</small></div>
+          </div>
+        </div>
 
-          <button class="home-pill-btn" onclick="showView('view-register')">
-            <div class="tile-icon">👤➕</div>
-            <span>REGISTER</span>
-            <small>Join the game</small>
-          </button>
-
-         <button class="home-pill-btn" onclick="showPlayersPage()">
-            <div class="tile-icon">👥</div>
-            <span>PLAYERS</span>
-            <strong id="overview-player-count" style="font-size:28px;line-height:1;">0</strong>
-            <small class="orange">Pending <span id="overview-pending-count">0</span></small>
-          </button>
-
-          <button class="home-pill-btn" onclick="showTeamsPage()">
-            <div class="tile-icon">🚩</div>
-            <span>TEAMS</span>
-            <strong id="overview-team-count" style="font-size:28px;line-height:1;">4</strong>
-          </button>
-
-          <button class="home-pill-btn" onclick="showView('view-game'); loadGameView();">
-            <div class="tile-icon">🏆</div>
-            <span>SCORES</span>
-            <small class="orange">Live scoring</small>
-          </button>
-
-          <button class="home-pill-btn" onclick="showView('view-stats'); loadPlayerHistory();">
-            <div class="tile-icon">📊</div>
-            <span>STATS</span>
-            <small>Player avg</small>
-          </button>
-
-          <button class="home-pill-btn" onclick="showAdminLogin();">
-            <div class="tile-icon">⚙️🔒</div>
-            <span>SETTINGS</span>
-            <small>Admin locked</small>
-          </button>
+        <div class="dashboard-panel weather-card">
+          <div class="section-title" style="margin-bottom:8px;">🌤 WEATHER</div>
+          <div class="weather-icon" id="weather-icon">🌤️</div>
+          <div class="weather-temp" id="weather-temp">--°</div>
+          <div class="weather-meta"><span id="weather-wind">--</span> mph</div>
+          <div class="weather-label" id="weather-condition">WIND</div>
+          <div style="margin-top:6px;color:#a8b4c5;font-weight:800;">Humidity <span id="weather-humidity">--%</span></div>
         </div>
       </div>
 
-      <div id="event-status-dashboard" class="event-status-panel">
-        <div class="event-status-top">
-          <div>
-            <div class="event-stage-pill" id="event-stage-pill">☀️ Loading Today</div>
-            <div class="event-status-title" id="event-status-title">Money Game <span>Today</span></div>
-            <div class="event-status-subtitle" id="event-status-subtitle">Checking registration, teams, and today's game status.</div>
-          </div>
-          <div style="width:min(260px,100%);">
-            <button id="event-smart-action" class="event-smart-action" type="button">Checking Today…</button>
-            <small id="event-action-note" class="event-action-note">Finding your next step.</small>
-          </div>
-        </div>
-        <div class="event-status-grid">
-          <div class="event-mini-stat"><strong id="event-stat-players">0</strong><small>Players</small></div>
-          <div class="event-mini-stat"><strong id="event-stat-pending">0</strong><small>Pending</small></div>
-          <div class="event-mini-stat"><strong id="event-stat-teams">0</strong><small>Teams</small></div>
-          <div class="event-mini-stat"><strong id="event-stat-clock">--</strong><small>Status</small></div>
-        </div>
-      </div>
-
-      <div id="my-team-live-dashboard" class="my-team-live-panel">
+      <div id="my-team-live-dashboard" class="saturday-card my-team-live-panel">
         <div class="players-header">
-          <h3>🏌️ My Team Live Status</h3>
+          <h3>🏌️ My Team</h3>
           <span class="players-count" id="my-team-live-badge">Private</span>
         </div>
         <div id="my-team-live-content" class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
@@ -1673,90 +1699,36 @@
         </div>
       </div>
 
-      <div class="announcements-panel">
+      <div class="saturday-card announcements-panel">
         <div class="players-header">
           <h3>📢 Announcements</h3>
           <span class="players-count" id="announcement-count">0</span>
         </div>
-        <div id="home-announcements-list">
-          <div class="empty-state">No announcements yet.</div>
+        <div id="home-announcements-list"><div class="empty-state">No announcements yet.</div></div>
+      </div>
+
+      <div class="saturday-card saturday-money-card" onclick="showMoneyGameCentral();">
+        <div class="saturday-money-main">
+          <div>
+            <div class="section-title" style="color:#ffcf5a;">🏆 MONEY GAME</div>
+            <strong>Today’s Money Game</strong>
+            <p>Your team and submitted-team results. Becomes Recap after final results.</p>
+          </div>
+          <div class="saturday-money-arrow">→</div>
         </div>
       </div>
 
-      <div class="game-row">
-        <div class="dashboard-panel today-card">
-          <div class="section-title green">TODAY'S GAME</div>
-
-          <div class="today-stats">
-            <div>
-              <strong id="today-player-count">0</strong>
-              <small>Players</small>
-            </div>
-            <div>
-              <strong id="today-team-count">4</strong>
-              <small>Teams</small>
-            </div>
-            <div>
-              <strong id="today-pending-count">0</strong>
-              <small>Pending</small>
-            </div>
-          </div>
-
-          <div class="registration-line">
-            <div style="font-size:34px;color:#54e86f;">♙</div>
-            <div>
-              REGISTRATION: <span id="registration-open-status" class="green">OPEN</span>
-              <small id="registration-hours-display">6:00 AM - 9:30 AM</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="dashboard-panel weather-card">
-          <div class="weather-icon" id="weather-icon">🌤️</div>
-          <div class="weather-temp" id="weather-temp">--°</div>
-          <div class="weather-meta"><span id="weather-wind">--</span> mph</div>
-          <div class="weather-label" id="weather-condition">WIND</div>
-          <div style="margin-top:6px;color:#a8b4c5;font-weight:800;">
-            Humidity <span id="weather-humidity">--%</span>
-          </div>
-        </div>
+      <div class="saturday-quick-row">
+        <button class="saturday-quick-btn" onclick="showPlayersPage()"><span>👥</span>Players</button>
+        <button class="saturday-quick-btn" onclick="showTeamsPage()"><span>🚩</span>Teams</button>
+        <button class="saturday-quick-btn" onclick="showView('view-stats'); loadPlayerHistory();"><span>📊</span>Stats</button>
       </div>
 
-      <div class="action-grid">
-        <div class="action-card gold" onclick="showMoneyGameCentral();">
-          <div class="big-icon">🏆</div>
-          <h3>MONEY GAME <span>CENTRAL</span></h3>
-          <p>Your team and finished-team results</p>
-          <div class="arrow-circle">→</div>
-        </div>
-
-        <div class="action-card highlight" onclick="showCaptainTeamsPage();">
-          <div class="big-icon">🔒</div>
-          <h3>CAPTAINS <span>ONLY</span></h3>
-          <p><span class="orange" id="manage-pending-count">0</span> pending approval</p>
-          <div class="arrow-circle">→</div>
-        </div>
-
-        <div class="action-card" id="teams-dashboard-card" onclick="showAdminLogin();">
-          <div class="big-icon">🏌️‍♂️</div>
-          <h3>SELECT <span>TEAMS</span></h3>
-          <p><span id="select-team-count">4</span> teams configured</p>
-          <div class="arrow-circle">→</div>
-        </div>
-
-        <div class="action-card gold" onclick="showView('view-game'); loadGameView();">
-          <div class="big-icon">🏆</div>
-          <h3>LIVE <span>SCORES</span></h3>
-          <p>Team scoring</p>
-          <div class="arrow-circle">→</div>
-        </div>
-
-        <div class="action-card" onclick="showAdminLogin();">
-          <div class="big-icon">⚙️</div>
-          <h3>SETTINGS</h3>
-          <p>Registration <span id="settings-registration-state" class="green">open</span></p>
-          <div class="arrow-circle">🔒</div>
-        </div>
+      <div class="legacy-dashboard-data" aria-hidden="true">
+        <span id="overview-player-count">0</span><span id="overview-pending-count">0</span><span id="overview-team-count">0</span>
+        <span id="today-player-count">0</span><span id="today-team-count">0</span><span id="today-pending-count">0</span>
+        <span id="registration-open-status">OPEN</span><span id="registration-hours-display">6:00 AM - 9:30 AM</span>
+        <span id="manage-pending-count">0</span><span id="select-team-count">0</span><span id="settings-registration-state">open</span>
       </div>
 
       <div class="split-row">
@@ -4528,6 +4500,8 @@ function renderMyTeamLiveDashboard() {
 
 
 function renderHome() {
+  const dashDate = document.getElementById('saturday-dashboard-date');
+  if (dashDate) dashDate.textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
   const approved = appState.players.filter(p => p.status === 'approved');
   const pending = appState.players.filter(p => p.status === 'pending');
   const playerCount = document.getElementById('player-count');
