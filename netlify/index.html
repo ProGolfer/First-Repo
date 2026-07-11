@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.3.9 Dashboard Intelligence
+    Version: 1.4.0 Statistics Foundation
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1533,6 +1533,35 @@
     @media (max-width:900px) { .intel-grid,.intel-health { grid-template-columns:1fr 1fr; } }
     @media (max-width:760px) { .activity-event { grid-template-columns:58px 30px 1fr; gap:8px; } .intel-grid,.intel-health { grid-template-columns:1fr; } }
 
+
+    /* Statistics Foundation v1.4.0 */
+    .stats-hero-grid {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .stats-kpi {
+      background:rgba(2,8,14,.46);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:16px;
+      padding:14px;
+      text-align:center;
+    }
+    .stats-kpi strong { display:block; font-size:28px; color:#54e86f; }
+    .stats-kpi small { color:#a8b4c5; font-weight:900; text-transform:uppercase; }
+    .stats-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .stats-table { min-width:680px; }
+    .stats-table th { color:#54e86f; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    .stats-rank { width:42px; font-weight:950; color:#ffb020; }
+    .stats-player-name { font-weight:950; color:#fff; }
+    .stats-subtle { color:#94a3b8; font-size:12px; font-weight:800; }
+    .stats-highlight { color:#54e86f; font-weight:950; }
+    .stats-empty { padding:22px; text-align:center; color:#94a3b8; font-weight:850; }
+    .stats-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .stats-toolbar input { flex:1; min-width:180px; padding:12px; border-radius:12px; background:#142232; color:#fff; border:1px solid rgba(148,163,184,.28); }
+    @media (max-width:760px){ .stats-hero-grid{grid-template-columns:1fr 1fr;} }
+
   </style>
 </head>
 <body>
@@ -2001,6 +2030,7 @@
           <button class="admin-side-btn" onclick="switchAdminTab('scores', event)"><span>🏆</span><span>Score Control</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🔔</span><span>Notifications & Backup</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>System</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('statistics', event)"><span>📈</span><span>Statistics</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity</span></button>
         </div>
 
@@ -2061,6 +2091,7 @@
               <button class="admin-command-card" onclick="switchAdminTab('scores')"><span class="admin-command-icon">🏆</span><strong>Score Control</strong><small>Correct saved scores without changing the Best 3 scoring engine.</small></button>
               <button class="admin-command-card" onclick="switchAdminTab('tools')"><span class="admin-command-icon">🔔</span><strong>Notifications & Backup</strong><small>Diagnostics, test alerts, backups, restore tools, and safe cleanup controls.</small></button>
               <button class="admin-command-card" onclick="switchAdminTab('settings')"><span class="admin-command-icon">⚙️</span><strong>System</strong><small>Registration times and the manual open/close control.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('statistics')"><span class="admin-command-icon">📈</span><strong>Statistics</strong><small>Player averages, rounds, best scores, recent form, and today's team snapshot.</small></button>
             </div>
           </div>
 
@@ -2350,6 +2381,46 @@
             </div>
           </div>
 
+          <div id="admin-statistics" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Statistics</h2>
+                <p>Review player performance and today’s team snapshot without changing the scoring engine.</p>
+              </div>
+              <button class="btn btn-small btn-secondary" onclick="loadStatisticsModule(true)">Refresh</button>
+            </div>
+
+            <div class="stats-hero-grid">
+              <div class="stats-kpi"><strong id="stats-total-players">0</strong><small>Players</small></div>
+              <div class="stats-kpi"><strong id="stats-total-rounds">0</strong><small>Recorded Rounds</small></div>
+              <div class="stats-kpi"><strong id="stats-best-average">-</strong><small>Best Average</small></div>
+              <div class="stats-kpi"><strong id="stats-today-teams">0</strong><small>Today’s Teams</small></div>
+            </div>
+
+            <div class="admin-section">
+              <div class="players-header">
+                <h3>Player Statistics</h3>
+                <span class="players-count" id="stats-source-status">Loading</span>
+              </div>
+              <div class="stats-toolbar">
+                <input id="stats-player-search" type="search" placeholder="Search player…" oninput="renderStatisticsPlayers()">
+                <select id="stats-sort" onchange="renderStatisticsPlayers()" style="padding:12px;border-radius:12px;background:#142232;color:#fff;border:1px solid rgba(148,163,184,.28);">
+                  <option value="average">Best Average</option>
+                  <option value="rounds">Most Rounds</option>
+                  <option value="best">Best Round</option>
+                  <option value="recent">Most Recent</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+              <div class="stats-table-wrap"><div id="stats-player-table" class="stats-empty">Loading player statistics…</div></div>
+            </div>
+
+            <div class="admin-section">
+              <div class="players-header"><h3>Today’s Team Snapshot</h3><span class="players-count" id="stats-team-status">0 Teams</span></div>
+              <div id="stats-team-table" class="stats-empty">No teams available yet.</div>
+            </div>
+          </div>
+
           <div id="admin-log" class="admin-panel">
             <div class="admin-panel-header">
               <div>
@@ -2429,7 +2500,9 @@
       teamsSubmitted: false,
       announcements: [],
       announcementsDbAvailable: false,
-      eventEngine: null
+      eventEngine: null,
+      statisticsPlayers: [],
+      statisticsLoadedAt: null
     };
 
     // ======================================================
@@ -6810,6 +6883,122 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
+    const PLAYER_STATS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
+
+    function parseStatsCsv(text){
+      const rows=[]; let row=[], cell='', quoted=false;
+      for(let i=0;i<text.length;i++){
+        const ch=text[i], next=text[i+1];
+        if(ch==='"' && quoted && next==='"'){ cell+='"'; i++; }
+        else if(ch==='"'){ quoted=!quoted; }
+        else if(ch===',' && !quoted){ row.push(cell.trim()); cell=''; }
+        else if((ch==='\n' || ch==='\r') && !quoted){
+          if(ch==='\r' && next==='\n') i++;
+          row.push(cell.trim()); cell='';
+          if(row.some(v=>v!=='')) rows.push(row);
+          row=[];
+        } else cell+=ch;
+      }
+      if(cell || row.length){ row.push(cell.trim()); if(row.some(v=>v!=='')) rows.push(row); }
+      return rows;
+    }
+
+    function numberOrNull(value){
+      const clean=String(value ?? '').replace(/[^0-9.+-]/g,'');
+      if(!clean) return null;
+      const n=Number(clean); return Number.isFinite(n)?n:null;
+    }
+
+    function buildPlayerStatistics(rows){
+      if(!rows.length) return [];
+      const header=rows[0].map(x=>String(x||'').replace(/^\uFEFF/,'').trim());
+      let avgIndex=header.findIndex(h=>['avg','average','averages'].includes(String(h).replace(/[^a-z]/gi,'').toLowerCase()));
+      if(avgIndex<0) avgIndex=header.length-1;
+      return rows.slice(1).map(r=>{
+        const name=String(r[0]||'').trim();
+        const scores=[];
+        for(let i=2;i<avgIndex;i++){ const n=numberOrNull(r[i]); if(n!==null) scores.push(n); }
+        const sheetAvg=numberOrNull(r[avgIndex]);
+        const average=sheetAvg!==null ? sheetAvg : (scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null);
+        return {
+          name,
+          average,
+          rounds:scores.length,
+          best:scores.length?Math.min(...scores):null,
+          recent:scores.length?scores[scores.length-1]:null,
+          last5:scores.slice(-5),
+          trend:scores.length>=2?scores[scores.length-1]-scores[scores.length-2]:null
+        };
+      }).filter(x=>x.name);
+    }
+
+    async function loadStatisticsModule(force=false){
+      const status=document.getElementById('stats-source-status');
+      if(status) status.textContent='Loading';
+      try{
+        if(!force && appState.statisticsPlayers.length && appState.statisticsLoadedAt && Date.now()-appState.statisticsLoadedAt<300000){
+          renderStatisticsPlayers(); renderStatisticsTeams(); return;
+        }
+        const res=await fetch(PLAYER_STATS_SHEET_URL+`&t=${Date.now()}`);
+        if(!res.ok) throw new Error(`Stats sheet ${res.status}`);
+        const rows=parseStatsCsv(await res.text());
+        appState.statisticsPlayers=buildPlayerStatistics(rows);
+        appState.statisticsLoadedAt=Date.now();
+        if(status) status.textContent='Live Sheet';
+      }catch(err){
+        console.warn('Statistics load error',err);
+        appState.statisticsPlayers=(appState.players||[]).filter(p=>p.status==='approved').map(p=>({name:p.name,average:numberOrNull(p.avg ?? p.average),rounds:0,best:null,recent:numberOrNull(p.score),last5:[],trend:null}));
+        if(status) status.textContent='Current Game';
+      }
+      renderStatisticsPlayers();
+      renderStatisticsTeams();
+    }
+
+    function formatStat(value,digits=1){
+      if(value===null || value===undefined || !Number.isFinite(Number(value))) return '-';
+      const n=Number(value); return Number.isInteger(n)?String(n):n.toFixed(digits);
+    }
+
+    function renderStatisticsPlayers(){
+      const mount=document.getElementById('stats-player-table'); if(!mount) return;
+      const query=String(document.getElementById('stats-player-search')?.value||'').trim().toLowerCase();
+      const sort=document.getElementById('stats-sort')?.value||'average';
+      let list=[...(appState.statisticsPlayers||[])].filter(p=>!query || p.name.toLowerCase().includes(query));
+      const nullLast=(v,dir=1)=>v===null||v===undefined?Infinity*dir:Number(v);
+      if(sort==='rounds') list.sort((a,b)=>b.rounds-a.rounds || a.name.localeCompare(b.name));
+      else if(sort==='best') list.sort((a,b)=>nullLast(a.best)-nullLast(b.best) || a.name.localeCompare(b.name));
+      else if(sort==='recent') list.sort((a,b)=>nullLast(a.recent)-nullLast(b.recent) || a.name.localeCompare(b.name));
+      else if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name));
+      else list.sort((a,b)=>nullLast(a.average)-nullLast(b.average) || a.name.localeCompare(b.name));
+
+      const all=appState.statisticsPlayers||[];
+      const totalRounds=all.reduce((sum,p)=>sum+Number(p.rounds||0),0);
+      const averages=all.map(p=>p.average).filter(v=>v!==null&&v!==undefined&&Number.isFinite(Number(v))).map(Number);
+      const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+      set('stats-total-players',all.length);
+      set('stats-total-rounds',totalRounds);
+      set('stats-best-average',averages.length?formatStat(Math.min(...averages)):'-');
+      set('stats-today-teams',getActiveTeamCount());
+
+      if(!list.length){ mount.innerHTML='<div class="stats-empty">No matching player statistics.</div>'; return; }
+      mount.innerHTML=`<table class="stats-table"><thead><tr><th>#</th><th>Player</th><th>Average</th><th>Rounds</th><th>Best</th><th>Recent</th><th>Last 5</th></tr></thead><tbody>${list.map((p,i)=>`<tr><td class="stats-rank">${i+1}</td><td><div class="stats-player-name">${escapeHtml(p.name)}</div><div class="stats-subtle">${p.trend===null?'No trend yet':p.trend<0?'Improving':p.trend>0?'Higher last round':'Steady'}</div></td><td class="stats-highlight">${formatStat(p.average)}</td><td>${p.rounds}</td><td>${formatStat(p.best,0)}</td><td>${formatStat(p.recent,0)}</td><td class="stats-subtle">${p.last5.length?p.last5.map(v=>formatStat(v,0)).join(' • '):'-'}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function renderStatisticsTeams(){
+      const mount=document.getElementById('stats-team-table'); if(!mount) return;
+      const teams=getActiveTeams();
+      const rows=getTeamScoreRows();
+      const status=document.getElementById('stats-team-status'); if(status) status.textContent=`${teams.length} Team${teams.length===1?'':'s'}`;
+      if(!teams.length){ mount.innerHTML='<div class="stats-empty">Teams will appear after they are configured.</div>'; return; }
+      mount.innerHTML=`<div class="stats-table-wrap"><table class="stats-table"><thead><tr><th>Team</th><th>Captain</th><th>Players</th><th>Holes</th><th>Status</th><th>Official Total</th></tr></thead><tbody>${teams.map(team=>{
+        const id=String(team.id); const players=(appState.players||[]).filter(p=>p.status==='approved'&&String(p.team_id)===id);
+        const captain=players.find(isCaptainPlayer);
+        const row=rows.find(r=>String(r.teamId)===id || String(r.team_id)===id);
+        const progress=getTeamProgress(team.id);
+        return `<tr><td class="stats-player-name">${escapeHtml(getTeamName(team.id))}</td><td>${escapeHtml(captain?.name||'-')}</td><td>${players.length}</td><td>${progress?.submittedCount||0}/9</td><td>${row?.submitted?'✅ Submitted':'⏳ In Progress'}</td><td class="stats-highlight">${row?.submitted?formatStat(row.total,0):'-'}</td></tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+
     function renderAdminCommandDashboard(){
       const snapshot = updateEventEngine();
       const approvedPlayers = appState.players.filter(p => p.status === 'approved');
@@ -6884,6 +7073,7 @@ async function toggleCaptain(id, makeCaptain) {
       if(t==='scores') { updateSettingsView(); renderScoreManagement(); }
       if(t==='settings') updateSettingsView();
       if(t==='tools') renderSystemTools();
+      if(t==='statistics') loadStatisticsModule();
     }
 
     function logout(){ showView('view-home'); }
