@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 1.4.1 Saturday Dashboard
+    Version: 1.4.2 Quick Navigation Menu Saturday Dashboard
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -1626,6 +1626,74 @@
       .saturday-hero-row .event-action-note { display:none; }
     }
 
+
+    /* Quick Navigation Menu v1.4.2 */
+    .quick-nav-backdrop {
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:9997;
+      background:rgba(0,0,0,.58);
+      backdrop-filter:blur(3px);
+    }
+    .quick-nav-backdrop.active { display:block; }
+    .quick-nav-panel {
+      position:fixed;
+      top:14px;
+      right:14px;
+      z-index:9998;
+      width:min(360px, calc(100vw - 28px));
+      max-height:calc(100vh - 28px);
+      overflow:auto;
+      transform:translateX(calc(100% + 28px));
+      transition:transform .22s ease;
+      background:linear-gradient(180deg, rgba(15,30,44,.99), rgba(2,8,14,.99));
+      border:1px solid rgba(84,232,111,.30);
+      border-radius:22px;
+      box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 32px rgba(34,197,94,.10);
+      padding:14px;
+    }
+    .quick-nav-panel.active { transform:translateX(0); }
+    .quick-nav-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:4px 4px 12px;
+      border-bottom:1px solid rgba(148,163,184,.16);
+      margin-bottom:10px;
+    }
+    .quick-nav-header strong { font-size:18px; text-transform:uppercase; letter-spacing:.04em; }
+    .quick-nav-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .quick-nav-item {
+      border:1px solid rgba(148,163,184,.20);
+      background:rgba(15,23,42,.72);
+      color:#f8fafc;
+      border-radius:16px;
+      min-height:86px;
+      padding:12px 9px;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:center;
+      text-align:left;
+      gap:6px;
+      font-weight:900;
+    }
+    .quick-nav-item:hover,
+    .quick-nav-item:active {
+      border-color:rgba(84,232,111,.58);
+      background:rgba(34,197,94,.12);
+    }
+    .quick-nav-item .quick-nav-icon { font-size:25px; line-height:1; }
+    .quick-nav-item small { color:#a8b4c5; font-weight:750; line-height:1.2; }
+    .quick-nav-item.admin-link { grid-column:1 / -1; min-height:64px; flex-direction:row; align-items:center; }
+    @media (max-width:420px) {
+      .quick-nav-grid { grid-template-columns:1fr; }
+      .quick-nav-item.admin-link { grid-column:auto; }
+    }
+
   </style>
 </head>
 <body>
@@ -1646,6 +1714,28 @@
       </div>
     </div>
 
+
+
+    <div id="quick-nav-backdrop" class="quick-nav-backdrop" onclick="toggleQuickNav(false)"></div>
+    <aside id="quick-nav-panel" class="quick-nav-panel" aria-hidden="true">
+      <div class="quick-nav-header">
+        <strong>☰ Quick Menu</strong>
+        <button class="btn btn-small btn-secondary" onclick="toggleQuickNav(false)">Close</button>
+      </div>
+      <div class="quick-nav-grid">
+        <button class="quick-nav-item" onclick="quickNavGo('home')"><span class="quick-nav-icon">🏠</span><span>Home</span><small>Saturday dashboard</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('register')"><span class="quick-nav-icon">📝</span><span>Register</span><small>Join today's game</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('players')"><span class="quick-nav-icon">👥</span><span>Players</span><small>Registered golfers</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('teams')"><span class="quick-nav-icon">🚩</span><span>Teams</span><small>Today's team list</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('myteam')"><span class="quick-nav-icon">🏌</span><span>My Team</span><small>Private scorecard</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">🏆</span><span>Money Game</span><small>Results and recap</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('announcements')"><span class="quick-nav-icon">📢</span><span>Announcements</span><small>Latest updates</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('notifications')"><span class="quick-nav-icon">🔔</span><span>Notifications</span><small>Unread activity</small></button>
+        <button class="quick-nav-item admin-link" onclick="quickNavGo('admin')"><span class="quick-nav-icon">🔒</span><span>Admin Command Center</span><small>Manage today's game</small></button>
+      </div>
+    </aside>
+
     <div id="view-home" class="card">
       <div class="header">
         <div class="header-logo">
@@ -1654,7 +1744,7 @@
         </div>
         <div class="header-actions">
           <button class="icon-btn" onclick="toggleNotificationCenter(); return false;">🔔<span class="notify-badge" id="top-pending-badge">0</span></button>
-          <button class="icon-btn" onclick="showAdminLogin(); return false;">☰</button>
+          <button class="icon-btn" onclick="toggleQuickNav(); return false;" aria-label="Open quick menu">☰</button>
         </div>
       </div>
 
@@ -2509,6 +2599,66 @@
       document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
     }
+
+
+
+    // ======================================================
+    // QUICK NAVIGATION MENU v1.4.2
+    // ======================================================
+    function toggleQuickNav(forceState) {
+      const panel = document.getElementById('quick-nav-panel');
+      const backdrop = document.getElementById('quick-nav-backdrop');
+      if (!panel || !backdrop) return;
+      const shouldOpen = typeof forceState === 'boolean' ? forceState : !panel.classList.contains('active');
+      panel.classList.toggle('active', shouldOpen);
+      backdrop.classList.toggle('active', shouldOpen);
+      panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+      document.body.style.overflow = shouldOpen ? 'hidden' : '';
+    }
+
+    function quickNavGo(destination) {
+      toggleQuickNav(false);
+      switch (destination) {
+        case 'home':
+          showView('view-home');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          break;
+        case 'register':
+          showView('view-register');
+          break;
+        case 'players':
+          showPlayersPage();
+          break;
+        case 'teams':
+          showTeamsPage();
+          break;
+        case 'myteam':
+          showView('view-game');
+          loadGameView();
+          break;
+        case 'money':
+          showMoneyGameCentral();
+          break;
+        case 'announcements':
+          showView('view-home');
+          setTimeout(() => document.querySelector('.announcements-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 80);
+          break;
+        case 'stats':
+          showView('view-stats');
+          loadPlayerHistory();
+          break;
+        case 'notifications':
+          toggleNotificationCenter(true);
+          break;
+        case 'admin':
+          showAdminLogin();
+          break;
+      }
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') toggleQuickNav(false);
+    });
 
     function showAdminLogin(){ showView('view-admin'); }
 
