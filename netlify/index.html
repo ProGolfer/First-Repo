@@ -1726,6 +1726,30 @@
       .recap-heading { font-size:29px; }
     }
 
+
+    /* History v1.4.6 */
+    .history-toolbar {
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      margin-bottom:14px;
+    }
+    .history-list { display:grid; gap:12px; }
+    .history-card {
+      background:linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
+      border:1px solid rgba(148,163,184,.20); border-radius:20px; padding:16px;
+      cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .history-card:hover { border-color:rgba(84,232,111,.55); }
+    .history-card-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .history-card h3 { font-size:19px; font-weight:950; color:#fff; }
+    .history-meta { color:#a8b4c5; font-weight:800; margin-top:5px; }
+    .history-winner { color:#54e86f; font-weight:950; margin-top:10px; }
+    .history-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+    .history-summary-grid > div { background:rgba(2,8,14,.42); border:1px solid rgba(148,163,184,.14); border-radius:13px; padding:10px; text-align:center; }
+    .history-summary-grid strong { display:block; color:#fff; font-size:19px; }
+    .history-summary-grid small { color:#54e86f; font-weight:900; text-transform:uppercase; font-size:10px; }
+    .history-detail-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    @media (max-width:760px) { .history-summary-grid { grid-template-columns:1fr 1fr 1fr; } }
+
   </style>
 </head>
 <body>
@@ -1763,6 +1787,7 @@
         <button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">🏆</span><span>Money Game</span><small>Results and recap</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('announcements')"><span class="quick-nav-icon">📢</span><span>Announcements</span><small>Latest updates</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">🕘</span><span>History</span><small>Past game recaps</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('notifications')"><span class="quick-nav-icon">🔔</span><span>Notifications</span><small>Unread activity</small></button>
         <button class="quick-nav-item admin-link" onclick="quickNavGo('admin')"><span class="quick-nav-icon">🔒</span><span>Admin Command Center</span><small>Manage today's game</small></button>
       </div>
@@ -2077,6 +2102,39 @@
       <div id="player-scorecard-display"></div>
 
       <button class="btn btn-back" onclick="backFromPlayerScorecard()">← Back</button>
+    </div>
+
+    <div id="view-history" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">🕘</div>
+          <h1>GAME <span>HISTORY</span></h1>
+        </div>
+      </div>
+      <div class="dashboard-panel">
+        <div class="history-toolbar">
+          <div>
+            <div class="section-title">Past Money Games</div>
+            <div class="muted" style="font-weight:800;margin-top:5px;">Completed games are saved automatically after final submission.</div>
+          </div>
+          <button class="btn btn-small btn-secondary" onclick="loadGameHistory()">Refresh</button>
+        </div>
+        <div id="history-list" class="history-list"><div class="empty-state">Loading history...</div></div>
+      </div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+    <div id="view-history-detail" class="card hidden">
+      <div class="header">
+        <div class="header-logo">
+          <div class="logo-mark">📋</div>
+          <h1>PAST <span>RECAP</span></h1>
+        </div>
+      </div>
+      <div class="history-detail-actions">
+        <button class="btn btn-small btn-secondary" onclick="showGameHistory()">← History</button>
+      </div>
+      <div id="history-detail-display"></div>
     </div>
 
     <div id="view-leaderboard" class="card hidden">
@@ -2678,6 +2736,9 @@
         case 'stats':
           showView('view-stats');
           loadPlayerHistory();
+          break;
+        case 'history':
+          showGameHistory();
           break;
         case 'notifications':
           toggleNotificationCenter(true);
@@ -5250,9 +5311,11 @@ Total: ${totals.total}`);
       const submittedTotals = rows
         .map(row => Number(row.total))
         .filter(Number.isFinite);
+      // Money Game rule: if ANY two or more teams tie on the final Total,
+      // the entire game is a tie and every player receives the $20 buy-in back.
       const everyTeamTied = rows.length > 1 &&
         submittedTotals.length === rows.length &&
-        new Set(submittedTotals).size === 1;
+        new Set(submittedTotals).size < submittedTotals.length;
 
       if (everyTeamTied) {
         rows.forEach(row => {
@@ -5714,6 +5777,210 @@ function renderVisibleFinishedStandings() {
 
 
 
+
+// ======================================================
+// GAME HISTORY v1.4.6
+// ======================================================
+const GAME_HISTORY_LOCAL_KEY = 'gmg_game_history_v1';
+const GAME_HISTORY_TABLE = 'game_history';
+let gameHistoryCache = [];
+
+function getLocalGameHistory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(GAME_HISTORY_LOCAL_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) { return []; }
+}
+
+function saveLocalGameHistory(rows) {
+  const clean = Array.isArray(rows) ? rows.slice(0, 100) : [];
+  localStorage.setItem(GAME_HISTORY_LOCAL_KEY, JSON.stringify(clean));
+  gameHistoryCache = clean;
+}
+
+function getHistoryGameDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function payoutMapToObject(map) {
+  const obj = {};
+  if (map && typeof map.forEach === 'function') map.forEach((value, key) => { obj[String(key)] = value; });
+  return obj;
+}
+
+function serializeHistoryRecap(recap) {
+  const now = new Date();
+  const gameDate = getHistoryGameDateKey(now);
+  const playerCards = appState.players
+    .filter(p => p.status === 'approved')
+    .map(p => getPlayerScorecardData(p.id))
+    .filter(Boolean)
+    .map(data => ({
+      playerId: data.player.id,
+      playerName: data.player.name,
+      teamName: data.teamName,
+      isCaptain: isCaptainPlayer(data.player),
+      completed: data.completed,
+      front: data.front,
+      back: data.back,
+      frontScore: data.frontScore,
+      backScore: data.backScore,
+      totalScore: data.totalScore,
+      frontPoints: data.frontPoints,
+      backPoints: data.backPoints,
+      totalPoints: data.totalPoints,
+      holes: data.holes
+    }));
+
+  return {
+    id: gameDate,
+    game_date: gameDate,
+    saved_at: now.toISOString(),
+    course: 'Cliffside Golf Club',
+    players: recap.players,
+    teams: recap.teams,
+    pot: recap.pot,
+    standings: recap.standings.map((row, index) => ({
+      rank: index + 1,
+      teamId: row.team.id,
+      teamName: getTeamName(row.team.id),
+      front: row.front,
+      back: row.back,
+      total: row.total,
+      players: row.players.map(p => ({ id:p.id, name:p.name, captain:isCaptainPlayer(p) }))
+    })),
+    payouts: payoutMapToObject(recap.payoutData?.payouts),
+    payout_summary: {
+      pot: recap.payoutData?.pot || recap.pot,
+      frontMoney: recap.payoutData?.frontMoney || 0,
+      backMoney: recap.payoutData?.backMoney || 0,
+      totalMoney: recap.payoutData?.totalMoney || 0,
+      everyTeamTied: !!recap.payoutData?.everyTeamTied
+    },
+    awards: {
+      mvp: recap.mvp ? { name:recap.mvp.player.name, value:recap.mvp.totalPoints, label:'points' } : null,
+      lowestRound: recap.lowestRound ? { name:recap.lowestRound.player.name, value:recap.lowestRound.totalScore } : null,
+      mostBirdies: recap.birdieLeader ? { name:recap.birdieLeader.data.player.name, value:recap.birdieLeader.birdies } : null
+    },
+    player_scorecards: playerCards
+  };
+}
+
+async function saveCompletedGameToHistory() {
+  const recap = getFinalRecapData();
+  if (!recap) return null;
+  const snapshot = serializeHistoryRecap(recap);
+  const local = getLocalGameHistory();
+  const next = [snapshot, ...local.filter(item => item.game_date !== snapshot.game_date)]
+    .sort((a,b) => String(b.game_date).localeCompare(String(a.game_date)));
+  saveLocalGameHistory(next);
+
+  try {
+    if (window.supabaseClient) {
+      const result = await window.supabaseClient
+        .from(GAME_HISTORY_TABLE)
+        .upsert({ game_date: snapshot.game_date, snapshot, created_at: snapshot.saved_at }, { onConflict: 'game_date' });
+      if (result?.error) throw result.error;
+    }
+  } catch (err) {
+    console.warn('History Supabase sync unavailable; local history was saved.', err);
+  }
+  return snapshot;
+}
+
+async function loadGameHistory() {
+  let rows = getLocalGameHistory();
+  try {
+    if (window.supabaseClient) {
+      const result = await window.supabaseClient
+        .from(GAME_HISTORY_TABLE)
+        .select('game_date,snapshot,created_at')
+        .order('game_date', { ascending:false })
+        .limit(100);
+      if (result?.error) throw result.error;
+      const remote = (result?.data || []).map(r => r.snapshot || r).filter(Boolean);
+      if (remote.length) {
+        const merged = new Map();
+        [...rows, ...remote].forEach(item => merged.set(item.game_date || item.id, item));
+        rows = [...merged.values()].sort((a,b) => String(b.game_date).localeCompare(String(a.game_date)));
+        saveLocalGameHistory(rows);
+      }
+    }
+  } catch (err) {
+    console.warn('History Supabase load unavailable; showing local history.', err);
+  }
+  gameHistoryCache = rows;
+  renderGameHistoryList();
+  return rows;
+}
+
+function formatHistoryDate(value) {
+  const date = new Date(`${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-US', {
+    weekday:'long', month:'long', day:'numeric', year:'numeric'
+  }).format(date);
+}
+
+function renderGameHistoryList() {
+  const mount = document.getElementById('history-list');
+  if (!mount) return;
+  const rows = gameHistoryCache.length ? gameHistoryCache : getLocalGameHistory();
+  if (!rows.length) {
+    mount.innerHTML = '<div class="empty-state">No completed games have been saved yet. The first completed Recap will appear here automatically.</div>';
+    return;
+  }
+  mount.innerHTML = rows.map(item => {
+    const winner = item.standings?.[0];
+    return `<div class="history-card" onclick="openHistoryRecap('${escapeHtml(item.game_date || item.id)}')">
+      <div class="history-card-top">
+        <div><h3>📋 ${formatHistoryDate(item.game_date || item.id)}</h3><div class="history-meta">${escapeHtml(item.course || 'Cliffside Golf Club')}</div></div>
+        <span class="players-count">View →</span>
+      </div>
+      <div class="history-winner">🏆 ${escapeHtml(winner?.teamName || 'Final Results')}</div>
+      <div class="history-summary-grid">
+        <div><strong>$${Number(item.pot || 0).toFixed(0)}</strong><small>Pot</small></div>
+        <div><strong>${Number(item.players || 0)}</strong><small>Players</small></div>
+        <div><strong>${Number(item.teams || 0)}</strong><small>Teams</small></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function showGameHistory() {
+  showView('view-history');
+  await loadGameHistory();
+}
+
+function openHistoryRecap(id) {
+  const item = (gameHistoryCache.length ? gameHistoryCache : getLocalGameHistory())
+    .find(row => String(row.game_date || row.id) === String(id));
+  if (!item) return;
+  const mount = document.getElementById('history-detail-display');
+  if (!mount) return;
+  const medals = ['🥇','🥈','🥉'];
+  const lastTotal = Math.min(...(item.standings || []).map(r => Number(r.total)));
+  const teamCards = (item.standings || []).map((row, idx) => {
+    const isLast = Number(row.total) === lastTotal;
+    const badge = isLast ? '💩' : (medals[idx] || `${idx+1}.`);
+    const payout = item.payouts?.[String(row.teamId)]?.grandTotal || 0;
+    return `<div class="mgc-team-card ${isLast ? 'last' : idx===0 ? 'first' : idx===1 ? 'second' : idx===2 ? 'third' : ''}">
+      <div class="mgc-rank-row"><div><div class="mgc-rank-title">${badge} ${escapeHtml(row.teamName)}</div>${idx===0?'<div class="green" style="font-weight:950;margin-top:4px;">Money Game Winner</div>':''}</div><div class="mgc-points">${row.total}<small>Total Points</small></div></div>
+      ${renderMoneyTotalsMini({ front:row.front, back:row.back, total:row.total })}
+      <div class="player-item"><span>Recorded Payout</span><strong class="green">${formatMoneyAmount(payout)}</strong></div>
+      ${(row.players || []).map(p => `<div class="player-item"><span>${p.captain?'👑 ':''}${escapeHtml(p.name)}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+  const a=item.awards||{};
+  mount.innerHTML=`
+    <div class="recap-hero"><div class="recap-kicker">🏆 Money Game Central</div><div class="recap-heading">📋 Past Recap</div><div class="recap-date">${formatHistoryDate(item.game_date || item.id)}</div><div class="recap-summary-grid"><div class="recap-summary-card"><strong>$${Number(item.pot||0).toFixed(0)}</strong><small>Money Pot</small></div><div class="recap-summary-card"><strong>${item.players||0}</strong><small>Players</small></div><div class="recap-summary-card"><strong>${item.teams||0}</strong><small>Teams</small></div></div></div>
+    <div class="recap-awards">${awardCard('⭐','MVP',a.mvp?{player:{name:a.mvp.name}}:null,a.mvp?`${a.mvp.value} points`:'-')}${awardCard('🔥','Lowest Round',a.lowestRound?{player:{name:a.lowestRound.name}}:null,a.lowestRound?`${a.lowestRound.value}`:'-')}${awardCard('🐦','Most Birdies',a.mostBirdies?{player:{name:a.mostBirdies.name}}:null,a.mostBirdies?`${a.mostBirdies.value} birdies`:'-')}</div>
+    <div class="recap-section-title">📊 Final Team Results</div>${teamCards}`;
+  showView('view-history-detail');
+}
+
 function getFinalRecapData() {
   const rows = getTeamScoreRows();
   const complete = rows.length > 0 && rows.every(row => row.submitted);
@@ -5811,7 +6078,7 @@ function renderFinalRecap() {
     ${recap.payoutData.everyTeamTied ? `
       <div class="dashboard-panel" style="border-color:rgba(245,158,11,.55);">
         <div class="section-title">🤝 Complete Tie — Buy-ins Refunded</div>
-        <div class="muted" style="font-weight:850;line-height:1.45;">Every team tied. Every player receives their $20 buy-in back.</div>
+        <div class="muted" style="font-weight:850;line-height:1.45;">Two or more teams tied on the final Total. The entire game is a tie, so every player receives their $20 buy-in back.</div>
       </div>` : ''}
 
     <div class="recap-awards">
@@ -5839,6 +6106,7 @@ function renderMoneyGameCentral() {
 function showMoneyGameCentral() {
   renderMoneyGameCentral();
   showView('view-money-central');
+  if (getFinalRecapData()) saveCompletedGameToHistory();
 }
 
 async function revealFinalStandings() {
