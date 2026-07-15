@@ -1727,28 +1727,41 @@
     }
 
 
-    /* History v1.4.6 */
-    .history-toolbar {
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
-      margin-bottom:14px;
+    /* ======================================================
+       LEAGUE PROFILE + TROPHY ROOM v1.4.6
+       Read-only league modules. Core scoring engine untouched.
+       ====================================================== */
+    .league-hero { background:linear-gradient(145deg,rgba(18,49,39,.98),rgba(3,12,20,.98)); border:1px solid rgba(84,232,111,.28); border-radius:22px; padding:20px; margin-bottom:14px; }
+    .league-kicker { color:#54e86f; font-size:12px; font-weight:950; letter-spacing:.12em; text-transform:uppercase; }
+    .league-title { font-size:30px; line-height:1.05; font-weight:950; margin-top:5px; }
+    .league-subtitle { color:#a8b4c5; font-weight:750; margin-top:7px; line-height:1.4; }
+    .profile-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-top:16px; }
+    .profile-stat { background:rgba(2,8,14,.55); border:1px solid rgba(148,163,184,.15); border-radius:15px; padding:12px 8px; text-align:center; }
+    .profile-stat strong { display:block; font-size:22px; color:#fff; }
+    .profile-stat small { display:block; color:#54e86f; font-weight:900; text-transform:uppercase; font-size:10px; margin-top:3px; }
+    .league-section { background:linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98)); border:1px solid rgba(148,163,184,.17); border-radius:18px; padding:16px; margin-bottom:12px; }
+    .league-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    .league-section-head h3 { margin:0; font-size:18px; text-transform:uppercase; }
+    .league-link { border:0; background:transparent; color:#54e86f; font-weight:900; cursor:pointer; }
+    .award-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .award-card { background:rgba(2,8,14,.55); border:1px solid rgba(245,158,11,.22); border-radius:17px; padding:15px; min-height:126px; display:flex; flex-direction:column; justify-content:space-between; }
+    .award-card .award-icon { font-size:30px; }
+    .award-card small { color:#fbbf24; font-weight:950; text-transform:uppercase; letter-spacing:.04em; }
+    .award-card strong { display:block; color:#fff; font-size:18px; margin-top:5px; }
+    .award-card span { color:#a8b4c5; font-weight:750; font-size:13px; margin-top:5px; }
+    .award-empty { color:#94a3b8; text-align:center; padding:22px 10px; border:1px dashed rgba(148,163,184,.22); border-radius:15px; }
+    .trophy-tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:13px; }
+    .trophy-tab { white-space:nowrap; border:1px solid rgba(148,163,184,.2); background:#071321; color:#cbd5e1; border-radius:999px; padding:9px 13px; font-weight:900; cursor:pointer; }
+    .trophy-tab.active { color:#03120a; background:#54e86f; border-color:#54e86f; }
+    .manual-award-form { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .manual-award-form .full { grid-column:1 / -1; }
+    .manual-award-form input,.manual-award-form select,.manual-award-form textarea { width:100%; box-sizing:border-box; }
+    @media (max-width:760px){
+      .profile-stat-grid { grid-template-columns:repeat(2,1fr); }
+      .award-grid { grid-template-columns:1fr; }
+      .manual-award-form { grid-template-columns:1fr; }
+      .manual-award-form .full { grid-column:auto; }
     }
-    .history-list { display:grid; gap:12px; }
-    .history-card {
-      background:linear-gradient(180deg, rgba(15,30,44,.96), rgba(5,16,28,.98));
-      border:1px solid rgba(148,163,184,.20); border-radius:20px; padding:16px;
-      cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
-    }
-    .history-card:hover { border-color:rgba(84,232,111,.55); }
-    .history-card-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
-    .history-card h3 { font-size:19px; font-weight:950; color:#fff; }
-    .history-meta { color:#a8b4c5; font-weight:800; margin-top:5px; }
-    .history-winner { color:#54e86f; font-weight:950; margin-top:10px; }
-    .history-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
-    .history-summary-grid > div { background:rgba(2,8,14,.42); border:1px solid rgba(148,163,184,.14); border-radius:13px; padding:10px; text-align:center; }
-    .history-summary-grid strong { display:block; color:#fff; font-size:19px; }
-    .history-summary-grid small { color:#54e86f; font-weight:900; text-transform:uppercase; font-size:10px; }
-    .history-detail-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
-    @media (max-width:760px) { .history-summary-grid { grid-template-columns:1fr 1fr 1fr; } }
 
   </style>
 </head>
@@ -1778,18 +1791,24 @@
         <strong>☰ Quick Menu</strong>
         <button class="btn btn-small btn-secondary" onclick="toggleQuickNav(false)">Close</button>
       </div>
+      <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:2px 0 8px;">🎯 Today</div>
       <div class="quick-nav-grid">
-        <button class="quick-nav-item" onclick="quickNavGo('home')"><span class="quick-nav-icon">🏠</span><span>Home</span><small>Saturday dashboard</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('register')"><span class="quick-nav-icon">📝</span><span>Register</span><small>Join today's game</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('players')"><span class="quick-nav-icon">👥</span><span>Players</span><small>Registered golfers</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('teams')"><span class="quick-nav-icon">🚩</span><span>Teams</span><small>Today's team list</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('home')"><span class="quick-nav-icon">🏠</span><span>Dashboard</span><small>Saturday experience</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('myteam')"><span class="quick-nav-icon">🏌</span><span>My Team</span><small>Private scorecard</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">🏆</span><span>Money Game</span><small>Results and recap</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('announcements')"><span class="quick-nav-icon">📢</span><span>Announcements</span><small>Latest updates</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">🏆</span><span>Money Game / Recap</span><small>Today's results</small></button>
+      </div>
+      <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
+      <div class="quick-nav-grid">
+        <button class="quick-nav-item" onclick="quickNavGo('profile')"><span class="quick-nav-icon">👤</span><span>My Profile</span><small>Personal league hub</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">🕘</span><span>History</span><small>Past game recaps</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>Past rounds</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('trophies')"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season awards</small></button>
+      </div>
+      <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">⚙ App</div>
+      <div class="quick-nav-grid">
         <button class="quick-nav-item" onclick="quickNavGo('notifications')"><span class="quick-nav-icon">🔔</span><span>Notifications</span><small>Unread activity</small></button>
-        <button class="quick-nav-item admin-link" onclick="quickNavGo('admin')"><span class="quick-nav-icon">🔒</span><span>Admin Command Center</span><small>Manage today's game</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('settings')"><span class="quick-nav-icon">⚙</span><span>Settings</span><small>App preferences</small></button>
+        <button class="quick-nav-item admin-link" onclick="quickNavGo('admin')"><span class="quick-nav-icon">🔒</span><span>Admin Command Center</span><small>Admins only</small></button>
       </div>
     </aside>
 
@@ -2036,6 +2055,39 @@
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
+
+
+    <div id="view-profile" class="card hidden">
+      <div id="profile-content"><div class="award-empty">Loading your league profile...</div></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
+
+    <div id="view-trophy-room" class="card hidden">
+      <div class="league-hero">
+        <div class="league-kicker">Cliffside League</div>
+        <div class="league-title">🏆 Trophy Room</div>
+        <div class="league-subtitle">Season leaders, career achievements, milestones, and special awards — all connected to league history.</div>
+      </div>
+      <div class="trophy-tabs">
+        <button class="trophy-tab active" data-trophy-tab="season" onclick="setTrophyTab('season')">🏅 Season</button>
+        <button class="trophy-tab" data-trophy-tab="career" onclick="setTrophyTab('career')">⭐ Career</button>
+        <button class="trophy-tab" data-trophy-tab="milestones" onclick="setTrophyTab('milestones')">🎖 Milestones</button>
+        <button class="trophy-tab" data-trophy-tab="special" onclick="setTrophyTab('special')">🎁 Special</button>
+      </div>
+      <div id="trophy-room-content"><div class="award-empty">Loading awards from Supabase...</div></div>
+      <div id="manual-award-admin" class="league-section hidden">
+        <div class="league-section-head"><h3>➕ Add Special Award</h3></div>
+        <div class="manual-award-form">
+          <input id="manual-award-title" placeholder="Award title">
+          <select id="manual-award-winner"><option value="">Choose winner</option></select>
+          <textarea id="manual-award-description" class="full" rows="3" placeholder="Description or achievement"></textarea>
+          <button class="btn btn-primary full" onclick="saveManualAward()">Save Award</button>
+          <div id="manual-award-status" class="full" style="color:#a8b4c5;font-weight:800;"></div>
+        </div>
+      </div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
+
     <div id="view-confirm" class="card hidden">
       <div class="header"><h1>✅ Registration Complete!</h1></div>
       <div style="background:#e8f5e9;padding:15px;border-radius:10px;margin:15px 0;">
@@ -2102,39 +2154,6 @@
       <div id="player-scorecard-display"></div>
 
       <button class="btn btn-back" onclick="backFromPlayerScorecard()">← Back</button>
-    </div>
-
-    <div id="view-history" class="card hidden">
-      <div class="header">
-        <div class="header-logo">
-          <div class="logo-mark">🕘</div>
-          <h1>GAME <span>HISTORY</span></h1>
-        </div>
-      </div>
-      <div class="dashboard-panel">
-        <div class="history-toolbar">
-          <div>
-            <div class="section-title">Past Money Games</div>
-            <div class="muted" style="font-weight:800;margin-top:5px;">Completed games are saved automatically after final submission.</div>
-          </div>
-          <button class="btn btn-small btn-secondary" onclick="loadGameHistory()">Refresh</button>
-        </div>
-        <div id="history-list" class="history-list"><div class="empty-state">Loading history...</div></div>
-      </div>
-      <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
-    </div>
-
-    <div id="view-history-detail" class="card hidden">
-      <div class="header">
-        <div class="header-logo">
-          <div class="logo-mark">📋</div>
-          <h1>PAST <span>RECAP</span></h1>
-        </div>
-      </div>
-      <div class="history-detail-actions">
-        <button class="btn btn-small btn-secondary" onclick="showGameHistory()">← History</button>
-      </div>
-      <div id="history-detail-display"></div>
     </div>
 
     <div id="view-leaderboard" class="card hidden">
@@ -2654,7 +2673,11 @@
       announcementsDbAvailable: false,
       eventEngine: null,
       statisticsPlayers: [],
-      statisticsLoadedAt: null
+      statisticsLoadedAt: null,
+      leagueHistory: [],
+      seasonAwards: [],
+      specialAwards: [],
+      trophyTab: 'season'
     };
 
     // ======================================================
@@ -2729,6 +2752,20 @@
         case 'money':
           showMoneyGameCentral();
           break;
+        case 'profile':
+          showMyProfile();
+          break;
+        case 'trophies':
+          showTrophyRoom();
+          break;
+        case 'history':
+          showView('view-stats');
+          loadPlayerHistory();
+          break;
+        case 'settings':
+          if (isAdminDevice()) showAdminPage('settings');
+          else alert('Settings are managed by the league admin.');
+          break;
         case 'announcements':
           showView('view-home');
           setTimeout(() => document.querySelector('.announcements-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 80);
@@ -2736,9 +2773,6 @@
         case 'stats':
           showView('view-stats');
           loadPlayerHistory();
-          break;
-        case 'history':
-          showGameHistory();
           break;
         case 'notifications':
           toggleNotificationCenter(true);
@@ -3792,6 +3826,190 @@
         renderAnnouncements();
       } catch (err) { console.warn('deleteAnnouncement error', err); }
     }
+
+
+
+// ======================================================
+// LEAGUE PROFILE + TROPHY ROOM v1.4.6
+// Supabase is the source of truth. All reads are defensive so
+// the module can be deployed before optional award tables exist.
+// Core registration, teams, scoring, payouts and privacy untouched.
+// ======================================================
+const LEAGUE_HISTORY_TABLES = ['game_history', 'games_history', 'season_history'];
+const SEASON_AWARDS_TABLE = 'season_awards';
+const SPECIAL_AWARDS_TABLE = 'special_awards';
+
+async function readFirstAvailableTable(tableNames, orderColumn = 'created_at') {
+  for (const table of tableNames) {
+    try {
+      let query = window.supabaseClient.from(table).select('*');
+      if (orderColumn) query = query.order(orderColumn, { ascending:false });
+      const result = await query;
+      if (!result?.error) return { table, rows:result.data || [] };
+      const message = String(result.error?.message || '');
+      if (!/does not exist|schema cache|relation/i.test(message)) console.warn(`${table} read failed`, result.error);
+    } catch (err) { console.warn(`${table} read failed`, err); }
+  }
+  return { table:null, rows:[] };
+}
+
+function currentLeagueSeason() { return String(new Date().getFullYear()); }
+function playerNameFromRow(row) { return row?.player_name || row?.name || row?.winner_name || row?.players?.name || 'Unknown Player'; }
+function num(value) { const n=Number(value); return Number.isFinite(n) ? n : 0; }
+function money(value) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(num(value)); }
+
+async function loadLeagueModuleData() {
+  const historyResult = await readFirstAvailableTable(LEAGUE_HISTORY_TABLES);
+  appState.leagueHistory = historyResult.rows;
+
+  try {
+    const result = await window.supabaseClient.from(SEASON_AWARDS_TABLE).select('*').order('created_at',{ascending:false});
+    appState.seasonAwards = result?.error ? [] : (result.data || []);
+  } catch (_) { appState.seasonAwards=[]; }
+
+  try {
+    const result = await window.supabaseClient.from(SPECIAL_AWARDS_TABLE).select('*').order('created_at',{ascending:false});
+    appState.specialAwards = result?.error ? [] : (result.data || []);
+  } catch (_) { appState.specialAwards=[]; }
+}
+
+function historyRowsForPlayer(name) {
+  const clean = cleanName(name || '');
+  return (appState.leagueHistory || []).filter(row => {
+    const candidates=[row.player_name,row.name,row.winner_name,row.captain_name,row.player?.name];
+    return candidates.some(v => cleanName(v || '') === clean);
+  });
+}
+
+function calculatePlayerSummary(name) {
+  const rows=historyRowsForPlayer(name);
+  const games=rows.length;
+  const wins=rows.filter(r => r.won===true || r.is_winner===true || num(r.place)===1 || String(r.result||'').toLowerCase()==='win').length;
+  const scoreValues=rows.map(r => num(r.total_score || r.score || r.round_score)).filter(v=>v>0);
+  const average=scoreValues.length ? (scoreValues.reduce((a,b)=>a+b,0)/scoreValues.length).toFixed(1) : '—';
+  const winnings=rows.reduce((sum,r)=>sum+num(r.money_won || r.winnings || r.payout),0);
+  return {rows,games,wins,average,winnings};
+}
+
+function awardCardHtml(icon,title,winner,detail='') {
+  return `<div class="award-card"><div><div class="award-icon">${icon}</div><small>${escapeHtml(title)}</small><strong>${escapeHtml(winner || 'Not awarded yet')}</strong></div><span>${escapeHtml(detail || '')}</span></div>`;
+}
+
+function calculateAutomaticSeasonAwards() {
+  const season=currentLeagueSeason();
+  const rows=(appState.leagueHistory || []).filter(r => String(r.season || new Date(r.game_date || r.date || r.created_at || Date.now()).getFullYear())===season);
+  const byPlayer=new Map();
+  rows.forEach(r=>{
+    const name=playerNameFromRow(r); if(!name || name==='Unknown Player') return;
+    const item=byPlayer.get(name)||{name,games:0,wins:0,money:0,scores:[],birdies:0,captainWins:0};
+    item.games++;
+    if(r.won===true || r.is_winner===true || num(r.place)===1 || String(r.result||'').toLowerCase()==='win') item.wins++;
+    item.money += num(r.money_won || r.winnings || r.payout);
+    const score=num(r.total_score || r.score || r.round_score); if(score>0) item.scores.push(score);
+    item.birdies += num(r.birdies);
+    item.captainWins += num(r.captain_win || (r.was_captain && (r.won || r.is_winner)));
+    byPlayer.set(name,item);
+  });
+  const list=[...byPlayer.values()].map(p=>({...p,avg:p.scores.length?p.scores.reduce((a,b)=>a+b,0)/p.scores.length:null}));
+  const best=(key,mode='max')=>list.filter(p=>p[key]!==null).sort((a,b)=>mode==='min'?a[key]-b[key]:b[key]-a[key])[0];
+  const awards=[];
+  const mostWins=best('wins'); if(mostWins?.wins) awards.push({icon:'🏆',title:'Most Wins',winner:mostWins.name,detail:`${mostWins.wins} wins`});
+  const moneyLeader=best('money'); if(moneyLeader?.money) awards.push({icon:'💰',title:'Money Leader',winner:moneyLeader.name,detail:money(moneyLeader.money)});
+  const lowAvg=best('avg','min'); if(lowAvg?.avg) awards.push({icon:'🎯',title:'Lowest Average',winner:lowAvg.name,detail:lowAvg.avg.toFixed(1)});
+  const ironMan=best('games'); if(ironMan?.games) awards.push({icon:'🎖',title:'Iron Man',winner:ironMan.name,detail:`${ironMan.games} games`});
+  const birdieLeader=best('birdies'); if(birdieLeader?.birdies) awards.push({icon:'🐦',title:'Most Birdies',winner:birdieLeader.name,detail:`${birdieLeader.birdies} birdies`});
+  const captain=best('captainWins'); if(captain?.captainWins) awards.push({icon:'👑',title:'Captain of the Year',winner:captain.name,detail:`${captain.captainWins} captain wins`});
+  return awards;
+}
+
+async function showMyProfile() {
+  showView('view-profile');
+  const mount=document.getElementById('profile-content');
+  if(mount) mount.innerHTML='<div class="award-empty">Loading your league profile...</div>';
+  await loadLeagueModuleData();
+  renderMyProfile();
+}
+
+function renderMyProfile() {
+  const mount=document.getElementById('profile-content'); if(!mount) return;
+  const name=getMyPlayerName();
+  if(!name){ mount.innerHTML=`<div class="league-hero"><div class="league-kicker">My Profile</div><div class="league-title">Register this device</div><div class="league-subtitle">Your player profile appears after this device is linked to a registered player.</div></div>`; return; }
+  const summary=calculatePlayerSummary(name);
+  const playerAwards=[...(appState.seasonAwards||[]),...(appState.specialAwards||[])].filter(a=>cleanName(playerNameFromRow(a))===cleanName(name));
+  const preview=playerAwards.slice(0,3);
+  mount.innerHTML=`
+    <div class="league-hero"><div class="league-kicker">Cliffside League Profile</div><div class="league-title">👤 ${escapeHtml(name)}</div><div class="league-subtitle">One continuous view of your season, history, statistics, recaps, and awards.</div>
+      <div class="profile-stat-grid">
+        <div class="profile-stat"><strong>${summary.games}</strong><small>Games</small></div>
+        <div class="profile-stat"><strong>${summary.wins}</strong><small>Wins</small></div>
+        <div class="profile-stat"><strong>${summary.average}</strong><small>Average</small></div>
+        <div class="profile-stat"><strong>${money(summary.winnings)}</strong><small>Won</small></div>
+      </div>
+    </div>
+    <div class="league-section"><div class="league-section-head"><h3>🏆 Awards</h3><button class="league-link" onclick="showTrophyRoom('${escapeHtml(name)}')">View All →</button></div>
+      <div class="award-grid">${preview.length?preview.map(a=>awardCardHtml(a.icon||'🏆',a.title||a.award_title||a.award_key,playerNameFromRow(a),a.description||a.detail||String(a.season||''))).join(''):'<div class="award-empty" style="grid-column:1/-1;">Awards will appear as game history grows.</div>'}</div>
+    </div>
+    <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
+      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button></div>
+    </div>`;
+}
+
+async function showTrophyRoom(playerFilter='') {
+  showView('view-trophy-room');
+  const mount=document.getElementById('trophy-room-content'); if(mount) mount.innerHTML='<div class="award-empty">Loading awards from Supabase...</div>';
+  await loadLeagueModuleData();
+  appState.trophyPlayerFilter=playerFilter || '';
+  const admin=document.getElementById('manual-award-admin'); if(admin) admin.classList.toggle('hidden',!isAdminDevice());
+  const select=document.getElementById('manual-award-winner');
+  if(select) select.innerHTML='<option value="">Choose winner</option>'+[...(appState.players||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(p=>`<option value="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  renderTrophyRoom();
+}
+
+function setTrophyTab(tab) {
+  appState.trophyTab=tab;
+  document.querySelectorAll('[data-trophy-tab]').forEach(b=>b.classList.toggle('active',b.dataset.trophyTab===tab));
+  renderTrophyRoom();
+}
+
+function renderTrophyRoom() {
+  const mount=document.getElementById('trophy-room-content'); if(!mount) return;
+  const tab=appState.trophyTab||'season';
+  let awards=[];
+  if(tab==='season') {
+    const saved=(appState.seasonAwards||[]).filter(a=>String(a.season||currentLeagueSeason())===currentLeagueSeason());
+    awards=saved.length?saved.map(a=>({icon:a.icon||'🏆',title:a.title||a.award_title||a.award_key,winner:playerNameFromRow(a),detail:a.description||a.detail||currentLeagueSeason()})):calculateAutomaticSeasonAwards();
+  } else if(tab==='special') {
+    awards=(appState.specialAwards||[]).map(a=>({icon:a.icon||'🎁',title:a.title||a.award_title,winner:playerNameFromRow(a),detail:a.description||String(a.season||'')}));
+  } else if(tab==='career') {
+    const names=[...new Set((appState.leagueHistory||[]).map(playerNameFromRow).filter(n=>n&&n!=='Unknown Player'))];
+    awards=names.flatMap(name=>{const s=calculatePlayerSummary(name); const out=[]; if(s.games>=100)out.push({icon:'⭐',title:'100 Games',winner:name,detail:`${s.games} career games`}); if(s.wins>=50)out.push({icon:'🏆',title:'50 Wins',winner:name,detail:`${s.wins} career wins`}); if(s.winnings>=10000)out.push({icon:'💰',title:'$10,000 Club',winner:name,detail:money(s.winnings)}); return out;});
+  } else {
+    const name=getMyPlayerName(); const s=calculatePlayerSummary(name); awards=[{icon:s.games>=1?'✅':'🔒',title:'First Game',winner:name||'Your Player',detail:s.games>=1?'Unlocked':'Not yet unlocked'},{icon:s.wins>=1?'✅':'🔒',title:'First Win',winner:name||'Your Player',detail:s.wins>=1?'Unlocked':'Not yet unlocked'},{icon:s.games>=10?'✅':'🔒',title:'10 Games',winner:name||'Your Player',detail:`${Math.min(s.games,10)} / 10`},{icon:s.wins>=5?'✅':'🔒',title:'Five Wins',winner:name||'Your Player',detail:`${Math.min(s.wins,5)} / 5`}];
+  }
+  if(appState.trophyPlayerFilter) awards=awards.filter(a=>cleanName(a.winner)===cleanName(appState.trophyPlayerFilter));
+  const label={season:`${currentLeagueSeason()} Season Awards`,career:'Career Awards',milestones:'My Milestones',special:'Special Awards'}[tab];
+  mount.innerHTML=`<div class="league-section"><div class="league-section-head"><h3>${label}</h3><span style="color:#54e86f;font-weight:950;">${awards.length}</span></div><div class="award-grid">${awards.length?awards.map(a=>awardCardHtml(a.icon,a.title,a.winner,a.detail)).join(''):'<div class="award-empty" style="grid-column:1/-1;">No awards have been recorded yet. The Trophy Room will fill automatically from game history.</div>'}</div></div>`;
+}
+
+async function saveManualAward() {
+  if(!isAdminDevice()) return alert('Admin access required.');
+  const title=(document.getElementById('manual-award-title')?.value||'').trim();
+  const select=document.getElementById('manual-award-winner');
+  const playerId=select?.value||''; const playerName=select?.selectedOptions?.[0]?.dataset?.name||select?.selectedOptions?.[0]?.textContent||'';
+  const description=(document.getElementById('manual-award-description')?.value||'').trim();
+  const status=document.getElementById('manual-award-status');
+  if(!title||!playerId){if(status)status.textContent='Add an award title and choose a winner.';return;}
+  if(status)status.textContent='Saving award...';
+  try {
+    const payload={season:Number(currentLeagueSeason()),title,description,player_id:playerId,winner_name:playerName,created_by:'admin'};
+    const result=await window.supabaseClient.from(SPECIAL_AWARDS_TABLE).insert([payload]).select().single();
+    if(result?.error) throw result.error;
+    document.getElementById('manual-award-title').value=''; document.getElementById('manual-award-description').value=''; select.value='';
+    await recordActivity('award','Special Award Added',`${title} — ${playerName}`,{icon:'🏆',actor:'Admin'});
+    await loadLeagueModuleData(); setTrophyTab('special'); if(status)status.textContent='Award saved.';
+  } catch(err) { if(status)status.textContent=`Could not save. Run the Trophy Room SQL first. ${formatError(err)}`; }
+}
+
 
 // ======================================================
 
@@ -5777,210 +5995,6 @@ function renderVisibleFinishedStandings() {
 
 
 
-
-// ======================================================
-// GAME HISTORY v1.4.6
-// ======================================================
-const GAME_HISTORY_LOCAL_KEY = 'gmg_game_history_v1';
-const GAME_HISTORY_TABLE = 'game_history';
-let gameHistoryCache = [];
-
-function getLocalGameHistory() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(GAME_HISTORY_LOCAL_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_) { return []; }
-}
-
-function saveLocalGameHistory(rows) {
-  const clean = Array.isArray(rows) ? rows.slice(0, 100) : [];
-  localStorage.setItem(GAME_HISTORY_LOCAL_KEY, JSON.stringify(clean));
-  gameHistoryCache = clean;
-}
-
-function getHistoryGameDateKey(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function payoutMapToObject(map) {
-  const obj = {};
-  if (map && typeof map.forEach === 'function') map.forEach((value, key) => { obj[String(key)] = value; });
-  return obj;
-}
-
-function serializeHistoryRecap(recap) {
-  const now = new Date();
-  const gameDate = getHistoryGameDateKey(now);
-  const playerCards = appState.players
-    .filter(p => p.status === 'approved')
-    .map(p => getPlayerScorecardData(p.id))
-    .filter(Boolean)
-    .map(data => ({
-      playerId: data.player.id,
-      playerName: data.player.name,
-      teamName: data.teamName,
-      isCaptain: isCaptainPlayer(data.player),
-      completed: data.completed,
-      front: data.front,
-      back: data.back,
-      frontScore: data.frontScore,
-      backScore: data.backScore,
-      totalScore: data.totalScore,
-      frontPoints: data.frontPoints,
-      backPoints: data.backPoints,
-      totalPoints: data.totalPoints,
-      holes: data.holes
-    }));
-
-  return {
-    id: gameDate,
-    game_date: gameDate,
-    saved_at: now.toISOString(),
-    course: 'Cliffside Golf Club',
-    players: recap.players,
-    teams: recap.teams,
-    pot: recap.pot,
-    standings: recap.standings.map((row, index) => ({
-      rank: index + 1,
-      teamId: row.team.id,
-      teamName: getTeamName(row.team.id),
-      front: row.front,
-      back: row.back,
-      total: row.total,
-      players: row.players.map(p => ({ id:p.id, name:p.name, captain:isCaptainPlayer(p) }))
-    })),
-    payouts: payoutMapToObject(recap.payoutData?.payouts),
-    payout_summary: {
-      pot: recap.payoutData?.pot || recap.pot,
-      frontMoney: recap.payoutData?.frontMoney || 0,
-      backMoney: recap.payoutData?.backMoney || 0,
-      totalMoney: recap.payoutData?.totalMoney || 0,
-      everyTeamTied: !!recap.payoutData?.everyTeamTied
-    },
-    awards: {
-      mvp: recap.mvp ? { name:recap.mvp.player.name, value:recap.mvp.totalPoints, label:'points' } : null,
-      lowestRound: recap.lowestRound ? { name:recap.lowestRound.player.name, value:recap.lowestRound.totalScore } : null,
-      mostBirdies: recap.birdieLeader ? { name:recap.birdieLeader.data.player.name, value:recap.birdieLeader.birdies } : null
-    },
-    player_scorecards: playerCards
-  };
-}
-
-async function saveCompletedGameToHistory() {
-  const recap = getFinalRecapData();
-  if (!recap) return null;
-  const snapshot = serializeHistoryRecap(recap);
-  const local = getLocalGameHistory();
-  const next = [snapshot, ...local.filter(item => item.game_date !== snapshot.game_date)]
-    .sort((a,b) => String(b.game_date).localeCompare(String(a.game_date)));
-  saveLocalGameHistory(next);
-
-  try {
-    if (window.supabaseClient) {
-      const result = await window.supabaseClient
-        .from(GAME_HISTORY_TABLE)
-        .upsert({ game_date: snapshot.game_date, snapshot, created_at: snapshot.saved_at }, { onConflict: 'game_date' });
-      if (result?.error) throw result.error;
-    }
-  } catch (err) {
-    console.warn('History Supabase sync unavailable; local history was saved.', err);
-  }
-  return snapshot;
-}
-
-async function loadGameHistory() {
-  let rows = getLocalGameHistory();
-  try {
-    if (window.supabaseClient) {
-      const result = await window.supabaseClient
-        .from(GAME_HISTORY_TABLE)
-        .select('game_date,snapshot,created_at')
-        .order('game_date', { ascending:false })
-        .limit(100);
-      if (result?.error) throw result.error;
-      const remote = (result?.data || []).map(r => r.snapshot || r).filter(Boolean);
-      if (remote.length) {
-        const merged = new Map();
-        [...rows, ...remote].forEach(item => merged.set(item.game_date || item.id, item));
-        rows = [...merged.values()].sort((a,b) => String(b.game_date).localeCompare(String(a.game_date)));
-        saveLocalGameHistory(rows);
-      }
-    }
-  } catch (err) {
-    console.warn('History Supabase load unavailable; showing local history.', err);
-  }
-  gameHistoryCache = rows;
-  renderGameHistoryList();
-  return rows;
-}
-
-function formatHistoryDate(value) {
-  const date = new Date(`${value}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-US', {
-    weekday:'long', month:'long', day:'numeric', year:'numeric'
-  }).format(date);
-}
-
-function renderGameHistoryList() {
-  const mount = document.getElementById('history-list');
-  if (!mount) return;
-  const rows = gameHistoryCache.length ? gameHistoryCache : getLocalGameHistory();
-  if (!rows.length) {
-    mount.innerHTML = '<div class="empty-state">No completed games have been saved yet. The first completed Recap will appear here automatically.</div>';
-    return;
-  }
-  mount.innerHTML = rows.map(item => {
-    const winner = item.standings?.[0];
-    return `<div class="history-card" onclick="openHistoryRecap('${escapeHtml(item.game_date || item.id)}')">
-      <div class="history-card-top">
-        <div><h3>📋 ${formatHistoryDate(item.game_date || item.id)}</h3><div class="history-meta">${escapeHtml(item.course || 'Cliffside Golf Club')}</div></div>
-        <span class="players-count">View →</span>
-      </div>
-      <div class="history-winner">🏆 ${escapeHtml(winner?.teamName || 'Final Results')}</div>
-      <div class="history-summary-grid">
-        <div><strong>$${Number(item.pot || 0).toFixed(0)}</strong><small>Pot</small></div>
-        <div><strong>${Number(item.players || 0)}</strong><small>Players</small></div>
-        <div><strong>${Number(item.teams || 0)}</strong><small>Teams</small></div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function showGameHistory() {
-  showView('view-history');
-  await loadGameHistory();
-}
-
-function openHistoryRecap(id) {
-  const item = (gameHistoryCache.length ? gameHistoryCache : getLocalGameHistory())
-    .find(row => String(row.game_date || row.id) === String(id));
-  if (!item) return;
-  const mount = document.getElementById('history-detail-display');
-  if (!mount) return;
-  const medals = ['🥇','🥈','🥉'];
-  const lastTotal = Math.min(...(item.standings || []).map(r => Number(r.total)));
-  const teamCards = (item.standings || []).map((row, idx) => {
-    const isLast = Number(row.total) === lastTotal;
-    const badge = isLast ? '💩' : (medals[idx] || `${idx+1}.`);
-    const payout = item.payouts?.[String(row.teamId)]?.grandTotal || 0;
-    return `<div class="mgc-team-card ${isLast ? 'last' : idx===0 ? 'first' : idx===1 ? 'second' : idx===2 ? 'third' : ''}">
-      <div class="mgc-rank-row"><div><div class="mgc-rank-title">${badge} ${escapeHtml(row.teamName)}</div>${idx===0?'<div class="green" style="font-weight:950;margin-top:4px;">Money Game Winner</div>':''}</div><div class="mgc-points">${row.total}<small>Total Points</small></div></div>
-      ${renderMoneyTotalsMini({ front:row.front, back:row.back, total:row.total })}
-      <div class="player-item"><span>Recorded Payout</span><strong class="green">${formatMoneyAmount(payout)}</strong></div>
-      ${(row.players || []).map(p => `<div class="player-item"><span>${p.captain?'👑 ':''}${escapeHtml(p.name)}</span></div>`).join('')}
-    </div>`;
-  }).join('');
-  const a=item.awards||{};
-  mount.innerHTML=`
-    <div class="recap-hero"><div class="recap-kicker">🏆 Money Game Central</div><div class="recap-heading">📋 Past Recap</div><div class="recap-date">${formatHistoryDate(item.game_date || item.id)}</div><div class="recap-summary-grid"><div class="recap-summary-card"><strong>$${Number(item.pot||0).toFixed(0)}</strong><small>Money Pot</small></div><div class="recap-summary-card"><strong>${item.players||0}</strong><small>Players</small></div><div class="recap-summary-card"><strong>${item.teams||0}</strong><small>Teams</small></div></div></div>
-    <div class="recap-awards">${awardCard('⭐','MVP',a.mvp?{player:{name:a.mvp.name}}:null,a.mvp?`${a.mvp.value} points`:'-')}${awardCard('🔥','Lowest Round',a.lowestRound?{player:{name:a.lowestRound.name}}:null,a.lowestRound?`${a.lowestRound.value}`:'-')}${awardCard('🐦','Most Birdies',a.mostBirdies?{player:{name:a.mostBirdies.name}}:null,a.mostBirdies?`${a.mostBirdies.value} birdies`:'-')}</div>
-    <div class="recap-section-title">📊 Final Team Results</div>${teamCards}`;
-  showView('view-history-detail');
-}
-
 function getFinalRecapData() {
   const rows = getTeamScoreRows();
   const complete = rows.length > 0 && rows.every(row => row.submitted);
@@ -6106,7 +6120,6 @@ function renderMoneyGameCentral() {
 function showMoneyGameCentral() {
   renderMoneyGameCentral();
   showView('view-money-central');
-  if (getFinalRecapData()) saveCompletedGameToHistory();
 }
 
 async function revealFinalStandings() {
