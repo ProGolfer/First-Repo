@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v1.4.3</title>
+  <title>Money Game Central v1.4.4</title>
 
   <!--
     Golf Money Game
@@ -4097,6 +4097,53 @@ async function loadPlayerHistory() {
       if (clean) localStorage.setItem('gmg_player_name', clean);
     }
 
+    async function ensurePermanentLeaguePlayer(name) {
+      const cleanDisplayName = String(name || '').trim();
+      const normalizedName = cleanName(cleanDisplayName);
+      if (!cleanDisplayName || !normalizedName) throw new Error('Player name is required.');
+
+      const savedLeaguePlayerId = localStorage.getItem('gmg_league_player_id');
+      if (savedLeaguePlayerId) {
+        const { data: savedPlayer, error: savedPlayerError } = await window.supabaseClient
+          .from('league_players')
+          .select('id, name, normalized_name')
+          .eq('id', savedLeaguePlayerId)
+          .maybeSingle();
+
+        if (!savedPlayerError && savedPlayer?.id && savedPlayer.normalized_name === normalizedName) {
+          saveThisDevicePlayerName(savedPlayer.name || cleanDisplayName);
+          return savedPlayer.id;
+        }
+      }
+
+      const { data: existingLeaguePlayer, error: lookupError } = await window.supabaseClient
+        .from('league_players')
+        .select('id, name')
+        .eq('normalized_name', normalizedName)
+        .maybeSingle();
+
+      if (lookupError) throw lookupError;
+
+      let leaguePlayer = existingLeaguePlayer;
+      if (!leaguePlayer?.id) {
+        const { data: createdLeaguePlayer, error: createError } = await window.supabaseClient
+          .from('league_players')
+          .insert([{
+            name: cleanDisplayName,
+            normalized_name: normalizedName
+          }])
+          .select('id, name')
+          .single();
+
+        if (createError) throw createError;
+        leaguePlayer = createdLeaguePlayer;
+      }
+
+      localStorage.setItem('gmg_league_player_id', String(leaguePlayer.id));
+      saveThisDevicePlayerName(leaguePlayer.name || cleanDisplayName);
+      return leaguePlayer.id;
+    }
+
     function getApprovedPlayers() {
   return appState.players.filter(p => p.status === 'approved');
 }
@@ -4186,8 +4233,19 @@ function getMyPlayerName() {
           return;
         }
 
+        const leaguePlayerId = await ensurePermanentLeaguePlayer(name);
+
         const exists = appState.players.find(p => cleanName(p.name) === cleanName(name));
         if (exists) {
+          if (exists.league_player_id !== leaguePlayerId) {
+            await db(
+              window.supabaseClient
+                .from('players')
+                .update({ league_player_id: leaguePlayerId })
+                .eq('id', exists.id),
+              'Link registered player to permanent profile'
+            );
+          }
           saveThisDevicePlayerName(exists.name || name);
           alert(`${exists.name || name} is already registered. This device is now linked to that player.`);
           await loadAllData();
@@ -4198,6 +4256,7 @@ function getMyPlayerName() {
 
         await db(window.supabaseClient.from('players').insert([{
           name: name,
+          league_player_id: leaguePlayerId,
           
           course: course || 'Cliffside Golf Club',
           status: 'pending',
