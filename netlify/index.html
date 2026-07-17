@@ -2019,6 +2019,115 @@
       #view-home .weather-card .section-title {font-size:11px;}
     }
 
+/* =========================================
+   MONEY GAME CENTRAL 2.0 — MY TEAM POLISH
+   ========================================= */
+
+#view-game {
+  background:
+    radial-gradient(circle at top right, rgba(84,232,111,.08), transparent 28%),
+    linear-gradient(180deg, #0b141d 0%, #081018 100%);
+}
+
+#view-game .header {
+  padding: 4px 2px 16px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(148,163,184,.14);
+}
+
+#view-game .header h1 {
+  font-size: 25px;
+  letter-spacing: .04em;
+}
+
+#view-game .header h1 span {
+  color: #54e86f;
+}
+
+#view-game .tabs {
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+#view-game .tab-btn {
+  min-height: 48px;
+  border-radius: 10px;
+  background: #101c26;
+  border: 1px solid rgba(148,163,184,.16);
+  color: #aeb9c6;
+  font-weight: 900;
+  transition: .18s ease;
+}
+
+#view-game .tab-btn.active {
+  background: linear-gradient(180deg, #2f8f28, #216d1d);
+  border-color: rgba(84,232,111,.55);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(33,109,29,.25);
+}
+
+#view-game .dashboard-panel {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(84,232,111,.08), transparent 34%),
+    #101b25;
+  border: 1px solid rgba(148,163,184,.15);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+}
+
+#view-game .player-item {
+  background: #13212c;
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 13px;
+  margin-bottom: 9px;
+}
+
+#view-game .player-item:hover {
+  border-color: rgba(84,232,111,.42);
+}
+
+#view-game .btn-small {
+  min-width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
+#view-game .btn-primary {
+  background: linear-gradient(180deg, #2f8f28, #216d1d);
+  border-color: rgba(84,232,111,.45);
+}
+
+#view-game .btn-secondary {
+  background: #101c26;
+  border-color: rgba(148,163,184,.16);
+}
+
+#view-game #my-team-label {
+  margin: 0 0 10px;
+  color: #aeb9c6;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  #view-game .header h1 {
+    font-size: 21px;
+  }
+
+  #view-game .tab-btn {
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  #view-game .dashboard-panel {
+    padding: 14px;
+  }
+
+  #view-game .player-item {
+    padding: 12px;
+  }
+}
+    
   </style>
 </head>
 <body>
