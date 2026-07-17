@@ -3859,6 +3859,17 @@ function num(value) { const n=Number(value); return Number.isFinite(n) ? n : 0; 
 function money(value) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(num(value)); }
 
 async function loadLeagueModuleData() {
+  try {
+    const result = await window.supabaseClient
+      .from('league_players')
+      .select('id, name, normalized_name')
+      .order('name', { ascending:true });
+    appState.leaguePlayers = result?.error ? [] : (result.data || []);
+  } catch (err) {
+    console.warn('league_players read failed', err);
+    appState.leaguePlayers = [];
+  }
+
   const historyResult = await readFirstAvailableTable(LEAGUE_HISTORY_TABLES);
   appState.leagueHistory = historyResult.rows;
 
@@ -3871,6 +3882,15 @@ async function loadLeagueModuleData() {
     const result = await window.supabaseClient.from(SPECIAL_AWARDS_TABLE).select('*').order('created_at',{ascending:false});
     appState.specialAwards = result?.error ? [] : (result.data || []);
   } catch (_) { appState.specialAwards=[]; }
+}
+
+function getMyPermanentLeaguePlayer() {
+  const savedLeaguePlayerId = localStorage.getItem('gmg_league_player_id');
+  if (!savedLeaguePlayerId) return null;
+
+  return (appState.leaguePlayers || []).find(
+    player => String(player.id) === String(savedLeaguePlayerId)
+  ) || null;
 }
 
 function historyRowsForPlayer(name) {
@@ -3932,7 +3952,8 @@ async function showMyProfile() {
 
 function renderMyProfile() {
   const mount=document.getElementById('profile-content'); if(!mount) return;
-  const name=getMyPlayerName();
+  const permanentPlayer = getMyPermanentLeaguePlayer();
+  const name = permanentPlayer?.name || getMyPlayerName();
   if(!name){ mount.innerHTML=`<div class="league-hero"><div class="league-kicker">My Profile</div><div class="league-title">Register this device</div><div class="league-subtitle">Your player profile appears after this device is linked to a registered player.</div></div>`; return; }
   const summary=calculatePlayerSummary(name);
   const playerAwards=[...(appState.seasonAwards||[]),...(appState.specialAwards||[])].filter(a=>cleanName(playerNameFromRow(a))===cleanName(name));
