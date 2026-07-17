@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v1.5.4 — Player Search</title>
+  <title>Money Game Central v2.0.0 — Universal Player Profile</title>
 
   <!--
     Golf Money Game
@@ -1859,6 +1859,25 @@
     .player-search-stat { background:rgba(84,232,111,.08); color:#b7f7c3; border:1px solid rgba(84,232,111,.16); border-radius:999px; padding:5px 8px; font-size:11px; font-weight:900; }
     @media(max-width:620px){ .player-search-box{flex-direction:column;} .player-search-results{grid-template-columns:1fr;} }
 
+
+    /* Money Game Central v2.0 — Universal Player Profile */
+    .upp-shell{background:#050806;border:1px solid rgba(84,232,111,.2);border-radius:26px;overflow:hidden;box-shadow:0 20px 55px rgba(0,0,0,.35)}
+    .upp-hero{position:relative;min-height:270px;padding:28px;background:radial-gradient(circle at 78% 18%,rgba(84,232,111,.19),transparent 34%),linear-gradient(135deg,#07110b,#020403 72%);display:flex;align-items:flex-end}
+    .upp-hero:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,4,3,.9),rgba(2,4,3,.32));pointer-events:none}
+    .upp-identity{position:relative;z-index:2;display:flex;align-items:center;gap:22px;width:100%}
+    .upp-avatar-wrap{position:relative;flex:0 0 auto}.upp-avatar{width:132px;height:132px;border-radius:50%;object-fit:cover;background:#0d1711;border:4px solid #54e86f;box-shadow:0 0 0 7px rgba(84,232,111,.10),0 14px 35px rgba(0,0,0,.4);display:grid;place-items:center;font-size:58px;overflow:hidden}
+    .upp-avatar img{width:100%;height:100%;object-fit:cover}.upp-camera{position:absolute;right:2px;bottom:4px;width:38px;height:38px;border-radius:50%;border:2px solid #050806;background:#54e86f;color:#041008;font-size:18px;font-weight:950;display:grid;place-items:center;cursor:pointer}
+    .upp-name{font-size:36px;line-height:1;font-weight:1000;color:#fff}.upp-nickname{margin-top:7px;color:#a7b4aa;font-size:15px;font-weight:800}.upp-meta{margin-top:10px;color:#7f9084;font-size:12px;font-weight:800}.upp-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.upp-badge{padding:6px 10px;border-radius:999px;background:rgba(84,232,111,.10);border:1px solid rgba(84,232,111,.28);color:#b9f8c4;font-size:10px;font-weight:1000;text-transform:uppercase;letter-spacing:.04em}
+    .upp-statbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:rgba(84,232,111,.12);border-top:1px solid rgba(84,232,111,.17);border-bottom:1px solid rgba(84,232,111,.17)}
+    .upp-stat{background:#0a100c;padding:18px 10px;text-align:center}.upp-stat strong{display:block;color:#fff;font-size:23px}.upp-stat small{display:block;color:#819087;font-size:10px;font-weight:950;text-transform:uppercase;margin-top:5px}
+    .upp-body{padding:20px}.upp-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:16px}.upp-panel{background:linear-gradient(180deg,#101713,#090e0b);border:1px solid rgba(148,163,184,.14);border-radius:19px;padding:17px}.upp-panel-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:13px}.upp-panel-head h3{margin:0;color:#fff;font-size:16px}.upp-panel-head span{font-size:10px;color:#54e86f;font-weight:950;text-transform:uppercase}
+    .upp-rounds{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.upp-round{padding:13px 5px;border-radius:13px;background:#08100b;border:1px solid rgba(84,232,111,.15);text-align:center}.upp-round strong{display:block;color:#fff;font-size:20px}.upp-round small{display:block;color:#758279;font-size:9px;margin-top:4px}
+    .upp-snapshot{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.upp-mini{background:#070c09;border-radius:13px;padding:12px}.upp-mini small{display:block;color:#7c8980;font-size:9px;text-transform:uppercase;font-weight:950}.upp-mini strong{display:block;color:#54e86f;margin-top:5px;font-size:16px}
+    .upp-actions{display:grid;gap:9px}.upp-action{width:100%;border:1px solid rgba(84,232,111,.20);background:#08100b;color:#fff;border-radius:13px;padding:12px;text-align:left;font-weight:900;cursor:pointer}.upp-action:hover{border-color:#54e86f}.upp-photo-note{margin-top:10px;color:#748178;font-size:11px;line-height:1.45}
+    .upp-upload-status{margin-top:9px;color:#54e86f;font-size:11px;font-weight:850;min-height:15px}
+    @media(max-width:850px){.upp-statbar{grid-template-columns:repeat(3,1fr)}.upp-grid{grid-template-columns:1fr}.upp-hero{min-height:235px;padding:20px}.upp-avatar{width:104px;height:104px}.upp-name{font-size:28px}}
+    @media(max-width:560px){.upp-identity{align-items:flex-start}.upp-avatar{width:82px;height:82px;font-size:38px;border-width:3px}.upp-camera{width:31px;height:31px}.upp-name{font-size:23px}.upp-statbar{grid-template-columns:repeat(2,1fr)}.upp-rounds{grid-template-columns:repeat(5,minmax(48px,1fr));overflow-x:auto}.upp-body{padding:12px}.upp-hero{padding:16px}.upp-nickname{font-size:13px}}
+
   </style>
 </head>
 <body>
@@ -2175,6 +2194,14 @@
 
 
 
+
+
+
+    <div id="view-universal-player-profile" class="card hidden">
+      <div id="universal-player-profile-content"><div class="season-empty">Loading player profile...</div></div>
+      <input id="upp-photo-input" type="file" accept="image/*" hidden onchange="handleUniversalProfilePhoto(event)">
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
 
     <div id="view-player-search" class="card hidden">
       <div id="player-search-content"><div class="season-empty">Loading players...</div></div>
@@ -4467,6 +4494,121 @@ function renderHallPlayerProfile(player){
   <div class="league-section"><div class="league-section-head"><h3>📖 Career Timeline</h3><span class="green">Latest 20</span></div>${timeline||'<div class="award-empty">Completed rounds will create this career timeline.</div>'}</div>`;
 }
 
+
+// ======================================================
+// MONEY GAME CENTRAL v2.0 — UNIVERSAL PLAYER PROFILE
+// ======================================================
+appState.universalProfilePlayerId = '';
+appState.playerProfiles = appState.playerProfiles || {};
+
+function universalPlayerById(playerId){
+  const id=String(playerId||'');
+  return (appState.leaguePlayers||[]).find(p=>String(p.id)===id) || (appState.players||[]).find(p=>String(p.league_player_id||p.id)===id) || null;
+}
+
+function universalProfileLocalKey(playerId){ return `mgc_profile_${String(playerId||'')}`; }
+function universalPhotoLocalKey(playerId){ return `mgc_profile_photo_${String(playerId||'')}`; }
+
+function getUniversalProfileData(player){
+  if(!player) return {};
+  let local={};
+  try{ local=JSON.parse(localStorage.getItem(universalProfileLocalKey(player.id))||'{}'); }catch(_){ }
+  return {...local,...(appState.playerProfiles?.[String(player.id)]||{})};
+}
+
+async function loadUniversalProfileData(playerId){
+  if(!window.supabaseClient || !playerId) return;
+  try{
+    const {data,error}=await window.supabaseClient.from('player_profiles').select('*').eq('player_id',playerId).maybeSingle();
+    if(!error && data) appState.playerProfiles[String(playerId)]=data;
+  }catch(_){ }
+}
+
+function universalRank(player){
+  const ranked=(appState.leaguePlayers||[]).map(p=>({id:String(p.id),m:hallCareerMetrics(p)})).sort((a,b)=>b.m.wins-a.m.wins||b.m.moneyWon-a.m.moneyWon||b.m.points-a.m.points);
+  const i=ranked.findIndex(x=>x.id===String(player.id)); return i>=0?`#${i+1}`:'—';
+}
+
+function universalCurrentStreak(rows){
+  const sorted=(rows||[]).slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0));
+  let n=0; for(const r of sorted){ const won=num(r.win||r.is_winner||r.weekly_win)||(num(r.place||r.finish||r.position)===1); if(won)n++;else break; } return n;
+}
+
+function universalTrend(values){
+  if(values.length<2) return 'Building';
+  const newest=values[0], oldest=values[values.length-1];
+  if(newest>oldest+1) return '↗ Improving'; if(newest<oldest-1) return '↘ Cooling'; return '→ Steady';
+}
+
+async function openPlayerProfile(playerId){
+  await loadLeagueModuleData();
+  const player=universalPlayerById(playerId);
+  if(!player){ showToast?.('Player profile not found.','warning'); return; }
+  appState.universalProfilePlayerId=String(player.id);
+  showView('view-universal-player-profile');
+  const mount=document.getElementById('universal-player-profile-content');
+  if(mount) mount.innerHTML='<div class="season-empty">Loading universal player profile...</div>';
+  await loadUniversalProfileData(player.id);
+  renderUniversalPlayerProfile();
+}
+
+function openMyUniversalProfile(){
+  const p=getMyPermanentLeaguePlayer();
+  if(p) openPlayerProfile(p.id); else showMyProfile();
+}
+
+function universalAvatarHtml(player, profile){
+  const localPhoto=localStorage.getItem(universalPhotoLocalKey(player.id))||'';
+  const photo=localPhoto||profile.profile_photo_url||profile.profile_photo||'';
+  return photo?`<img src="${escapeHtml(photo)}" alt="${escapeHtml(player.name)}">`:'🏌️';
+}
+
+function renderUniversalPlayerProfile(){
+  const mount=document.getElementById('universal-player-profile-content'); if(!mount)return;
+  const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
+  const m=hallCareerMetrics(player); const profile=getUniversalProfileData(player);
+  const rows=m.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0));
+  const last5=rows.slice(0,5).map(r=>num(r.total_score||r.score||r.round_score||r.points));
+  const scored=last5.filter(v=>Number.isFinite(v)); const seasonBest=scored.length?Math.max(...scored):null;
+  const streak=universalCurrentStreak(rows); const rank=universalRank(player);
+  const isCaptain=!!(player.is_captain||player.captain||player.role==='captain');
+  const badges=[m.wins>=5?'⭐ Elite Player':'⭐ League Player',m.awards.length?'🏛 Award Winner':'🎯 Competitor',isCaptain?'👨‍✈️ Captain':''].filter(Boolean);
+  const memberYear=new Date(player.created_at||Date.now()).getFullYear();
+  const canEdit=String(getMyPermanentLeaguePlayer()?.id||'')===String(player.id)||isAdminDevice?.();
+  const roundCards=[0,1,2,3,4].map(i=>`<div class="upp-round"><strong>${scored[i]??'—'}</strong><small>${i===0?'Latest':`Round ${i+1}`}</small></div>`).join('');
+  mount.innerHTML=`<div class="upp-shell">
+    <div class="upp-hero"><div class="upp-identity"><div class="upp-avatar-wrap"><div class="upp-avatar" id="upp-avatar">${universalAvatarHtml(player,profile)}</div>${canEdit?'<button class="upp-camera" title="Upload profile photo" onclick="document.getElementById(\'upp-photo-input\').click()">📷</button>':''}</div><div><div class="upp-name">${escapeHtml(player.name)}</div><div class="upp-nickname">${escapeHtml(profile.nickname||'Cliffside League Player')}</div><div class="upp-badges">${badges.map(b=>`<span class="upp-badge">${b}</span>`).join('')}</div><div class="upp-meta">Member since ${memberYear} • Player ID ${escapeHtml(String(player.id).slice(0,8))}</div></div></div></div>
+    <div class="upp-statbar"><div class="upp-stat"><strong>${m.games}</strong><small>Rounds</small></div><div class="upp-stat"><strong>${m.average.toFixed(1)}</strong><small>Career Avg</small></div><div class="upp-stat"><strong>${money(m.moneyWon)}</strong><small>Career Money</small></div><div class="upp-stat"><strong>${m.wins}</strong><small>Wins</small></div><div class="upp-stat"><strong>${streak}</strong><small>Win Streak</small></div><div class="upp-stat"><strong>${rank}</strong><small>POY Rank</small></div></div>
+    <div class="upp-body"><div class="upp-grid"><div class="upp-panel"><div class="upp-panel-head"><h3>📈 Performance Snapshot</h3><span>Last 5 rounds</span></div><div class="upp-rounds">${roundCards}</div><div class="upp-snapshot"><div class="upp-mini"><small>Trend</small><strong>${universalTrend(scored)}</strong></div><div class="upp-mini"><small>Current Average</small><strong>${m.average.toFixed(1)}</strong></div><div class="upp-mini"><small>Recent Best</small><strong>${seasonBest??'—'}</strong></div></div><div id="upp-upload-status" class="upp-upload-status"></div></div>
+    <div class="upp-panel"><div class="upp-panel-head"><h3>⚡ Quick Actions</h3><span>Connected profile</span></div><div class="upp-actions"><button class="upp-action" onclick="showHallPlayer('${escapeHtml(player.id)}')">🏛 View Full Career</button><button class="upp-action" onclick="showTrophyRoom('${escapeHtml(player.name)}')">🏆 View Awards</button><button class="upp-action" onclick="quickNavGo('records')">📖 League Records</button><button class="upp-action" onclick="quickNavGo('history')">📅 Round History</button><button class="upp-action" onclick="quickNavGo('season')">🏅 Season Center</button></div><div class="upp-photo-note">Stats, rankings, money, wins, streaks, and performance update automatically. Only personal photos and profile details are player-controlled.</div></div></div></div>
+  </div>`;
+}
+
+async function handleUniversalProfilePhoto(event){
+  const file=event.target.files?.[0]; if(!file)return;
+  const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
+  if(!file.type.startsWith('image/')){ showToast?.('Choose an image file.','warning'); return; }
+  if(file.size>5*1024*1024){ showToast?.('Photo must be under 5 MB.','warning'); return; }
+  const status=document.getElementById('upp-upload-status'); if(status)status.textContent='Uploading photo...';
+  const reader=new FileReader(); reader.onload=()=>{ try{localStorage.setItem(universalPhotoLocalKey(player.id),reader.result);}catch(_){} const av=document.getElementById('upp-avatar');if(av)av.innerHTML=`<img src="${reader.result}" alt="${escapeHtml(player.name)}">`; }; reader.readAsDataURL(file);
+  try{
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase(); const path=`${player.id}/profile-${Date.now()}.${ext}`;
+    const {error:uploadError}=await window.supabaseClient.storage.from('player-profile-photos').upload(path,file,{upsert:true,contentType:file.type});
+    if(uploadError) throw uploadError;
+    const {data:urlData}=window.supabaseClient.storage.from('player-profile-photos').getPublicUrl(path);
+    const photoUrl=urlData?.publicUrl||'';
+    const payload={player_id:player.id,profile_photo_url:photoUrl,updated_at:new Date().toISOString()};
+    const {error:profileError}=await window.supabaseClient.from('player_profiles').upsert(payload,{onConflict:'player_id'});
+    if(profileError) throw profileError;
+    appState.playerProfiles[String(player.id)]={...(appState.playerProfiles[String(player.id)]||{}),...payload};
+    localStorage.removeItem(universalPhotoLocalKey(player.id));
+    if(status)status.textContent='Profile photo saved.'; showToast?.('Profile photo updated.','success'); renderUniversalPlayerProfile();
+  }catch(err){
+    if(status)status.textContent='Photo preview saved on this device. Supabase photo storage needs the player-profile-photos bucket and player_profiles table.';
+    console.warn('Profile photo cloud save unavailable:',err);
+  }finally{ event.target.value=''; }
+}
+
 async function showMyProfile() {
   showView('view-profile');
   const mount=document.getElementById('profile-content');
@@ -4510,7 +4652,7 @@ function renderMyProfile() {
     </div>
     <div class="league-section"><div class="league-section-head"><h3>📖 Recent Rounds</h3><button class="league-link" onclick="quickNavGo('history')">View History →</button></div>${recentHtml}</div>
     <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
-      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button><button class="quick-nav-item" onclick="quickNavGo('hall')"><span class="quick-nav-icon">🏛️</span><span>Hall of Fame</span><small>Career player profiles</small></button></div>
+      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="openMyUniversalProfile()"><span class="quick-nav-icon">⭐</span><span>Universal Profile</span><small>Open your v2.0 player card</small></button><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button><button class="quick-nav-item" onclick="quickNavGo('hall')"><span class="quick-nav-icon">🏛️</span><span>Hall of Fame</span><small>Career player profiles</small></button></div>
     </div>`;
 }
 
