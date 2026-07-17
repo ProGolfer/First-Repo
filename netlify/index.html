@@ -2075,16 +2075,6 @@
         <button class="trophy-tab" data-trophy-tab="special" onclick="setTrophyTab('special')">🎁 Special</button>
       </div>
       <div id="trophy-room-content"><div class="award-empty">Loading awards from Supabase...</div></div>
-      <div id="manual-award-admin" class="league-section hidden">
-        <div class="league-section-head"><h3>➕ Add Special Award</h3></div>
-        <div class="manual-award-form">
-          <input id="manual-award-title" placeholder="Award title">
-          <select id="manual-award-winner"><option value="">Choose winner</option></select>
-          <textarea id="manual-award-description" class="full" rows="3" placeholder="Description or achievement"></textarea>
-          <button class="btn btn-primary full" onclick="saveManualAward()">Save Award</button>
-          <div id="manual-award-status" class="full" style="color:#a8b4c5;font-weight:800;"></div>
-        </div>
-      </div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
     </div>
 
@@ -2202,6 +2192,7 @@
           <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🔔</span><span>Notifications & Backup</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>System</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('statistics', event)"><span>📈</span><span>Statistics</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('awards', event)"><span>🏅</span><span>Awards</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity</span></button>
         </div>
 
@@ -2263,6 +2254,7 @@
               <button class="admin-command-card" onclick="switchAdminTab('tools')"><span class="admin-command-icon">🔔</span><strong>Notifications & Backup</strong><small>Diagnostics, test alerts, backups, restore tools, and safe cleanup controls.</small></button>
               <button class="admin-command-card" onclick="switchAdminTab('settings')"><span class="admin-command-icon">⚙️</span><strong>System</strong><small>Registration times and the manual open/close control.</small></button>
               <button class="admin-command-card" onclick="switchAdminTab('statistics')"><span class="admin-command-icon">📈</span><strong>Statistics</strong><small>Player averages, rounds, best scores, recent form, and today's team snapshot.</small></button>
+              <button class="admin-command-card" onclick="switchAdminTab('awards')"><span class="admin-command-icon">🏅</span><strong>Awards</strong><small>Add special awards for players. The Trophy Room remains the player-facing display.</small></button>
             </div>
           </div>
 
@@ -2446,6 +2438,36 @@
                 </select>
               </div>
               <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
+            </div>
+          </div>
+
+          <div id="admin-awards" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Awards Manager</h2>
+                <p>Create special awards here. Players only see completed awards inside the Trophy Room.</p>
+              </div>
+            </div>
+
+            <div class="approval-note">
+              <div class="title">🏆 Trophy Room Stays the Same</div>
+              <div>This is the only place where special awards can be added. The Trophy Room remains view-only for players.</div>
+            </div>
+
+            <div class="admin-section">
+              <div class="league-section-head"><h3>➕ Add Special Award</h3></div>
+              <div class="manual-award-form">
+                <input id="manual-award-title" placeholder="Award title">
+                <select id="manual-award-winner"><option value="">Choose winner</option></select>
+                <textarea id="manual-award-description" class="full" rows="3" placeholder="Description or achievement"></textarea>
+                <button class="btn btn-primary full" onclick="saveManualAward()">Save Award</button>
+                <div id="manual-award-status" class="full" style="color:#a8b4c5;font-weight:800;"></div>
+              </div>
+            </div>
+
+            <div class="admin-section">
+              <div class="league-section-head"><h3>🎁 Existing Special Awards</h3><span id="admin-award-count" style="color:#54e86f;font-weight:950;">0</span></div>
+              <div id="admin-special-awards-list"><div class="award-empty">Loading special awards...</div></div>
             </div>
           </div>
 
@@ -3956,6 +3978,18 @@ function renderMyProfile() {
   const summary=calculatePlayerSummary(name, permanentPlayer?.id || '');
   const playerAwards=[...(appState.seasonAwards||[]),...(appState.specialAwards||[])].filter(a=>cleanName(playerNameFromRow(a))===cleanName(name));
   const preview=playerAwards.slice(0,3);
+  const ranked=(appState.leaguePlayers||[]).map(p=>({player:p,summary:calculatePlayerSummary(p.name,p.id)})).sort((a,b)=>b.summary.wins-a.summary.wins || b.summary.winnings-a.summary.winnings || b.summary.games-a.summary.games);
+  const rankIndex=ranked.findIndex(x=>String(x.player.id)===String(permanentPlayer?.id||''));
+  const seasonRank=rankIndex>=0 ? `#${rankIndex+1}` : '—';
+  const recentRows=summary.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0)).slice(0,5);
+  const recentHtml=recentRows.length ? recentRows.map(r=>{
+    const rawDate=r.game_date||r.date||r.created_at;
+    const dateText=rawDate ? new Date(rawDate).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'League round';
+    const score=num(r.total_score||r.score||r.round_score);
+    const finish=num(r.place||r.finish||r.position);
+    const won=num(r.money_won||r.winnings||r.payout);
+    return `<div class="mgc-scorecard-row"><div><strong>${escapeHtml(dateText)}</strong><div class="muted" style="font-size:12px;margin-top:3px;">${finish?`Finish #${finish}`:'Round recorded'}</div></div><div style="text-align:right;font-weight:950;color:#54e86f;">${score||'—'} pts<div class="muted" style="font-size:12px;">${money(won)}</div></div></div>`;
+  }).join('') : '<div class="award-empty">Your recent rounds will appear after league history is recorded.</div>';
   mount.innerHTML=`
     <div class="league-hero"><div class="league-kicker">Cliffside League Profile</div><div class="league-title">👤 ${escapeHtml(name)}</div><div class="league-subtitle">One continuous view of your season, history, statistics, recaps, and awards.</div>
       <div class="profile-stat-grid">
@@ -3963,11 +3997,13 @@ function renderMyProfile() {
         <div class="profile-stat"><strong>${summary.wins}</strong><small>Wins</small></div>
         <div class="profile-stat"><strong>${summary.average}</strong><small>Average</small></div>
         <div class="profile-stat"><strong>${money(summary.winnings)}</strong><small>Won</small></div>
+        <div class="profile-stat"><strong>${seasonRank}</strong><small>Season Rank</small></div>
       </div>
     </div>
     <div class="league-section"><div class="league-section-head"><h3>🏆 Awards</h3><button class="league-link" onclick="showTrophyRoom('${escapeHtml(name)}')">View All →</button></div>
       <div class="award-grid">${preview.length?preview.map(a=>awardCardHtml(a.icon||'🏆',a.title||a.award_title||a.award_key,playerNameFromRow(a),a.description||a.detail||String(a.season||''))).join(''):'<div class="award-empty" style="grid-column:1/-1;">Awards will appear as game history grows.</div>'}</div>
     </div>
+    <div class="league-section"><div class="league-section-head"><h3>📖 Recent Rounds</h3><button class="league-link" onclick="quickNavGo('history')">View History →</button></div>${recentHtml}</div>
     <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
       <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button></div>
     </div>`;
@@ -3978,9 +4014,6 @@ async function showTrophyRoom(playerFilter='') {
   const mount=document.getElementById('trophy-room-content'); if(mount) mount.innerHTML='<div class="award-empty">Loading awards from Supabase...</div>';
   await loadLeagueModuleData();
   appState.trophyPlayerFilter=playerFilter || '';
-  const admin=document.getElementById('manual-award-admin'); if(admin) admin.classList.toggle('hidden',!isAdminDevice());
-  const select=document.getElementById('manual-award-winner');
-  if(select) select.innerHTML='<option value="">Choose winner</option>'+[...(appState.players||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(p=>`<option value="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
   renderTrophyRoom();
 }
 
@@ -4010,6 +4043,23 @@ function renderTrophyRoom() {
   mount.innerHTML=`<div class="league-section"><div class="league-section-head"><h3>${label}</h3><span style="color:#54e86f;font-weight:950;">${awards.length}</span></div><div class="award-grid">${awards.length?awards.map(a=>awardCardHtml(a.icon,a.title,a.winner,a.detail)).join(''):'<div class="award-empty" style="grid-column:1/-1;">No awards have been recorded yet. The Trophy Room will fill automatically from game history.</div>'}</div></div>`;
 }
 
+async function renderAdminAwards() {
+  if(!isAdminDevice()) return;
+  const status=document.getElementById('manual-award-status');
+  if(status) status.textContent='Loading awards...';
+  await loadLeagueModuleData();
+  const select=document.getElementById('manual-award-winner');
+  const permanentPlayers=(appState.leaguePlayers||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(select) select.innerHTML='<option value="">Choose winner</option>'+permanentPlayers.map(p=>`<option value="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  const awards=appState.specialAwards||[];
+  const count=document.getElementById('admin-award-count'); if(count) count.textContent=String(awards.length);
+  const list=document.getElementById('admin-special-awards-list');
+  if(list) list.innerHTML=awards.length
+    ? `<div class="award-grid">${awards.map(a=>awardCardHtml(a.icon||'🎁',a.title||a.award_title||'Special Award',playerNameFromRow(a),a.description||String(a.season||''))).join('')}</div>`
+    : '<div class="award-empty">No special awards have been added yet.</div>';
+  if(status) status.textContent='Ready to add an award.';
+}
+
 async function saveManualAward() {
   if(!isAdminDevice()) return alert('Admin access required.');
   const title=(document.getElementById('manual-award-title')?.value||'').trim();
@@ -4025,7 +4075,7 @@ async function saveManualAward() {
     if(result?.error) throw result.error;
     document.getElementById('manual-award-title').value=''; document.getElementById('manual-award-description').value=''; select.value='';
     await recordActivity('award','Special Award Added',`${title} — ${playerName}`,{icon:'🏆',actor:'Admin'});
-    await loadLeagueModuleData(); setTrophyTab('special'); if(status)status.textContent='Award saved.';
+    await renderAdminAwards(); if(status)status.textContent='Award saved.';
   } catch(err) { if(status)status.textContent=`Could not save. Run the Trophy Room SQL first. ${formatError(err)}`; }
 }
 
@@ -7884,6 +7934,7 @@ async function toggleCaptain(id, makeCaptain) {
       if(t==='settings') updateSettingsView();
       if(t==='tools') renderSystemTools();
       if(t==='statistics') loadStatisticsModule();
+      if(t==='awards') renderAdminAwards();
     }
 
     function logout(){ showView('view-home'); }
