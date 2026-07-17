@@ -1763,6 +1763,44 @@
       .manual-award-form .full { grid-column:auto; }
     }
 
+
+    /* Season Center v1.5.1 */
+    .season-hero {
+      background:radial-gradient(circle at top right,rgba(245,158,11,.18),transparent 42%),linear-gradient(180deg,rgba(15,30,44,.98),rgba(4,12,22,.98));
+      border:1px solid rgba(245,158,11,.34); border-radius:24px; padding:20px; margin-bottom:14px;
+      box-shadow:0 0 34px rgba(245,158,11,.08),inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .season-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+    .season-panel { background:linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98)); border:1px solid rgba(148,163,184,.18); border-radius:20px; padding:16px; }
+    .season-panel.full { grid-column:1/-1; }
+    .season-list-row { display:grid; grid-template-columns:42px minmax(0,1fr) auto; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(148,163,184,.13); }
+    .season-list-row:last-child { border-bottom:none; }
+    .season-rank { width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:rgba(34,197,94,.12); color:#54e86f; font-weight:950; }
+    .season-rank.podium { background:rgba(245,158,11,.16); color:#ffcf5a; border:1px solid rgba(245,158,11,.28); }
+    .season-player { color:#fff; font-weight:950; }
+    .season-player small { display:block; color:#94a3b8; font-size:11px; margin-top:3px; font-weight:800; }
+    .season-value { color:#54e86f; font-weight:950; text-align:right; }
+    .season-value small { display:block; color:#94a3b8; font-size:10px; text-transform:uppercase; margin-top:2px; }
+    .season-highlight-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:14px; }
+    .season-highlight { background:rgba(2,8,14,.45); border:1px solid rgba(148,163,184,.15); border-radius:15px; padding:12px; text-align:center; }
+    .season-highlight strong { display:block; color:#fff; font-size:22px; }
+    .season-highlight small { color:#54e86f; font-weight:950; text-transform:uppercase; font-size:10px; }
+    .season-trend-up { color:#54e86f; }
+    .season-trend-down { color:#fca5a5; }
+    .season-timeline { display:grid; gap:10px; }
+    .season-event-card { display:grid; grid-template-columns:86px minmax(0,1fr) auto; gap:12px; align-items:center; background:rgba(2,8,14,.38); border:1px solid rgba(148,163,184,.14); border-radius:16px; padding:13px; }
+    .season-event-date { color:#ffcf5a; font-weight:950; font-size:12px; text-transform:uppercase; }
+    .season-event-title { color:#fff; font-weight:950; }
+    .season-event-title small { display:block; color:#94a3b8; margin-top:3px; font-weight:800; }
+    .season-empty { color:#94a3b8; text-align:center; padding:24px 10px; font-weight:800; }
+    @media(max-width:760px){
+      .season-grid { grid-template-columns:1fr; }
+      .season-panel.full { grid-column:auto; }
+      .season-highlight-grid { grid-template-columns:repeat(2,1fr); }
+      .season-event-card { grid-template-columns:1fr; }
+      .season-event-card .league-link { width:100%; }
+    }
+
   </style>
 </head>
 <body>
@@ -1800,6 +1838,7 @@
       <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
       <div class="quick-nav-grid">
         <button class="quick-nav-item" onclick="quickNavGo('profile')"><span class="quick-nav-icon">👤</span><span>My Profile</span><small>Personal league hub</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>Past rounds</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('trophies')"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season awards</small></button>
@@ -2059,6 +2098,12 @@
 
     <div id="view-profile" class="card hidden">
       <div id="profile-content"><div class="award-empty">Loading your league profile...</div></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
+
+
+    <div id="view-season-center" class="card hidden">
+      <div id="season-center-content"><div class="season-empty">Loading the season...</div></div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
     </div>
 
@@ -2776,6 +2821,9 @@
           break;
         case 'profile':
           showMyProfile();
+          break;
+        case 'season':
+          showSeasonCenter();
           break;
         case 'trophies':
           showTrophyRoom();
@@ -3962,6 +4010,117 @@ function calculateAutomaticSeasonAwards() {
   return awards;
 }
 
+
+function seasonRowDate(row) {
+  const raw=row?.game_date || row?.date || row?.played_at || row?.created_at;
+  const date=raw ? new Date(raw) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function seasonRows() {
+  const season=currentLeagueSeason();
+  return (appState.leagueHistory || []).filter(row => {
+    if(row?.season != null && String(row.season)!==season) return false;
+    const date=seasonRowDate(row);
+    return row?.season != null ? String(row.season)===season : (!date || String(date.getFullYear())===season);
+  });
+}
+
+function seasonPlayerMetrics() {
+  const rows=seasonRows();
+  const permanentById=new Map((appState.leaguePlayers||[]).map(p=>[String(p.id),p]));
+  const map=new Map();
+  rows.forEach(row=>{
+    const id=String(row.league_player_id || row.player_id || row.player?.id || '');
+    const linked=id ? permanentById.get(id) : null;
+    const name=linked?.name || playerNameFromRow(row);
+    if(!name || name==='Unknown Player') return;
+    const key=id || cleanName(name);
+    const item=map.get(key)||{id,name,games:0,totalPoints:0,scoreCount:0,money:0,wins:0,frontWins:0,backWins:0,totalWins:0,finishes:[],dates:[],recent:[]};
+    item.games++;
+    const points=num(row.total_score || row.score || row.round_score || row.points);
+    if(points || String(row.total_score||row.score||row.round_score||row.points||'')==='0'){ item.totalPoints+=points; item.scoreCount++; }
+    item.money+=num(row.money_won || row.winnings || row.payout);
+    const finish=num(row.place || row.finish || row.position);
+    if(finish>0) item.finishes.push(finish);
+    const isWin=row.won===true || row.is_winner===true || finish===1 || String(row.result||'').toLowerCase()==='win';
+    if(isWin) item.wins++;
+    item.frontWins+=num(row.front_win || row.front_wins || row.won_front);
+    item.backWins+=num(row.back_win || row.back_wins || row.won_back);
+    item.totalWins+=num(row.total_win || row.total_wins || row.won_total || isWin);
+    const date=seasonRowDate(row); if(date) item.dates.push(date);
+    item.recent.push({points,finish,money:num(row.money_won || row.winnings || row.payout),date});
+    map.set(key,item);
+  });
+  return [...map.values()].map(p=>{
+    p.avgPoints=p.scoreCount ? p.totalPoints/p.scoreCount : 0;
+    p.avgFinish=p.finishes.length ? p.finishes.reduce((a,b)=>a+b,0)/p.finishes.length : 0;
+    p.recent=p.recent.sort((a,b)=>(b.date?.getTime()||0)-(a.date?.getTime()||0)).slice(0,5);
+    p.last5Avg=p.recent.length ? p.recent.reduce((a,r)=>a+r.points,0)/p.recent.length : 0;
+    p.playerOfYearPoints=(p.totalWins*25)+(p.frontWins*8)+(p.backWins*8)+(p.wins*10)+p.totalPoints;
+    return p;
+  });
+}
+
+function seasonListHtml(players,valueFn,labelFn) {
+  if(!players.length) return '<div class="season-empty">Season results will appear after league history is recorded.</div>';
+  return players.map((p,index)=>`<div class="season-list-row"><div class="season-rank ${index<3?'podium':''}">${index+1}</div><div class="season-player">${escapeHtml(p.name)}<small>${p.games} game${p.games===1?'':'s'}</small></div><div class="season-value">${valueFn(p)}<small>${labelFn(p)}</small></div></div>`).join('');
+}
+
+async function showSeasonCenter() {
+  showView('view-season-center');
+  const mount=document.getElementById('season-center-content');
+  if(mount) mount.innerHTML='<div class="season-empty">Loading standings, trends, and season events...</div>';
+  await loadLeagueModuleData();
+  renderSeasonCenter();
+}
+
+function renderSeasonCenter() {
+  const mount=document.getElementById('season-center-content'); if(!mount) return;
+  const players=seasonPlayerMetrics();
+  const standings=players.slice().sort((a,b)=>b.playerOfYearPoints-a.playerOfYearPoints || b.totalWins-a.totalWins || b.totalPoints-a.totalPoints);
+  const moneyList=players.slice().sort((a,b)=>b.money-a.money || b.totalPoints-a.totalPoints);
+  const avgList=players.filter(p=>p.scoreCount).slice().sort((a,b)=>b.avgPoints-a.avgPoints);
+  const hotList=players.filter(p=>p.recent.length).slice().sort((a,b)=>b.last5Avg-a.last5Avg);
+  const leader=standings[0]; const moneyLeader=moneyList[0]; const pointsLeader=players.slice().sort((a,b)=>b.totalPoints-a.totalPoints)[0]; const gamesLeader=players.slice().sort((a,b)=>b.games-a.games)[0];
+
+  const rows=seasonRows();
+  const eventsMap=new Map();
+  rows.forEach(row=>{
+    const date=seasonRowDate(row); if(!date) return;
+    const key=date.toISOString().slice(0,10);
+    const event=eventsMap.get(key)||{date,players:new Set(),teams:new Set(),winner:'',totalMoney:0};
+    event.players.add(String(row.league_player_id||row.player_id||playerNameFromRow(row)));
+    if(row.team_id||row.team_number||row.team_name) event.teams.add(String(row.team_id||row.team_number||row.team_name));
+    const finish=num(row.place||row.finish||row.position);
+    if(!event.winner && (row.won===true || row.is_winner===true || finish===1)) event.winner=playerNameFromRow(row);
+    event.totalMoney+=num(row.money_won||row.winnings||row.payout);
+    eventsMap.set(key,event);
+  });
+  const events=[...eventsMap.values()].sort((a,b)=>b.date-a.date);
+  const eventHtml=events.length ? events.map((e,i)=>`<div class="season-event-card"><div class="season-event-date">${e.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</div><div class="season-event-title">Week ${events.length-i}<small>${e.players.size} players${e.teams.size?` • ${e.teams.size} teams`:''}${e.winner?` • Winner: ${escapeHtml(e.winner)}`:''}</small></div><button class="league-link" onclick="quickNavGo('history')">View Results →</button></div>`).join('') : '<div class="season-empty">Each completed Saturday will appear here automatically.</div>';
+
+  mount.innerHTML=`
+    <div class="season-hero">
+      <div class="league-kicker">Cliffside ${currentLeagueSeason()} Season</div>
+      <div class="league-title">🏅 Season Center</div>
+      <div class="league-subtitle">Your league headquarters for standings, the Player of the Year race, money, trends, and every completed Saturday.</div>
+      <div class="season-highlight-grid">
+        <div class="season-highlight"><strong>${players.length}</strong><small>Players</small></div>
+        <div class="season-highlight"><strong>${events.length}</strong><small>Rounds</small></div>
+        <div class="season-highlight"><strong>${leader?escapeHtml(leader.name):'—'}</strong><small>Season Leader</small></div>
+        <div class="season-highlight"><strong>${moneyLeader?money(moneyLeader.money):'$0'}</strong><small>Money Lead</small></div>
+      </div>
+    </div>
+    <div class="season-grid">
+      <div class="season-panel"><div class="league-section-head"><h3>🏆 Player of the Year</h3><span class="green">Live Race</span></div>${seasonListHtml(standings.slice(0,10),p=>Math.round(p.playerOfYearPoints),()=> 'race points')}</div>
+      <div class="season-panel"><div class="league-section-head"><h3>💰 Money List</h3><span class="green">Season</span></div>${seasonListHtml(moneyList.slice(0,10),p=>money(p.money),()=> 'won')}</div>
+      <div class="season-panel"><div class="league-section-head"><h3>📊 Points Leaders</h3><span class="green">Average</span></div>${seasonListHtml(avgList.slice(0,10),p=>p.avgPoints.toFixed(1),p=>`${Math.round(p.totalPoints)} total`)}</div>
+      <div class="season-panel"><div class="league-section-head"><h3>🔥 Trending</h3><span class="green">Last 5</span></div>${seasonListHtml(hotList.slice(0,10),p=>p.last5Avg.toFixed(1),()=> 'last 5 avg')}</div>
+      <div class="season-panel full"><div class="league-section-head"><h3>📅 Season Timeline</h3><button class="league-link" onclick="quickNavGo('history')">Full History →</button></div><div class="season-timeline">${eventHtml}</div></div>
+    </div>`;
+}
+
 async function showMyProfile() {
   showView('view-profile');
   const mount=document.getElementById('profile-content');
@@ -4005,7 +4164,7 @@ function renderMyProfile() {
     </div>
     <div class="league-section"><div class="league-section-head"><h3>📖 Recent Rounds</h3><button class="league-link" onclick="quickNavGo('history')">View History →</button></div>${recentHtml}</div>
     <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
-      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button></div>
+      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button></div>
     </div>`;
 }
 
