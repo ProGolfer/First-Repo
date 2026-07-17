@@ -2239,6 +2239,125 @@
       }
     }
 
+
+    /* v2.2 Premium Player Card polish — presentation only */
+    #view-game .live-player-card {
+      position:relative;
+      overflow:hidden;
+      min-height:82px;
+      padding:15px 14px 15px 17px;
+      border-color:rgba(148,163,184,.18);
+      background:
+        radial-gradient(circle at 88% 10%, rgba(84,232,111,.065), transparent 34%),
+        linear-gradient(180deg,rgba(21,37,49,.98),rgba(11,22,31,.98));
+      box-shadow:0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+      transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+    }
+
+    #view-game .live-player-card::before {
+      content:"";
+      position:absolute;
+      inset:10px auto 10px 0;
+      width:3px;
+      border-radius:0 999px 999px 0;
+      background:linear-gradient(180deg,#70f08b,#1ea64a);
+      opacity:.72;
+    }
+
+    #view-game .live-player-card:hover {
+      transform:translateY(-1px);
+      border-color:rgba(84,232,111,.30);
+      box-shadow:0 14px 30px rgba(0,0,0,.24),0 0 20px rgba(34,197,94,.06),inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    #view-game .live-player-card.captain-card {
+      border-color:rgba(245,184,74,.28);
+      background:
+        radial-gradient(circle at 88% 10%, rgba(245,184,74,.10), transparent 36%),
+        linear-gradient(180deg,rgba(27,39,47,.98),rgba(12,23,31,.98));
+    }
+
+    #view-game .live-player-card.captain-card::before {
+      background:linear-gradient(180deg,#ffd777,#c88b22);
+      opacity:1;
+    }
+
+    #view-game .live-player-avatar {
+      width:46px;
+      height:46px;
+      flex-basis:46px;
+      border-radius:14px;
+      background:linear-gradient(145deg,rgba(84,232,111,.16),rgba(84,232,111,.055));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    #view-game .captain-card .live-player-avatar {
+      background:linear-gradient(145deg,rgba(245,184,74,.18),rgba(245,184,74,.06));
+      border-color:rgba(245,184,74,.32);
+    }
+
+    #view-game .live-player-name {
+      font-size:17px;
+      letter-spacing:.01em;
+    }
+
+    #view-game .live-player-points {
+      display:inline-flex;
+      align-items:center;
+      min-height:22px;
+      margin-top:5px;
+      padding:3px 8px;
+      border:1px solid rgba(84,232,111,.14);
+      border-radius:999px;
+      background:rgba(84,232,111,.07);
+      color:#b8c6d4;
+      font-size:11px;
+      letter-spacing:.035em;
+      text-transform:uppercase;
+    }
+
+    #view-game .live-score-control {
+      position:relative;
+      padding:7px;
+      border-radius:15px;
+      background:linear-gradient(180deg,rgba(2,8,14,.62),rgba(8,16,23,.72));
+      border-color:rgba(148,163,184,.17);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+    }
+
+    #view-game .live-score-button {
+      background:linear-gradient(180deg,#1d3041,#142331);
+      border-color:rgba(148,163,184,.20);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+      transition:transform .14s ease,border-color .14s ease,background .14s ease;
+    }
+
+    #view-game .live-score-button:not(:disabled):active {
+      transform:scale(.94);
+      background:#20384b;
+      border-color:rgba(84,232,111,.42);
+    }
+
+    #view-game .live-score-value {
+      color:#f8fafc;
+      text-shadow:0 0 16px rgba(84,232,111,.12);
+    }
+
+    @media (max-width:520px) {
+      #view-game .live-player-card {
+        gap:13px;
+        padding:14px 13px 13px 16px;
+      }
+
+      #view-game .live-player-profile {
+        width:100%;
+      }
+
+      #view-game .live-score-control {
+        min-height:52px;
+      }
+    }
+
     /* My Team identity banner */
     #view-game .my-team-hero {
       position:relative;
@@ -6718,7 +6837,7 @@ const teamCount = getActiveTeamCount();
         const controlsDisabled = isCaptain ? '' : 'disabled';
 
         return `
-          <div class="live-player-card">
+          <div class="live-player-card${playerIsCaptain ? ' captain-card' : ''}">
             <div class="live-player-profile">
               <div class="live-player-avatar">${playerIsCaptain ? '👑' : '🏌️'}</div>
               <div>
