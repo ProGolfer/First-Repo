@@ -2337,7 +2337,128 @@
       #view-game .my-team-hero-stats { grid-template-columns:1fr 1fr; }
     }
 
-  </style>
+  
+
+    /* My Team hole command center */
+    #view-game .hole-command-card {
+      position:relative;
+      overflow:hidden;
+      padding:18px;
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:18px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(59,130,246,.13), transparent 36%),
+        linear-gradient(180deg,rgba(16,29,40,.98),rgba(9,18,26,.98));
+      box-shadow:0 16px 36px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    #view-game .hole-command-top {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:16px;
+      align-items:start;
+    }
+
+    #view-game .hole-number-label {
+      color:#54e86f;
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.11em;
+      text-transform:uppercase;
+    }
+
+    #view-game .hole-par-line {
+      margin-top:4px;
+      color:#fff;
+      font-size:30px;
+      line-height:1;
+      font-weight:950;
+    }
+
+    #view-game .projected-total-box {
+      min-width:130px;
+      padding:12px 14px;
+      text-align:right;
+      border:1px solid rgba(84,232,111,.20);
+      border-radius:15px;
+      background:rgba(34,197,94,.08);
+    }
+
+    #view-game .projected-total-box small {
+      display:block;
+      color:#9fb0c2;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+
+    #view-game .projected-total-box strong {
+      display:block;
+      margin-top:3px;
+      color:#54e86f;
+      font-size:38px;
+      line-height:1;
+      font-weight:950;
+    }
+
+    #view-game .projected-total-box span {
+      display:block;
+      margin-top:4px;
+      color:#7f91a3;
+      font-size:10px;
+      font-weight:850;
+    }
+
+    #view-game .hole-progress-track {
+      height:7px;
+      margin-top:16px;
+      overflow:hidden;
+      border-radius:999px;
+      background:rgba(148,163,184,.13);
+    }
+
+    #view-game .hole-progress-fill {
+      height:100%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,#22c55e,#63f27d);
+      box-shadow:0 0 14px rgba(84,232,111,.32);
+    }
+
+    #view-game .hole-points-strip {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-top:14px;
+      padding:12px 14px;
+      border:1px solid rgba(84,232,111,.22);
+      border-radius:15px;
+      background:linear-gradient(90deg,rgba(34,197,94,.12),rgba(34,197,94,.04));
+    }
+
+    #view-game .hole-points-strip span {
+      color:#dce7e1;
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+
+    #view-game .hole-points-strip strong {
+      color:#54e86f;
+      font-size:26px;
+      line-height:1;
+      font-weight:950;
+    }
+
+    @media (max-width:520px) {
+      #view-game .hole-command-top { grid-template-columns:1fr auto; }
+      #view-game .hole-par-line { font-size:26px; }
+      #view-game .projected-total-box { min-width:112px; padding:11px 12px; }
+      #view-game .projected-total-box strong { font-size:34px; }
+    }
+</style>
 </head>
 <body>
   <div class="container">
@@ -6660,22 +6781,26 @@ const teamCount = getActiveTeamCount();
           </div>
         </div>
 
-        <div class="dashboard-panel">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div class="hole-command-card">
+          <div class="hole-command-top">
             <div>
-              <div class="section-title green">Hole ${holeInfo.hole} of 18</div>
-              <div style="font-size:24px;font-weight:950;">Par ${holeInfo.par}</div>
+              <div class="hole-number-label">Hole ${holeInfo.hole} of 18</div>
+              <div class="hole-par-line">Par ${holeInfo.par}</div>
             </div>
-            <div style="text-align:right;">
-              <div class="muted" style="font-weight:900;">Projected Total</div>
-              <div style="font-size:34px;font-weight:950;color:#54e86f;">${projectedRunning}</div>
-              <div class="muted" style="font-size:12px;">Best 3 scores count</div>
+            <div class="projected-total-box">
+              <small>Projected Total</small>
+              <strong>${projectedRunning}</strong>
+              <span>Best 3 scores count</span>
             </div>
           </div>
 
-          <div style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.20);display:flex;justify-content:space-between;gap:10px;">
-            <strong>Hole Points</strong>
-            <strong style="font-size:24px;color:#54e86f;">${holePoints}</strong>
+          <div class="hole-progress-track" aria-label="Round progress">
+            <div class="hole-progress-fill" style="width:${(liveScoreState.currentHole / 18) * 100}%;"></div>
+          </div>
+
+          <div class="hole-points-strip">
+            <span>Hole Points</span>
+            <strong>${holePoints}</strong>
           </div>
 
           ${renderMoneyTotalsMini(moneyTotals)}
