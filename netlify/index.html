@@ -1875,8 +1875,10 @@
     .upp-snapshot{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.upp-mini{background:#070c09;border-radius:13px;padding:12px}.upp-mini small{display:block;color:#7c8980;font-size:9px;text-transform:uppercase;font-weight:950}.upp-mini strong{display:block;color:#54e86f;margin-top:5px;font-size:16px}
     .upp-actions{display:grid;gap:9px}.upp-action{width:100%;border:1px solid rgba(84,232,111,.20);background:#08100b;color:#fff;border-radius:13px;padding:12px;text-align:left;font-weight:900;cursor:pointer}.upp-action:hover{border-color:#54e86f}.upp-photo-note{margin-top:10px;color:#748178;font-size:11px;line-height:1.45}
     .upp-upload-status{margin-top:9px;color:#54e86f;font-size:11px;font-weight:850;min-height:15px}
+    .upp-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.upp-detail{padding:12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(148,163,184,.14)}.upp-detail.full{grid-column:1/-1}.upp-detail small{display:block;color:#7f9084;font-size:10px;font-weight:1000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.upp-detail strong,.upp-detail span{color:#f8fafc;font-size:14px;font-weight:850;line-height:1.4}.upp-edit-form{display:grid;gap:11px;margin-top:14px}.upp-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.upp-edit-form label{display:grid;gap:6px;color:#9fb0a3;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.upp-edit-form input,.upp-edit-form textarea{width:100%;padding:11px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.24);background:#0b1720;color:#f8fafc;font:inherit;outline:none}.upp-edit-form textarea{min-height:84px;resize:vertical}.upp-edit-actions{display:flex;gap:8px;flex-wrap:wrap}.upp-save-status{min-height:18px;color:#9fb0a3;font-size:12px;font-weight:800}
+
     @media(max-width:850px){.upp-statbar{grid-template-columns:repeat(3,1fr)}.upp-grid{grid-template-columns:1fr}.upp-hero{min-height:235px;padding:20px}.upp-avatar{width:104px;height:104px}.upp-name{font-size:28px}}
-    @media(max-width:560px){.upp-identity{align-items:flex-start}.upp-avatar{width:82px;height:82px;font-size:38px;border-width:3px}.upp-camera{width:31px;height:31px}.upp-name{font-size:23px}.upp-statbar{grid-template-columns:repeat(2,1fr)}.upp-rounds{grid-template-columns:repeat(5,minmax(48px,1fr));overflow-x:auto}.upp-body{padding:12px}.upp-hero{padding:16px}.upp-nickname{font-size:13px}}
+    @media(max-width:560px){.upp-identity{align-items:flex-start}.upp-avatar{width:82px;height:82px;font-size:38px;border-width:3px}.upp-camera{width:31px;height:31px}.upp-name{font-size:23px}.upp-statbar{grid-template-columns:repeat(2,1fr)}.upp-rounds{grid-template-columns:repeat(5,minmax(48px,1fr));overflow-x:auto}.upp-body{padding:12px}.upp-hero{padding:16px}.upp-nickname{font-size:13px}.upp-profile-details,.upp-edit-grid{grid-template-columns:1fr}}
 
   </style>
 </head>
@@ -4496,7 +4498,7 @@ function renderHallPlayerProfile(player){
 
 
 // ======================================================
-// MONEY GAME CENTRAL v2.0 — UNIVERSAL PLAYER PROFILE
+// MONEY GAME CENTRAL v2.1 — UNIVERSAL PLAYER PROFILE
 // ======================================================
 appState.universalProfilePlayerId = '';
 appState.playerProfiles = appState.playerProfiles || {};
@@ -4563,6 +4565,20 @@ function universalAvatarHtml(player, profile){
   return photo?`<img src="${escapeHtml(photo)}" alt="${escapeHtml(player.name)}">`:'🏌️';
 }
 
+function universalProfileDetailsHtml(profile){
+  return `<div class="upp-profile-details"><div class="upp-detail"><small>Nickname</small><strong>${escapeHtml(profile?.nickname||'—')}</strong></div><div class="upp-detail"><small>Hometown</small><strong>${escapeHtml(profile?.hometown||'—')}</strong></div><div class="upp-detail full"><small>Favorite Course</small><strong>${escapeHtml(profile?.favorite_course||'—')}</strong></div><div class="upp-detail full"><small>About</small><span>${escapeHtml(profile?.bio||'No player bio yet.')}</span></div></div>`;
+}
+function universalProfileEditorHtml(profile){
+  return `<form class="upp-edit-form" onsubmit="saveUniversalProfileDetails(event)"><div class="upp-edit-grid"><label>Nickname<input id="upp-edit-nickname" maxlength="40" value="${escapeHtml(profile?.nickname||'')}" placeholder="League nickname"></label><label>Hometown<input id="upp-edit-hometown" maxlength="60" value="${escapeHtml(profile?.hometown||'')}" placeholder="City, State"></label></div><label>Favorite Course<input id="upp-edit-favorite-course" maxlength="80" value="${escapeHtml(profile?.favorite_course||'')}" placeholder="Favorite golf course"></label><label>About<textarea id="upp-edit-bio" maxlength="240" placeholder="A short player bio">${escapeHtml(profile?.bio||'')}</textarea></label><div class="upp-edit-actions"><button class="btn btn-primary" type="submit">Save Profile</button></div><div id="upp-save-status" class="upp-save-status"></div></form>`;
+}
+async function saveUniversalProfileDetails(event){
+  event?.preventDefault?.(); const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
+  const canEdit=String(getMyPermanentLeaguePlayer()?.id||'')===String(player.id)||isAdminDevice?.(); if(!canEdit)return;
+  const status=document.getElementById('upp-save-status'); const payload={player_id:player.id,nickname:String(document.getElementById('upp-edit-nickname')?.value||'').trim(),hometown:String(document.getElementById('upp-edit-hometown')?.value||'').trim(),favorite_course:String(document.getElementById('upp-edit-favorite-course')?.value||'').trim(),bio:String(document.getElementById('upp-edit-bio')?.value||'').trim(),updated_at:new Date().toISOString()};
+  try{if(status)status.textContent='Saving profile...'; const {data,error}=await window.supabaseClient.from('player_profiles').upsert(payload,{onConflict:'player_id'}).select().single(); if(error)throw error; appState.playerProfiles[String(player.id)]={...(appState.playerProfiles[String(player.id)]||{}),...(data||payload)}; localStorage.removeItem(universalProfileLocalKey(player.id)); showToast?.('Player profile updated.','success'); renderUniversalPlayerProfile();}
+  catch(err){try{localStorage.setItem(universalProfileLocalKey(player.id),JSON.stringify(payload));}catch(_){} if(status)status.textContent='Cloud save failed; changes are temporarily saved on this device.'; console.error('Profile detail save failed:',err);}
+}
+
 function renderUniversalPlayerProfile(){
   const mount=document.getElementById('universal-player-profile-content'); if(!mount)return;
   const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
@@ -4580,33 +4596,18 @@ function renderUniversalPlayerProfile(){
     <div class="upp-hero"><div class="upp-identity"><div class="upp-avatar-wrap"><div class="upp-avatar" id="upp-avatar">${universalAvatarHtml(player,profile)}</div>${canEdit?'<button class="upp-camera" title="Upload profile photo" onclick="document.getElementById(\'upp-photo-input\').click()">📷</button>':''}</div><div><div class="upp-name">${escapeHtml(player.name)}</div><div class="upp-nickname">${escapeHtml(profile.nickname||'Cliffside League Player')}</div><div class="upp-badges">${badges.map(b=>`<span class="upp-badge">${b}</span>`).join('')}</div><div class="upp-meta">Member since ${memberYear} • Player ID ${escapeHtml(String(player.id).slice(0,8))}</div></div></div></div>
     <div class="upp-statbar"><div class="upp-stat"><strong>${m.games}</strong><small>Rounds</small></div><div class="upp-stat"><strong>${m.average.toFixed(1)}</strong><small>Career Avg</small></div><div class="upp-stat"><strong>${money(m.moneyWon)}</strong><small>Career Money</small></div><div class="upp-stat"><strong>${m.wins}</strong><small>Wins</small></div><div class="upp-stat"><strong>${streak}</strong><small>Win Streak</small></div><div class="upp-stat"><strong>${rank}</strong><small>POY Rank</small></div></div>
     <div class="upp-body"><div class="upp-grid"><div class="upp-panel"><div class="upp-panel-head"><h3>📈 Performance Snapshot</h3><span>Last 5 rounds</span></div><div class="upp-rounds">${roundCards}</div><div class="upp-snapshot"><div class="upp-mini"><small>Trend</small><strong>${universalTrend(scored)}</strong></div><div class="upp-mini"><small>Current Average</small><strong>${m.average.toFixed(1)}</strong></div><div class="upp-mini"><small>Recent Best</small><strong>${seasonBest??'—'}</strong></div></div><div id="upp-upload-status" class="upp-upload-status"></div></div>
-    <div class="upp-panel"><div class="upp-panel-head"><h3>⚡ Quick Actions</h3><span>Connected profile</span></div><div class="upp-actions"><button class="upp-action" onclick="showHallPlayer('${escapeHtml(player.id)}')">🏛 View Full Career</button><button class="upp-action" onclick="showTrophyRoom('${escapeHtml(player.name)}')">🏆 View Awards</button><button class="upp-action" onclick="quickNavGo('records')">📖 League Records</button><button class="upp-action" onclick="quickNavGo('history')">📅 Round History</button><button class="upp-action" onclick="quickNavGo('season')">🏅 Season Center</button></div><div class="upp-photo-note">Stats, rankings, money, wins, streaks, and performance update automatically. Only personal photos and profile details are player-controlled.</div></div></div></div>
+    <div class="upp-panel"><div class="upp-panel-head"><h3>👤 Player Details</h3><span>${canEdit?'Editable profile':'League profile'}</span></div>${canEdit?universalProfileEditorHtml(profile):universalProfileDetailsHtml(profile)}<div class="upp-actions" style="margin-top:14px;"><button class="upp-action" onclick="showHallPlayer('${escapeHtml(player.id)}')">🏛 View Full Career</button><button class="upp-action" onclick="showTrophyRoom('${escapeHtml(player.name)}')">🏆 View Awards</button><button class="upp-action" onclick="quickNavGo('records')">📖 League Records</button><button class="upp-action" onclick="quickNavGo('history')">📅 Round History</button><button class="upp-action" onclick="quickNavGo('season')">🏅 Season Center</button></div><div class="upp-photo-note">Stats update automatically. Photos and profile details stay connected to this permanent league player.</div></div></div></div>
   </div>`;
 }
 
 async function handleUniversalProfilePhoto(event){
-  const file=event.target.files?.[0]; if(!file)return;
-  const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
-  if(!file.type.startsWith('image/')){ showToast?.('Choose an image file.','warning'); return; }
-  if(file.size>5*1024*1024){ showToast?.('Photo must be under 5 MB.','warning'); return; }
+  const file=event.target.files?.[0]; if(!file)return; const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
+  const canEdit=String(getMyPermanentLeaguePlayer()?.id||'')===String(player.id)||isAdminDevice?.(); if(!canEdit){event.target.value='';return;}
+  if(!file.type.startsWith('image/')){showToast?.('Choose an image file.','warning');event.target.value='';return;} if(file.size>5*1024*1024){showToast?.('Photo must be under 5 MB.','warning');event.target.value='';return;}
   const status=document.getElementById('upp-upload-status'); if(status)status.textContent='Uploading photo...';
-  const reader=new FileReader(); reader.onload=()=>{ try{localStorage.setItem(universalPhotoLocalKey(player.id),reader.result);}catch(_){} const av=document.getElementById('upp-avatar');if(av)av.innerHTML=`<img src="${reader.result}" alt="${escapeHtml(player.name)}">`; }; reader.readAsDataURL(file);
-  try{
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase(); const path=`${player.id}/profile-${Date.now()}.${ext}`;
-    const {error:uploadError}=await window.supabaseClient.storage.from('player-profile-photos').upload(path,file,{upsert:true,contentType:file.type});
-    if(uploadError) throw uploadError;
-    const {data:urlData}=window.supabaseClient.storage.from('player-profile-photos').getPublicUrl(path);
-    const photoUrl=urlData?.publicUrl||'';
-    const payload={player_id:player.id,profile_photo_url:photoUrl,updated_at:new Date().toISOString()};
-    const {error:profileError}=await window.supabaseClient.from('player_profiles').upsert(payload,{onConflict:'player_id'});
-    if(profileError) throw profileError;
-    appState.playerProfiles[String(player.id)]={...(appState.playerProfiles[String(player.id)]||{}),...payload};
-    localStorage.removeItem(universalPhotoLocalKey(player.id));
-    if(status)status.textContent='Profile photo saved.'; showToast?.('Profile photo updated.','success'); renderUniversalPlayerProfile();
-  }catch(err){
-    if(status)status.textContent='Photo preview saved on this device. Supabase photo storage needs the player-profile-photos bucket and player_profiles table.';
-    console.warn('Profile photo cloud save unavailable:',err);
-  }finally{ event.target.value=''; }
+  const reader=new FileReader(); reader.onload=()=>{try{localStorage.setItem(universalPhotoLocalKey(player.id),reader.result);}catch(_){} const av=document.getElementById('upp-avatar');if(av)av.innerHTML=`<img src="${reader.result}" alt="${escapeHtml(player.name)}">`;}; reader.readAsDataURL(file);
+  try{const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg'; const path=`${player.id}/profile.${ext}`; const bucket=window.supabaseClient.storage.from('player-profile-photos'); const {error:uploadError}=await bucket.upload(path,file,{upsert:true,contentType:file.type,cacheControl:'3600'}); if(uploadError)throw uploadError; const {data:urlData}=bucket.getPublicUrl(path); const photoUrl=`${urlData?.publicUrl||''}?v=${Date.now()}`; const payload={player_id:player.id,profile_photo_url:photoUrl,updated_at:new Date().toISOString()}; const {data,error}=await window.supabaseClient.from('player_profiles').upsert(payload,{onConflict:'player_id'}).select().single(); if(error)throw error; appState.playerProfiles[String(player.id)]={...(appState.playerProfiles[String(player.id)]||{}),...(data||payload)}; localStorage.removeItem(universalPhotoLocalKey(player.id)); showToast?.('Profile photo updated.','success'); renderUniversalPlayerProfile();}
+  catch(err){if(status)status.textContent='Photo upload failed. Preview remains only on this device.';console.error('Profile photo save failed:',err);} finally{event.target.value='';}
 }
 
 async function showMyProfile() {
