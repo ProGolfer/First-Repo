@@ -6382,18 +6382,79 @@ const teamCount = getActiveTeamCount();
       const rows = teamPlayers.map(p => {
         const score = playerScores[p.id] ?? holeInfo.par;
         const pts = scoreToPoints(score, holeInfo.par);
-        return `
-          <div class="player-item">
-            <div>
-              <div style="font-weight:900;">${p.name} ${isCaptainPlayer(p) ? '👑' : ''}</div>
-              <div class="muted">${pts} pts</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <button class="btn btn-secondary btn-small" onclick="adjustHoleScore('${p.id}', -1)">−</button>
-              <div style="font-size:26px;font-weight:950;min-width:34px;text-align:center;">${score}</div>
-              <button class="btn btn-secondary btn-small" onclick="adjustHoleScore('${p.id}', 1)">+</button>
-            </div>
-          </div>`;
+    return `
+  <div class="player-item" style="
+    padding:14px;
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:14px;
+    background:linear-gradient(180deg,rgba(19,33,44,.96),rgba(12,23,32,.96));
+    margin-bottom:10px;
+  ">
+
+    <div style="display:flex;align-items:center;gap:12px;">
+
+      <div style="
+        width:42px;
+        height:42px;
+        border-radius:12px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:rgba(84,232,111,.10);
+        border:1px solid rgba(84,232,111,.22);
+        font-size:20px;
+      ">
+        ${isCaptainPlayer(p) ? '👑' : '🏌️'}
+      </div>
+
+      <div>
+        <div style="font-size:16px;font-weight:950;">
+          ${p.name}
+        </div>
+
+        <div class="muted" style="font-size:12px;font-weight:800;margin-top:2px;">
+          ${pts} points
+        </div>
+      </div>
+
+    </div>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px;
+      border-radius:12px;
+      background:rgba(2,8,14,.42);
+      border:1px solid rgba(148,163,184,.12);
+    ">
+
+      <button
+        class="btn btn-secondary btn-small"
+        onclick="adjustHoleScore('${p.id}', -1)">
+        −
+      </button>
+
+      <div style="
+        min-width:42px;
+        text-align:center;
+        font-size:28px;
+        line-height:1;
+        font-weight:950;
+        color:#fff;
+      ">
+        ${score}
+      </div>
+
+      <button
+        class="btn btn-secondary btn-small"
+        onclick="adjustHoleScore('${p.id}', 1)">
+        +
+      </button>
+
+    </div>
+
+  </div>`;
       }).join('');
 
       const history = CLIFFSIDE_HOLES
