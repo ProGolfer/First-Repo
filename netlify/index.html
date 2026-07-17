@@ -1801,6 +1801,25 @@
       .season-event-card .league-link { width:100%; }
     }
 
+
+    /* League Records v1.5.2 */
+    .records-hero {
+      background:radial-gradient(circle at top right,rgba(59,130,246,.20),transparent 42%),linear-gradient(180deg,rgba(15,30,44,.98),rgba(4,12,22,.98));
+      border:1px solid rgba(96,165,250,.34); border-radius:24px; padding:20px; margin-bottom:14px;
+      box-shadow:0 0 34px rgba(59,130,246,.08),inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .records-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+    .records-panel { background:linear-gradient(180deg,rgba(15,30,44,.96),rgba(5,16,28,.98)); border:1px solid rgba(148,163,184,.18); border-radius:20px; padding:16px; }
+    .record-card { display:grid; grid-template-columns:46px minmax(0,1fr) auto; gap:11px; align-items:center; padding:12px 0; border-bottom:1px solid rgba(148,163,184,.13); }
+    .record-card:last-child { border-bottom:none; }
+    .record-icon { width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:13px; background:rgba(59,130,246,.13); border:1px solid rgba(96,165,250,.22); font-size:21px; }
+    .record-label { color:#94a3b8; font-size:11px; font-weight:950; text-transform:uppercase; letter-spacing:.04em; }
+    .record-holder { color:#fff; font-weight:950; font-size:16px; margin-top:3px; }
+    .record-value { color:#60a5fa; font-size:20px; font-weight:950; text-align:right; }
+    .record-value small { display:block; color:#94a3b8; font-size:10px; text-transform:uppercase; margin-top:2px; }
+    .records-note { color:#94a3b8; font-size:12px; font-weight:750; line-height:1.4; margin-top:10px; }
+    @media(max-width:760px){ .records-grid{grid-template-columns:1fr;} .record-card{grid-template-columns:42px minmax(0,1fr) auto;} }
+
   </style>
 </head>
 <body>
@@ -1838,7 +1857,8 @@
       <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
       <div class="quick-nav-grid">
         <button class="quick-nav-item" onclick="quickNavGo('profile')"><span class="quick-nav-icon">👤</span><span>My Profile</span><small>Personal league hub</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('records')"><span class="quick-nav-icon">📖</span><span>League Records</span><small>All-time leaders</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('records')"><span class="quick-nav-icon">📖</span><span>League Records</span><small>All-time leaders</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>Past rounds</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('trophies')"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season awards</small></button>
@@ -2104,6 +2124,11 @@
 
     <div id="view-season-center" class="card hidden">
       <div id="season-center-content"><div class="season-empty">Loading the season...</div></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
+
+    <div id="view-league-records" class="card hidden">
+      <div id="league-records-content"><div class="season-empty">Loading league records...</div></div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
     </div>
 
@@ -2824,6 +2849,9 @@
           break;
         case 'season':
           showSeasonCenter();
+          break;
+        case 'records':
+          showLeagueRecords();
           break;
         case 'trophies':
           showTrophyRoom();
@@ -4118,6 +4146,125 @@ function renderSeasonCenter() {
       <div class="season-panel"><div class="league-section-head"><h3>📊 Points Leaders</h3><span class="green">Average</span></div>${seasonListHtml(avgList.slice(0,10),p=>p.avgPoints.toFixed(1),p=>`${Math.round(p.totalPoints)} total`)}</div>
       <div class="season-panel"><div class="league-section-head"><h3>🔥 Trending</h3><span class="green">Last 5</span></div>${seasonListHtml(hotList.slice(0,10),p=>p.last5Avg.toFixed(1),()=> 'last 5 avg')}</div>
       <div class="season-panel full"><div class="league-section-head"><h3>📅 Season Timeline</h3><button class="league-link" onclick="quickNavGo('history')">Full History →</button></div><div class="season-timeline">${eventHtml}</div></div>
+    </div>`;
+}
+
+
+function allTimePlayerMetrics() {
+  const permanentById=new Map((appState.leaguePlayers||[]).map(p=>[String(p.id),p]));
+  const map=new Map();
+  (appState.leagueHistory||[]).forEach(row=>{
+    const id=String(row.league_player_id || row.player_id || row.player?.id || '');
+    const linked=id ? permanentById.get(id) : null;
+    const name=linked?.name || playerNameFromRow(row);
+    if(!name || name==='Unknown Player') return;
+    const key=id || cleanName(name);
+    const item=map.get(key)||{id,name,games:0,totalPoints:0,scoreCount:0,money:0,wins:0,frontWins:0,backWins:0,totalWins:0,firsts:0,lasts:0,birdies:0,eagles:0,captainGames:0,captainWins:0,bestRound:null,biggestPayday:0};
+    item.games++;
+    const points=num(row.total_score || row.score || row.round_score || row.points);
+    if(points || String(row.total_score||row.score||row.round_score||row.points||'')==='0'){
+      item.totalPoints+=points; item.scoreCount++;
+      item.bestRound=item.bestRound==null ? points : Math.max(item.bestRound,points);
+    }
+    const payout=num(row.money_won || row.winnings || row.payout);
+    item.money+=payout; item.biggestPayday=Math.max(item.biggestPayday,payout);
+    const finish=num(row.place || row.finish || row.position);
+    const isWin=row.won===true || row.is_winner===true || finish===1 || String(row.result||'').toLowerCase()==='win';
+    if(isWin) item.wins++;
+    if(finish===1) item.firsts++;
+    item.frontWins+=num(row.front_win || row.front_wins || row.won_front);
+    item.backWins+=num(row.back_win || row.back_wins || row.won_back);
+    item.totalWins+=num(row.total_win || row.total_wins || row.won_total || isWin);
+    item.birdies+=num(row.birdies || row.birdie_count);
+    item.eagles+=num(row.eagles || row.eagle_count);
+    const wasCaptain=row.is_captain===true || row.captain===true || String(row.role||'').toLowerCase()==='captain';
+    if(wasCaptain){ item.captainGames++; if(isWin) item.captainWins++; }
+    map.set(key,item);
+  });
+  return [...map.values()].map(p=>({...p,avgPoints:p.scoreCount?p.totalPoints/p.scoreCount:0,captainPct:p.captainGames?(p.captainWins/p.captainGames)*100:0}));
+}
+
+function recordItem(icon,label,holder,value,detail='') {
+  return `<div class="record-card"><div class="record-icon">${icon}</div><div><div class="record-label">${escapeHtml(label)}</div><div class="record-holder">${escapeHtml(holder||'No record yet')}</div></div><div class="record-value">${escapeHtml(String(value??'—'))}${detail?`<small>${escapeHtml(detail)}</small>`:''}</div></div>`;
+}
+
+function topRecord(players,field,{lowest=false,positive=false}={}) {
+  const eligible=players.filter(p=>!positive || num(p[field])>0);
+  if(!eligible.length) return null;
+  return eligible.slice().sort((a,b)=>lowest ? num(a[field])-num(b[field]) : num(b[field])-num(a[field]))[0];
+}
+
+async function showLeagueRecords() {
+  showView('view-league-records');
+  const mount=document.getElementById('league-records-content');
+  if(mount) mount.innerHTML='<div class="season-empty">Loading league records...</div>';
+  await loadLeagueModuleData();
+  renderLeagueRecords();
+}
+
+function renderLeagueRecords() {
+  const mount=document.getElementById('league-records-content'); if(!mount) return;
+  const players=allTimePlayerMetrics();
+  const rows=appState.leagueHistory||[];
+  if(!players.length){
+    mount.innerHTML=`<div class="records-hero"><div class="league-kicker">Cliffside League</div><div class="league-title">📖 League Records</div><div class="league-subtitle">All-time records will populate automatically as completed rounds are saved to league history.</div></div><div class="season-empty">No league-history records are available yet.</div>`;
+    return;
+  }
+  const moneyLeader=topRecord(players,'money');
+  const paydayLeader=topRecord(players,'biggestPayday',{positive:true});
+  const pointsLeader=topRecord(players,'totalPoints');
+  const avgLeader=topRecord(players,'avgPoints',{positive:true});
+  const gamesLeader=topRecord(players,'games');
+  const winsLeader=topRecord(players,'wins');
+  const frontLeader=topRecord(players,'frontWins',{positive:true});
+  const backLeader=topRecord(players,'backWins',{positive:true});
+  const totalLeader=topRecord(players,'totalWins',{positive:true});
+  const roundLeader=topRecord(players,'bestRound',{positive:true});
+  const birdieLeader=topRecord(players,'birdies',{positive:true});
+  const eagleLeader=topRecord(players,'eagles',{positive:true});
+  const captainPool=players.filter(p=>p.captainGames>0);
+  const captainWins=topRecord(captainPool,'captainWins',{positive:true});
+  const captainPct=captainPool.filter(p=>p.captainGames>=2).sort((a,b)=>b.captainPct-a.captainPct || b.captainWins-a.captainWins)[0]||captainPool.sort((a,b)=>b.captainPct-a.captainPct)[0];
+
+  const teamRows=rows.filter(r=>r.team_name||r.team_number||r.team_id);
+  const bestTeam=teamRows.slice().sort((a,b)=>num(b.team_total||b.team_score||b.total_score)-num(a.team_total||a.team_score||a.total_score))[0];
+  const teamName=bestTeam ? String(bestTeam.team_name || `Team ${bestTeam.team_number||bestTeam.team_id||''}`).trim() : '';
+  const teamValue=bestTeam ? num(bestTeam.team_total||bestTeam.team_score||bestTeam.total_score) : 0;
+
+  mount.innerHTML=`
+    <div class="records-hero"><div class="league-kicker">Cliffside League • All Time</div><div class="league-title">📖 League Records</div><div class="league-subtitle">Career leaders and single-round marks calculated automatically from permanent league history.</div>
+      <div class="season-highlight-grid"><div class="season-highlight"><strong>${players.length}</strong><small>Players</small></div><div class="season-highlight"><strong>${rows.length}</strong><small>History Rows</small></div><div class="season-highlight"><strong>${moneyLeader?escapeHtml(moneyLeader.name):'—'}</strong><small>Money Leader</small></div><div class="season-highlight"><strong>${pointsLeader?escapeHtml(pointsLeader.name):'—'}</strong><small>Points Leader</small></div></div>
+    </div>
+    <div class="records-grid">
+      <div class="records-panel"><div class="league-section-head"><h3>💰 Money Records</h3><span class="green">Career</span></div>
+        ${recordItem('💰','Most Career Money',moneyLeader?.name,moneyLeader?money(moneyLeader.money):'—','all time')}
+        ${recordItem('💵','Biggest Single Payday',paydayLeader?.name,paydayLeader?money(paydayLeader.biggestPayday):'—','one round')}
+      </div>
+      <div class="records-panel"><div class="league-section-head"><h3>🏌️ Performance Records</h3><span class="green">All Time</span></div>
+        ${recordItem('📊','Most Career Points',pointsLeader?.name,pointsLeader?Math.round(pointsLeader.totalPoints):'—','total points')}
+        ${recordItem('🎯','Best Career Average',avgLeader?.name,avgLeader?avgLeader.avgPoints.toFixed(1):'—','points per round')}
+        ${recordItem('🔥','Best Single Round',roundLeader?.name,roundLeader?Math.round(roundLeader.bestRound):'—','points')}
+        ${recordItem('📅','Most Games Played',gamesLeader?.name,gamesLeader?.games||'—','rounds')}
+      </div>
+      <div class="records-panel"><div class="league-section-head"><h3>🏆 Win Records</h3><span class="green">Money Game</span></div>
+        ${recordItem('🥇','Most Weekly Wins',winsLeader?.name,winsLeader?.wins||'—','victories')}
+        ${recordItem('1️⃣','Most Front Wins',frontLeader?.name,frontLeader?.frontWins||'—','front side')}
+        ${recordItem('2️⃣','Most Back Wins',backLeader?.name,backLeader?.backWins||'—','back side')}
+        ${recordItem('🏁','Most Total Wins',totalLeader?.name,totalLeader?.totalWins||'—','overall')}
+      </div>
+      <div class="records-panel"><div class="league-section-head"><h3>👨‍✈️ Captain Records</h3><span class="green">Leadership</span></div>
+        ${recordItem('🏆','Most Captain Wins',captainWins?.name,captainWins?.captainWins||'—','captain victories')}
+        ${recordItem('📈','Best Captain Win %',captainPct?.name,captainPct?`${captainPct.captainPct.toFixed(0)}%`:'—',captainPct?`${captainPct.captainGames} starts`:'')}
+      </div>
+      <div class="records-panel"><div class="league-section-head"><h3>👥 Team Records</h3><span class="green">Single Round</span></div>
+        ${recordItem('🚀','Highest Team Total',teamName,teamValue||'—','points')}
+        <div class="records-note">Additional comeback and margin records will activate when those team-level fields are stored in league history.</div>
+      </div>
+      <div class="records-panel"><div class="league-section-head"><h3>🎯 Scoring Feats</h3><span class="green">Career</span></div>
+        ${recordItem('🐦','Most Birdies',birdieLeader?.name,birdieLeader?.birdies||'—','recorded birdies')}
+        ${recordItem('🦅','Most Eagles',eagleLeader?.name,eagleLeader?.eagles||'—','recorded eagles')}
+        <div class="records-note">Birdie and eagle records appear whenever those totals are included in saved round history.</div>
+      </div>
     </div>`;
 }
 
