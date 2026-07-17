@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v1.4.4</title>
+  <title>Money Game Central v1.5.3 — Hall of Fame</title>
 
   <!--
     Golf Money Game
@@ -1820,6 +1820,29 @@
     .records-note { color:#94a3b8; font-size:12px; font-weight:750; line-height:1.4; margin-top:10px; }
     @media(max-width:760px){ .records-grid{grid-template-columns:1fr;} .record-card{grid-template-columns:42px minmax(0,1fr) auto;} }
 
+
+    /* Hall of Fame v1.5.3 */
+    .hof-hero { background:radial-gradient(circle at top right,rgba(168,85,247,.22),transparent 42%),linear-gradient(180deg,rgba(15,30,44,.98),rgba(4,12,22,.98)); border:1px solid rgba(192,132,252,.35); border-radius:24px; padding:20px; margin-bottom:14px; box-shadow:0 0 34px rgba(168,85,247,.09),inset 0 1px 0 rgba(255,255,255,.05); }
+    .hof-gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .hof-player-card { border:1px solid rgba(192,132,252,.22); background:linear-gradient(180deg,rgba(22,15,38,.92),rgba(5,12,23,.98)); border-radius:19px; padding:16px; text-align:left; color:#fff; cursor:pointer; transition:.18s ease; }
+    .hof-player-card:hover { transform:translateY(-2px); border-color:rgba(192,132,252,.55); box-shadow:0 12px 28px rgba(0,0,0,.22); }
+    .hof-player-avatar { width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(168,85,247,.16); border:1px solid rgba(192,132,252,.3); font-size:24px; margin-bottom:11px; }
+    .hof-player-card strong { display:block; font-size:17px; }
+    .hof-player-card small { display:block; color:#a8b4c5; margin-top:4px; font-weight:750; }
+    .hof-badge-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .hof-badge { border-radius:999px; padding:5px 8px; background:rgba(168,85,247,.13); color:#d8b4fe; border:1px solid rgba(192,132,252,.2); font-size:10px; font-weight:950; text-transform:uppercase; }
+    .hof-profile-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .hof-profile-name { color:#fff; font-size:27px; font-weight:950; }
+    .hof-profile-name small { display:block; color:#c4b5fd; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+    .hof-record-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .hof-record { background:rgba(2,8,14,.48); border:1px solid rgba(148,163,184,.15); border-radius:15px; padding:12px; }
+    .hof-record small { display:block; color:#94a3b8; text-transform:uppercase; font-size:10px; font-weight:950; }
+    .hof-record strong { display:block; color:#fff; margin-top:5px; font-size:18px; }
+    .hof-timeline-row { display:grid; grid-template-columns:92px minmax(0,1fr) auto; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(148,163,184,.13); }
+    .hof-timeline-row:last-child { border-bottom:none; }
+    .hof-timeline-date { color:#c4b5fd; font-size:11px; font-weight:950; text-transform:uppercase; }
+    @media(max-width:760px){ .hof-gallery{grid-template-columns:1fr;} .hof-record-grid{grid-template-columns:repeat(2,1fr);} .hof-profile-head{align-items:flex-start;flex-direction:column;} .hof-timeline-row{grid-template-columns:1fr;} }
+
   </style>
 </head>
 <body>
@@ -1857,8 +1880,9 @@
       <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
       <div class="quick-nav-grid">
         <button class="quick-nav-item" onclick="quickNavGo('profile')"><span class="quick-nav-icon">👤</span><span>My Profile</span><small>Personal league hub</small></button>
-        <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('records')"><span class="quick-nav-icon">📖</span><span>League Records</span><small>All-time leaders</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('records')"><span class="quick-nav-icon">📖</span><span>League Records</span><small>All-time leaders</small></button>
+        <button class="quick-nav-item" onclick="quickNavGo('hall')"><span class="quick-nav-icon">🏛️</span><span>Hall of Fame</span><small>Career player profiles</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>Player averages</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>Past rounds</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('trophies')"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season awards</small></button>
@@ -2129,6 +2153,12 @@
 
     <div id="view-league-records" class="card hidden">
       <div id="league-records-content"><div class="season-empty">Loading league records...</div></div>
+      <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
+    </div>
+
+
+    <div id="view-hall-of-fame" class="card hidden">
+      <div id="hall-of-fame-content"><div class="season-empty">Loading the Hall of Fame...</div></div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back to Dashboard</button>
     </div>
 
@@ -2852,6 +2882,9 @@
           break;
         case 'records':
           showLeagueRecords();
+          break;
+        case 'hall':
+          showHallOfFame();
           break;
         case 'trophies':
           showTrophyRoom();
@@ -4268,6 +4301,99 @@ function renderLeagueRecords() {
     </div>`;
 }
 
+
+
+// ======================================================
+// HALL OF FAME v1.5.3
+// ======================================================
+async function showHallOfFame(playerId='') {
+  showView('view-hall-of-fame');
+  const mount=document.getElementById('hall-of-fame-content');
+  if(mount) mount.innerHTML='<div class="season-empty">Loading career profiles...</div>';
+  await loadLeagueModuleData();
+  renderHallOfFame(playerId);
+}
+
+function hallPlayerRows(player) {
+  const id=String(player?.id||'');
+  const name=cleanName(player?.name||'');
+  return (appState.leagueHistory||[]).filter(row=>{
+    const rowId=String(row.league_player_id||row.player_id||row.player?.id||'');
+    return (id && rowId===id) || (!rowId && cleanName(playerNameFromRow(row))===name) || cleanName(playerNameFromRow(row))===name;
+  });
+}
+
+function hallPlayerAwards(player) {
+  const id=String(player?.id||'');
+  const name=cleanName(player?.name||'');
+  return [...(appState.seasonAwards||[]),...(appState.specialAwards||[])].filter(a=>{
+    const aid=String(a.league_player_id||a.player_id||'');
+    return (id && aid===id) || cleanName(playerNameFromRow(a))===name;
+  });
+}
+
+function hallCareerMetrics(player) {
+  const rows=hallPlayerRows(player);
+  const awards=hallPlayerAwards(player);
+  let points=0, scored=0, moneyWon=0, wins=0, frontWins=0, backWins=0, totalWins=0, captainGames=0, captainWins=0;
+  let bestRound=null, biggestPayday=0;
+  const seasons=new Map();
+  rows.forEach(row=>{
+    const score=num(row.total_score||row.score||row.round_score||row.points);
+    if(score || String(row.total_score||row.score||row.round_score||row.points||'')==='0'){ points+=score; scored++; bestRound=bestRound==null?score:Math.max(bestRound,score); }
+    const payday=num(row.money_won||row.winnings||row.payout); moneyWon+=payday; biggestPayday=Math.max(biggestPayday,payday);
+    const finish=num(row.place||row.finish||row.position);
+    const won=row.won===true||row.is_winner===true||finish===1||String(row.result||'').toLowerCase()==='win'; if(won) wins++;
+    frontWins+=num(row.front_win||row.front_wins||row.won_front); backWins+=num(row.back_win||row.back_wins||row.won_back); totalWins+=num(row.total_win||row.total_wins||row.won_total);
+    const isCaptain=row.is_captain===true||row.captain===true||String(row.role||'').toLowerCase()==='captain'; if(isCaptain){ captainGames++; if(won||row.captain_win===true) captainWins++; }
+    const d=seasonRowDate(row); const season=String(row.season||d?.getFullYear()||'Unknown');
+    const sm=seasons.get(season)||{season,games:0,points:0,money:0,wins:0}; sm.games++; sm.points+=score; sm.money+=payday; if(won)sm.wins++; seasons.set(season,sm);
+  });
+  const bestSeason=[...seasons.values()].sort((a,b)=>b.wins-a.wins||b.money-a.money||b.points-a.points)[0];
+  return {rows,awards,games:rows.length,points,average:scored?(points/scored):0,moneyWon,wins,frontWins,backWins,totalWins,captainGames,captainWins,captainPct:captainGames?(captainWins/captainGames*100):0,bestRound,biggestPayday,bestSeason};
+}
+
+function renderHallOfFame(playerId='') {
+  const mount=document.getElementById('hall-of-fame-content'); if(!mount)return;
+  const players=(appState.leaguePlayers||[]).filter(p=>p?.name).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  if(playerId){
+    const player=players.find(p=>String(p.id)===String(playerId)) || players.find(p=>cleanName(p.name)===cleanName(playerId));
+    if(player){ renderHallPlayerProfile(player); return; }
+  }
+  const cards=players.map(player=>{
+    const m=hallCareerMetrics(player);
+    return `<button class="hof-player-card" onclick="renderHallPlayerProfileById('${escapeHtml(String(player.id||player.name))}')"><div class="hof-player-avatar">🏌️</div><strong>${escapeHtml(player.name)}</strong><small>${m.games} rounds • ${money(m.moneyWon)} career money</small><div class="hof-badge-row"><span class="hof-badge">${m.wins} wins</span><span class="hof-badge">${m.awards.length} awards</span><span class="hof-badge">${m.average.toFixed(1)} avg</span></div></button>`;
+  }).join('');
+  const totalRounds=(appState.leagueHistory||[]).length;
+  const totalAwards=(appState.seasonAwards||[]).length+(appState.specialAwards||[]).length;
+  mount.innerHTML=`<div class="hof-hero"><div class="league-kicker">Cliffside League • Career Archive</div><div class="league-title">🏛️ Hall of Fame</div><div class="league-subtitle">Every player's complete league career—statistics, money, victories, awards, captain record, personal marks, and timeline.</div><div class="season-highlight-grid"><div class="season-highlight"><strong>${players.length}</strong><small>Players</small></div><div class="season-highlight"><strong>${totalRounds}</strong><small>History Rows</small></div><div class="season-highlight"><strong>${totalAwards}</strong><small>Awards</small></div><div class="season-highlight"><strong>${new Date().getFullYear()}</strong><small>Current Season</small></div></div></div><div class="league-section"><div class="league-section-head"><h3>⭐ Career Profiles</h3><span class="green">Select a Player</span></div><div class="hof-gallery">${cards||'<div class="award-empty" style="grid-column:1/-1;">Permanent league players will appear here.</div>'}</div></div>`;
+}
+
+function renderHallPlayerProfileById(playerId){
+  const player=(appState.leaguePlayers||[]).find(p=>String(p.id)===String(playerId)) || (appState.leaguePlayers||[]).find(p=>cleanName(p.name)===cleanName(playerId));
+  if(player) renderHallPlayerProfile(player);
+}
+
+function renderHallPlayerProfile(player){
+  const mount=document.getElementById('hall-of-fame-content'); if(!mount)return;
+  const m=hallCareerMetrics(player);
+  const awards=m.awards.slice().sort((a,b)=>new Date(b.awarded_at||b.created_at||0)-new Date(a.awarded_at||a.created_at||0));
+  const timeline=m.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0)).slice(0,20).map(row=>{
+    const d=row.game_date||row.date||row.created_at; const dateText=d?new Date(d).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'League round';
+    const score=num(row.total_score||row.score||row.round_score||row.points); const payday=num(row.money_won||row.winnings||row.payout); const finish=num(row.place||row.finish||row.position);
+    return `<div class="hof-timeline-row"><div class="hof-timeline-date">${escapeHtml(dateText)}</div><div><strong>${finish?`Finish #${finish}`:'Completed Round'}</strong><div class="muted" style="font-size:12px;margin-top:3px;">${score||'—'} points</div></div><div style="font-weight:950;color:#54e86f;">${money(payday)}</div></div>`;
+  }).join('');
+  const awardHtml=awards.length?awards.map(a=>awardCardHtml(a.icon||'🏆',a.title||a.award_title||a.award_key,player.name,a.description||a.detail||String(a.season||''))).join(''):'<div class="award-empty" style="grid-column:1/-1;">No career awards recorded yet.</div>';
+  const bs=m.bestSeason;
+  mount.innerHTML=`<div class="hof-hero"><div class="hof-profile-head"><div class="hof-profile-name"><small>Hall of Fame Career Profile</small>🏌️ ${escapeHtml(player.name)}</div><button class="btn btn-small btn-secondary" onclick="renderHallOfFame()">← All Players</button></div><div class="profile-stat-grid"><div class="profile-stat"><strong>${m.games}</strong><small>Games</small></div><div class="profile-stat"><strong>${m.wins}</strong><small>Wins</small></div><div class="profile-stat"><strong>${m.average.toFixed(1)}</strong><small>Average</small></div><div class="profile-stat"><strong>${money(m.moneyWon)}</strong><small>Career Money</small></div><div class="profile-stat"><strong>${m.awards.length}</strong><small>Awards</small></div></div></div>
+  <div class="season-grid"><div class="season-panel"><div class="league-section-head"><h3>📊 Career Statistics</h3><span class="green">All Time</span></div><div class="hof-record-grid"><div class="hof-record"><small>Total Points</small><strong>${Math.round(m.points)}</strong></div><div class="hof-record"><small>Front Wins</small><strong>${m.frontWins}</strong></div><div class="hof-record"><small>Back Wins</small><strong>${m.backWins}</strong></div><div class="hof-record"><small>Total Wins</small><strong>${m.totalWins}</strong></div><div class="hof-record"><small>Best Round</small><strong>${m.bestRound==null?'—':Math.round(m.bestRound)}</strong></div><div class="hof-record"><small>Biggest Payday</small><strong>${money(m.biggestPayday)}</strong></div></div></div>
+  <div class="season-panel"><div class="league-section-head"><h3>👨‍✈️ Captain Record</h3><span class="green">Leadership</span></div>${recordItem('📅','Captain Starts',player.name,m.captainGames,'starts')}${recordItem('🏆','Captain Victories',player.name,m.captainWins,'wins')}${recordItem('📈','Captain Win %',player.name,`${m.captainPct.toFixed(0)}%`,'career')}</div>
+  <div class="season-panel"><div class="league-section-head"><h3>🏅 Best Season</h3><span class="green">Career Peak</span></div>${bs?`${recordItem('📅','Season',player.name,bs.season,'best season')}${recordItem('🥇','Season Wins',player.name,bs.wins,'victories')}${recordItem('💰','Season Money',player.name,money(bs.money),'winnings')}`:'<div class="award-empty">A best season will appear after league history is recorded.</div>'}</div>
+  <div class="season-panel"><div class="league-section-head"><h3>🎯 Personal Records</h3><span class="green">Career Marks</span></div>${recordItem('🔥','Highest Points Round',player.name,m.bestRound==null?'—':Math.round(m.bestRound),'points')}${recordItem('💵','Largest Payday',player.name,money(m.biggestPayday),'one round')}${recordItem('🏆','Career Victories',player.name,m.wins,'weekly wins')}</div></div>
+  <div class="league-section"><div class="league-section-head"><h3>🏆 Trophy Collection</h3><button class="league-link" onclick="showTrophyRoom('${escapeHtml(player.name)}')">Open Trophy Room →</button></div><div class="award-grid">${awardHtml}</div></div>
+  <div class="league-section"><div class="league-section-head"><h3>📖 Career Timeline</h3><span class="green">Latest 20</span></div>${timeline||'<div class="award-empty">Completed rounds will create this career timeline.</div>'}</div>`;
+}
+
 async function showMyProfile() {
   showView('view-profile');
   const mount=document.getElementById('profile-content');
@@ -4311,7 +4437,7 @@ function renderMyProfile() {
     </div>
     <div class="league-section"><div class="league-section-head"><h3>📖 Recent Rounds</h3><button class="league-link" onclick="quickNavGo('history')">View History →</button></div>${recentHtml}</div>
     <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
-      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button></div>
+      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button><button class="quick-nav-item" onclick="quickNavGo('hall')"><span class="quick-nav-icon">🏛️</span><span>Hall of Fame</span><small>Career player profiles</small></button></div>
     </div>`;
 }
 
