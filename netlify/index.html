@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.4 — Champion Spotlight</title>
+  <title>Money Game Central v2.5 — Live Team Standings</title>
 
   <!--
     Golf Money Game
@@ -3171,7 +3171,63 @@
       #view-money-central .mgc-champion-chip { padding:6px 8px;font-size:10px; }
     }
 
-  </style>
+  
+
+    /* =========================================================
+       v2.5 — Live Team Standings (visual only)
+       ========================================================= */
+    #view-money-central .mgc-standings-header {
+      grid-column:1 / -1;
+      display:flex;
+      justify-content:space-between;
+      align-items:end;
+      gap:16px;
+      padding:16px 18px;
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:13px;
+      background:linear-gradient(180deg,rgba(7,18,28,.98),rgba(2,9,15,.99));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    #view-money-central .mgc-standings-eyebrow { color:#82ff3c;font-size:10px;font-weight:950;letter-spacing:.16em;text-transform:uppercase;margin-bottom:5px; }
+    #view-money-central .mgc-standings-title { color:#f8fafc;font-size:24px;font-weight:1000;letter-spacing:.02em;text-transform:uppercase; }
+    #view-money-central .mgc-standings-note { color:#94a3b8;font-size:11px;font-weight:800;text-align:right; }
+
+    #view-money-central .mgc-team-card { transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease; }
+    #view-money-central .mgc-team-card:hover { transform:translateY(-2px);border-color:rgba(130,255,60,.28); }
+    #view-money-central .mgc-team-card.first {
+      border-color:rgba(255,211,24,.35);
+      background:radial-gradient(circle at 100% 0,rgba(255,211,24,.10),transparent 34%),linear-gradient(180deg,rgba(10,19,25,.99),rgba(3,10,16,.99));
+      box-shadow:0 18px 44px rgba(0,0,0,.26),0 0 30px rgba(255,211,24,.07),inset 0 1px 0 rgba(255,255,255,.045);
+    }
+    #view-money-central .mgc-team-card.last { opacity:.92; }
+    #view-money-central .mgc-standing-topline { display:flex;align-items:center;gap:10px; }
+    #view-money-central .mgc-rank-badge {
+      width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+      background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.16);font-size:21px;font-weight:1000;
+    }
+    #view-money-central .first .mgc-rank-badge { background:rgba(255,211,24,.10);border-color:rgba(255,211,24,.30); }
+    #view-money-central .second .mgc-rank-badge { background:rgba(214,222,232,.08);border-color:rgba(214,222,232,.25); }
+    #view-money-central .third .mgc-rank-badge { background:rgba(201,121,54,.10);border-color:rgba(201,121,54,.28); }
+    #view-money-central .last .mgc-rank-badge { background:rgba(168,85,247,.09);border-color:rgba(168,85,247,.25); }
+    #view-money-central .mgc-standing-label { color:#82ff3c;font-size:9px;font-weight:950;letter-spacing:.13em;text-transform:uppercase;margin-bottom:3px; }
+    #view-money-central .mgc-standing-progress { height:7px;border-radius:999px;overflow:hidden;background:rgba(148,163,184,.10);margin:14px 0 12px;border:1px solid rgba(148,163,184,.08); }
+    #view-money-central .mgc-standing-progress > span { display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2bd51e,#8cff42);box-shadow:0 0 14px rgba(98,255,65,.35);transition:width .45s ease; }
+    #view-money-central .first .mgc-standing-progress > span { background:linear-gradient(90deg,#f59e0b,#ffe45c);box-shadow:0 0 14px rgba(255,211,24,.30); }
+    #view-money-central .mgc-standing-summary { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;padding:1px;border-radius:10px;overflow:hidden;background:rgba(148,163,184,.14);margin-bottom:12px; }
+    #view-money-central .mgc-standing-stat { min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(3,11,18,.96);padding:7px; }
+    #view-money-central .mgc-standing-stat strong { color:#f8fafc;font-size:17px;line-height:1; }
+    #view-money-central .mgc-standing-stat.money strong { color:#82ff3c; }
+    #view-money-central .mgc-standing-stat small { color:#8fa0af;font-size:8px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;margin-top:5px;text-align:center; }
+    #view-money-central .mgc-leader-tag { display:inline-flex;align-items:center;gap:5px;color:#ffe45c;font-size:9px;font-weight:950;letter-spacing:.10em;text-transform:uppercase;margin-top:5px; }
+
+    @media (max-width:560px) {
+      #view-money-central .mgc-standings-header { align-items:flex-start;padding:14px; }
+      #view-money-central .mgc-standings-title { font-size:20px; }
+      #view-money-central .mgc-standings-note { max-width:110px;font-size:9px; }
+      #view-money-central .mgc-standing-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      #view-money-central .mgc-rank-badge { width:38px;height:38px;font-size:19px; }
+    }
+</style>
 </head>
 <body>
   <div class="container">
@@ -8275,17 +8331,31 @@ function renderFinalRecap() {
       return (a.name || '').localeCompare(b.name || '');
     });
 
+    const payout = recap.payoutData.payouts.get(String(row.team.id))?.grandTotal || 0;
+    const leaderTotal = Number(recap.standings[0]?.total) || 1;
+    const progress = Math.max(12, Math.min(100, Math.round((Number(row.total) / leaderTotal) * 100)));
+
     return `
       <div class="mgc-team-card ${rankClass}">
         <div class="mgc-rank-row">
-          <div>
-            <div class="mgc-rank-title">${badge} ${getTeamName(row.team.id)}</div>
-            ${idx === 0 ? '<div class="green" style="font-weight:950;margin-top:4px;">Money Game Winner</div>' : ''}
-            ${isLast ? '<div class="muted" style="font-weight:900;margin-top:4px;">Better luck next time 😄</div>' : ''}
+          <div class="mgc-standing-topline">
+            <div class="mgc-rank-badge">${badge}</div>
+            <div>
+              <div class="mgc-standing-label">${idx === 0 ? 'Current Champion' : isLast ? 'Tough Day' : `Rank ${idx + 1}`}</div>
+              <div class="mgc-rank-title">${getTeamName(row.team.id)}</div>
+              ${idx === 0 ? '<div class="mgc-leader-tag">★ Money Game Winner</div>' : ''}
+              ${isLast ? '<div class="muted" style="font-weight:900;margin-top:4px;">Better luck next time 😄</div>' : ''}
+            </div>
           </div>
           <div class="mgc-points">${row.total}<small>Total Points</small></div>
         </div>
-        ${renderMoneyTotalsMini({ front: row.front, back: row.back, total: row.total })}
+        <div class="mgc-standing-progress"><span style="width:${progress}%"></span></div>
+        <div class="mgc-standing-summary">
+          <div class="mgc-standing-stat"><strong>${row.front}</strong><small>Front</small></div>
+          <div class="mgc-standing-stat"><strong>${row.back}</strong><small>Back</small></div>
+          <div class="mgc-standing-stat"><strong>${row.total}</strong><small>Best 3 Total</small></div>
+          <div class="mgc-standing-stat money"><strong>${formatMoneyAmount(payout)}</strong><small>Team Payout</small></div>
+        </div>
         ${players.map(p => `
           <div class="mgc-scorecard-row">
             <span>${isCaptainPlayer(p) ? '👑 ' : ''}${p.name}</span>
@@ -8345,7 +8415,13 @@ function renderFinalRecap() {
       ${awardCard('🐦', 'Most Birdies', recap.birdieLeader?.data, `${recap.birdieLeader?.birdies || 0} birdies`)}
     </div>
 
-    <div class="recap-section-title">📊 Final Team Results</div>
+    <div class="mgc-standings-header">
+      <div>
+        <div class="mgc-standings-eyebrow">Broadcast Leaderboard</div>
+        <div class="mgc-standings-title">🏆 Final Team Standings</div>
+      </div>
+      <div class="mgc-standings-note">Best 3 scoring • Front / Back / Total • Official payouts</div>
+    </div>
     ${teamCards}
   `;
 }
