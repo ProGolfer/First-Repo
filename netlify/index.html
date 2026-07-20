@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.1 — Premium Saturday Dashboard</title>
+  <title>Money Game Central v2.4 — Champion Spotlight</title>
 
   <!--
     Golf Money Game
@@ -2778,7 +2778,400 @@
       #view-game .projected-total-box { min-width:112px; padding:11px 12px; }
       #view-game .projected-total-box strong { font-size:34px; }
     }
-</style>
+
+
+    /* =========================================================
+       v2.3 — Money Game Central Broadcast Shell (visual only)
+       ========================================================= */
+    #view-money-central {
+      max-width:1180px;
+      margin:0 auto;
+    }
+
+    #view-money-central > .header {
+      position:sticky;
+      top:10px;
+      z-index:30;
+      padding:12px 16px;
+      margin-bottom:14px;
+      border:1px solid rgba(148,163,184,.20);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(7,15,24,.97),rgba(2,8,14,.97));
+      box-shadow:0 18px 44px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter:blur(18px);
+    }
+
+    #view-money-central .mgc-broadcast-brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    #view-money-central .mgc-broadcast-mark {
+      width:46px;
+      height:46px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+      font-size:24px;
+      color:#06110a;
+      background:linear-gradient(135deg,#8cff42,#32d61f);
+      box-shadow:0 0 24px rgba(98,255,65,.24);
+    }
+
+    #view-money-central .mgc-broadcast-eyebrow {
+      color:#84ff3e;
+      font-size:11px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:5px;
+    }
+
+    #view-money-central .mgc-broadcast-title {
+      color:#f8fafc;
+      font-size:21px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.045em;
+      text-transform:uppercase;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    #view-money-central .mgc-broadcast-status {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 11px;
+      border-radius:9px;
+      border:1px solid rgba(98,255,65,.34);
+      background:rgba(24,85,20,.25);
+      color:#cfffba;
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    #view-money-central .mgc-broadcast-status::before {
+      content:"";
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:#66ff36;
+      box-shadow:0 0 12px rgba(102,255,54,.9);
+    }
+
+    #view-money-central #money-game-central-display {
+      display:grid;
+      gap:12px;
+    }
+
+    #view-money-central .mgc-hero,
+    #view-money-central .recap-hero {
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,.20);
+      background:
+        linear-gradient(100deg,rgba(2,8,14,.96),rgba(7,18,28,.97)),
+        radial-gradient(circle at 85% 15%,rgba(100,255,55,.12),transparent 38%);
+      box-shadow:0 18px 44px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.035);
+      overflow:hidden;
+      position:relative;
+    }
+
+    #view-money-central .mgc-hero::before,
+    #view-money-central .recap-hero::before {
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:3px;
+      background:linear-gradient(180deg,#83ff3f,#22c55e);
+      box-shadow:0 0 18px rgba(91,255,55,.45);
+    }
+
+    #view-money-central .mgc-title,
+    #view-money-central .recap-heading {
+      font-size:clamp(28px,5vw,48px);
+      letter-spacing:.015em;
+      line-height:.96;
+    }
+
+    #view-money-central .mgc-title span,
+    #view-money-central .recap-kicker,
+    #view-money-central .recap-section-title {
+      color:#82ff3c;
+    }
+
+    #view-money-central .mgc-stat-grid,
+    #view-money-central .recap-summary-grid {
+      gap:1px;
+      padding:1px;
+      border-radius:12px;
+      overflow:hidden;
+      background:rgba(148,163,184,.18);
+      border:1px solid rgba(148,163,184,.08);
+    }
+
+    #view-money-central .mgc-stat,
+    #view-money-central .recap-summary-card {
+      border:none;
+      border-radius:0;
+      background:linear-gradient(180deg,rgba(7,18,28,.96),rgba(3,10,17,.98));
+      min-height:86px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+    }
+
+    #view-money-central .mgc-stat strong,
+    #view-money-central .recap-summary-card strong {
+      font-size:30px;
+      letter-spacing:.01em;
+    }
+
+    #view-money-central .mgc-stat small,
+    #view-money-central .recap-summary-card small {
+      color:#b8c4d0;
+      font-size:10px;
+      letter-spacing:.12em;
+      margin-top:5px;
+    }
+
+    #view-money-central .mgc-team-card,
+    #view-money-central .mgc-lock-card,
+    #view-money-central .recap-award,
+    #view-money-central .dashboard-panel {
+      border-radius:13px;
+      background:linear-gradient(180deg,rgba(6,16,25,.98),rgba(2,9,15,.99));
+      border:1px solid rgba(148,163,184,.20);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+
+    #view-money-central .mgc-team-card {
+      position:relative;
+      overflow:hidden;
+      padding:17px;
+    }
+
+    #view-money-central .mgc-team-card::before {
+      content:"";
+      position:absolute;
+      inset:0 auto 0 0;
+      width:3px;
+      background:#334155;
+    }
+
+    #view-money-central .mgc-team-card.first::before { background:#ffd318; box-shadow:0 0 16px rgba(255,211,24,.42); }
+    #view-money-central .mgc-team-card.second::before { background:#d6dee8; }
+    #view-money-central .mgc-team-card.third::before { background:#c97936; }
+    #view-money-central .mgc-team-card.last::before { background:#a855f7; }
+
+    #view-money-central .mgc-rank-title {
+      font-size:21px;
+      letter-spacing:.025em;
+    }
+
+    #view-money-central .mgc-points {
+      min-width:84px;
+      padding:9px 12px;
+      border-radius:10px;
+      text-align:center;
+      background:rgba(100,255,55,.08);
+      border:1px solid rgba(100,255,55,.22);
+      color:#88ff48;
+    }
+
+    #view-money-central .mgc-scorecard-row {
+      min-height:48px;
+      border-top:1px solid rgba(148,163,184,.12);
+    }
+
+    #view-money-central .mgc-scorecard-row .btn {
+      border-radius:9px;
+      min-height:34px;
+      padding:7px 11px;
+    }
+
+    #view-money-central .recap-awards {
+      gap:10px;
+    }
+
+    #view-money-central .btn-back {
+      max-width:220px;
+      margin:6px 0 24px;
+      border-radius:10px;
+    }
+
+    @media (min-width:900px) {
+      #view-money-central #money-game-central-display {
+        grid-template-columns:repeat(12,minmax(0,1fr));
+        align-items:start;
+      }
+      #view-money-central #money-game-central-display > .mgc-hero,
+      #view-money-central #money-game-central-display > .recap-hero,
+      #view-money-central #money-game-central-display > .mgc-lock-card,
+      #view-money-central #money-game-central-display > .dashboard-panel,
+      #view-money-central #money-game-central-display > .recap-awards,
+      #view-money-central #money-game-central-display > .recap-section-title {
+        grid-column:1 / -1;
+      }
+      #view-money-central #money-game-central-display > .mgc-team-card {
+        grid-column:span 6;
+        margin-bottom:0;
+      }
+    }
+
+    @media (max-width:560px) {
+      #view-money-central > .header { top:6px;padding:10px 11px; }
+      #view-money-central .mgc-broadcast-mark { width:40px;height:40px;font-size:21px; }
+      #view-money-central .mgc-broadcast-title { font-size:16px; }
+      #view-money-central .mgc-broadcast-status { padding:7px 8px;font-size:9px; }
+      #view-money-central .mgc-stat strong,
+      #view-money-central .recap-summary-card strong { font-size:24px; }
+      #view-money-central .mgc-stat,
+      #view-money-central .recap-summary-card { min-height:72px; }
+      #view-money-central .mgc-rank-row { align-items:center; }
+    }
+
+
+    /* =========================================================
+       v2.4 — Champion Spotlight (visual only)
+       ========================================================= */
+    #view-money-central .mgc-champion-spotlight {
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:18px;
+      align-items:center;
+      padding:24px;
+      border:1px solid rgba(255,211,24,.34);
+      border-radius:15px;
+      background:
+        radial-gradient(circle at 84% 15%,rgba(255,211,24,.20),transparent 34%),
+        radial-gradient(circle at 12% 110%,rgba(91,255,55,.13),transparent 38%),
+        linear-gradient(115deg,rgba(13,18,24,.99),rgba(4,11,17,.99));
+      box-shadow:0 24px 62px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    #view-money-central .mgc-champion-spotlight::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(105deg,transparent 0 42%,rgba(255,255,255,.045) 49%,transparent 56%);
+      transform:translateX(-120%);
+      animation:mgcChampionSweep 5.8s ease-in-out infinite;
+    }
+
+    @keyframes mgcChampionSweep {
+      0%,62% { transform:translateX(-120%); }
+      82%,100% { transform:translateX(120%); }
+    }
+
+    #view-money-central .mgc-champion-copy { min-width:0;position:relative;z-index:1; }
+    #view-money-central .mgc-champion-kicker {
+      color:#ffd318;
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+    #view-money-central .mgc-champion-name {
+      color:#fff;
+      font-size:clamp(31px,6vw,58px);
+      line-height:.92;
+      font-weight:1000;
+      letter-spacing:-.035em;
+      text-transform:uppercase;
+      text-shadow:0 8px 28px rgba(0,0,0,.42);
+    }
+    #view-money-central .mgc-champion-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:14px;
+    }
+    #view-money-central .mgc-champion-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      min-height:34px;
+      padding:7px 11px;
+      border-radius:9px;
+      border:1px solid rgba(148,163,184,.18);
+      background:rgba(2,8,14,.58);
+      color:#dce7e1;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.035em;
+    }
+    #view-money-central .mgc-champion-chip strong { color:#fff;font-size:15px; }
+    #view-money-central .mgc-champion-chip.money { border-color:rgba(91,255,55,.25);color:#b9ff9d; }
+    #view-money-central .mgc-champion-chip.money strong { color:#82ff3c; }
+    #view-money-central .mgc-champion-trophy {
+      position:relative;
+      z-index:1;
+      width:122px;
+      height:122px;
+      border-radius:28px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:68px;
+      background:linear-gradient(145deg,rgba(255,211,24,.20),rgba(255,148,24,.06));
+      border:1px solid rgba(255,211,24,.32);
+      box-shadow:0 0 45px rgba(255,211,24,.16), inset 0 1px 0 rgba(255,255,255,.08);
+      transform:rotate(2deg);
+    }
+
+    #view-money-central .mgc-broadcast-divider {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      color:#81909d;
+      font-size:10px;
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin:3px 0;
+    }
+    #view-money-central .mgc-broadcast-divider::before,
+    #view-money-central .mgc-broadcast-divider::after {
+      content:"";
+      height:1px;
+      flex:1;
+      background:linear-gradient(90deg,transparent,rgba(148,163,184,.26));
+    }
+    #view-money-central .mgc-broadcast-divider::after {
+      background:linear-gradient(90deg,rgba(148,163,184,.26),transparent);
+    }
+
+    @media (min-width:900px) {
+      #view-money-central #money-game-central-display > .mgc-champion-spotlight,
+      #view-money-central #money-game-central-display > .mgc-broadcast-divider { grid-column:1 / -1; }
+    }
+
+    @media (max-width:560px) {
+      #view-money-central .mgc-champion-spotlight { padding:19px;grid-template-columns:minmax(0,1fr) 72px;gap:12px; }
+      #view-money-central .mgc-champion-trophy { width:72px;height:72px;border-radius:19px;font-size:40px; }
+      #view-money-central .mgc-champion-name { font-size:34px; }
+      #view-money-central .mgc-champion-meta { gap:6px; }
+      #view-money-central .mgc-champion-chip { padding:6px 8px;font-size:10px; }
+    }
+
+  </style>
 </head>
 <body>
   <div class="container">
@@ -3202,10 +3595,14 @@
 
     <div id="view-money-central" class="card hidden">
       <div class="header">
-        <div class="header-logo">
-          <div class="logo-mark">🏆</div>
-          <h1>MONEY GAME <span>CENTRAL</span></h1>
+        <div class="mgc-broadcast-brand">
+          <div class="mgc-broadcast-mark">⛳</div>
+          <div>
+            <div class="mgc-broadcast-eyebrow">Cliffside Saturday League</div>
+            <div class="mgc-broadcast-title">Money Game Central</div>
+          </div>
         </div>
+        <div class="mgc-broadcast-status">Broadcast</div>
       </div>
 
       <div id="money-game-central-display"></div>
@@ -7905,10 +8302,29 @@ function renderFinalRecap() {
       <span>${data ? value : 'No complete scorecard'}</span>
     </div>`;
 
+  const champion = recap.standings[0];
+  const championPayout = recap.payoutData.payouts.get(String(champion?.team?.id))?.grandTotal || 0;
+
   return `
+    <div class="mgc-champion-spotlight">
+      <div class="mgc-champion-copy">
+        <div class="mgc-champion-kicker">Saturday Money Game Champion</div>
+        <div class="mgc-champion-name">${champion ? getTeamName(champion.team.id) : 'Champion'}</div>
+        <div class="mgc-champion-meta">
+          <span class="mgc-champion-chip">🏁 Total <strong>${champion?.total ?? '—'}</strong></span>
+          <span class="mgc-champion-chip">Front <strong>${champion?.front ?? '—'}</strong></span>
+          <span class="mgc-champion-chip">Back <strong>${champion?.back ?? '—'}</strong></span>
+          <span class="mgc-champion-chip money">💰 Payout <strong>${formatMoneyAmount(championPayout)}</strong></span>
+        </div>
+      </div>
+      <div class="mgc-champion-trophy">🏆</div>
+    </div>
+
+    <div class="mgc-broadcast-divider">Official Recap</div>
+
     <div class="recap-hero">
-      <div class="recap-kicker">🏆 Money Game Central</div>
-      <div class="recap-heading">📋 Recap</div>
+      <div class="recap-kicker">Money Game Central • Final</div>
+      <div class="recap-heading">Saturday Recap</div>
       <div class="recap-date">${dateLabel}</div>
       <div class="recap-summary-grid">
         <div class="recap-summary-card"><strong>$${recap.pot}</strong><small>Money Pot</small></div>
