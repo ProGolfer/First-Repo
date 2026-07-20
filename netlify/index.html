@@ -2358,6 +2358,84 @@
       }
     }
 
+
+    /* v2.2 Best 3 visual highlighting — presentation only */
+    #view-game .live-player-card.best3-counting {
+      border-color:rgba(245,184,74,.46);
+      background:
+        radial-gradient(circle at 88% 8%, rgba(245,184,74,.16), transparent 38%),
+        linear-gradient(180deg,rgba(29,40,46,.99),rgba(13,24,31,.99));
+      box-shadow:0 14px 34px rgba(0,0,0,.25),0 0 24px rgba(245,184,74,.10),inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    #view-game .live-player-card.best3-counting::before {
+      width:4px;
+      background:linear-gradient(180deg,#ffe08a,#d89b2f);
+      opacity:1;
+      box-shadow:0 0 12px rgba(245,184,74,.55);
+    }
+
+    #view-game .live-player-card.best3-not-counting {
+      opacity:.72;
+      filter:saturate(.82);
+    }
+
+    #view-game .live-player-card.best3-not-counting:hover {
+      opacity:.92;
+    }
+
+    #view-game .live-player-card.best3-counting .live-player-avatar {
+      border-color:rgba(245,184,74,.42);
+      background:linear-gradient(145deg,rgba(245,184,74,.20),rgba(245,184,74,.07));
+      box-shadow:0 0 18px rgba(245,184,74,.10),inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    #view-game .best3-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      margin-left:8px;
+      padding:4px 8px;
+      border:1px solid rgba(245,184,74,.42);
+      border-radius:999px;
+      background:rgba(245,184,74,.13);
+      color:#ffe29a;
+      font-size:10px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.055em;
+      text-transform:uppercase;
+      vertical-align:middle;
+      box-shadow:0 0 14px rgba(245,184,74,.08);
+    }
+
+    #view-game .best3-score-note {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:0 0 12px;
+      padding:10px 12px;
+      border:1px solid rgba(245,184,74,.22);
+      border-radius:13px;
+      background:rgba(245,184,74,.07);
+      color:#d7dee7;
+      font-size:12px;
+      font-weight:850;
+    }
+
+    #view-game .best3-score-note strong { color:#ffe29a; }
+
+    @media (prefers-reduced-motion:no-preference) {
+      #view-game .live-player-card.best3-counting {
+        animation:best3Glow 2.8s ease-in-out infinite;
+      }
+    }
+
+    @keyframes best3Glow {
+      0%,100% { box-shadow:0 14px 34px rgba(0,0,0,.25),0 0 18px rgba(245,184,74,.07),inset 0 1px 0 rgba(255,255,255,.06); }
+      50% { box-shadow:0 14px 34px rgba(0,0,0,.25),0 0 28px rgba(245,184,74,.15),inset 0 1px 0 rgba(255,255,255,.06); }
+    }
+
     /* My Team identity banner */
     #view-game .my-team-hero {
       position:relative;
@@ -6830,18 +6908,32 @@ const teamCount = getActiveTeamCount();
       const teamCaptain = teamPlayers.find(player => isCaptainPlayer(player));
       const teamName = getTeamName(appState.myTeam);
 
+      const best3PlayerIds = new Set(
+        teamPlayers
+          .map((player, index) => ({
+            id: String(player.id),
+            points: scoreToPoints(playerScores[player.id] ?? holeInfo.par, holeInfo.par),
+            index
+          }))
+          .sort((a, b) => (b.points - a.points) || (a.index - b.index))
+          .slice(0, Math.min(3, teamPlayers.length))
+          .map(player => player.id)
+      );
+
       const rows = teamPlayers.map(p => {
         const score = playerScores[p.id] ?? holeInfo.par;
         const pts = scoreToPoints(score, holeInfo.par);
         const playerIsCaptain = isCaptainPlayer(p);
+        const isBest3 = best3PlayerIds.has(String(p.id));
+        const best3Class = isBest3 ? ' best3-counting' : ' best3-not-counting';
         const controlsDisabled = isCaptain ? '' : 'disabled';
 
         return `
-          <div class="live-player-card${playerIsCaptain ? ' captain-card' : ''}">
+          <div class="live-player-card${playerIsCaptain ? ' captain-card' : ''}${best3Class}">
             <div class="live-player-profile">
               <div class="live-player-avatar">${playerIsCaptain ? '👑' : '🏌️'}</div>
               <div>
-                <div class="live-player-name">${p.name}</div>
+                <div class="live-player-name">${p.name}${isBest3 ? '<span class="best3-badge">★ Best 3</span>' : ''}</div>
                 <div class="live-player-points">${pts} point${pts === 1 ? '' : 's'}</div>
               </div>
             </div>
@@ -6926,7 +7018,10 @@ const teamCount = getActiveTeamCount();
 
           ${savedHole ? `<div style="margin-top:10px;color:#54e86f;font-weight:900;">✅ Hole ${holeInfo.hole} submitted</div>` : ''}
 
-          <div style="margin-top:14px;">${rows || '<div class="empty-state">No players on your team yet</div>'}</div>
+          <div style="margin-top:14px;">
+            ${teamPlayers.length > 3 ? '<div class="best3-score-note"><span>★</span><span><strong>Gold cards</strong> are the three scores currently counting for this hole.</span></div>' : ''}
+            ${rows || '<div class="empty-state">No players on your team yet</div>'}
+          </div>
 
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;">${history}</div>
 
