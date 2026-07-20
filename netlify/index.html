@@ -2436,6 +2436,129 @@
       50% { box-shadow:0 14px 34px rgba(0,0,0,.25),0 0 28px rgba(245,184,74,.15),inset 0 1px 0 rgba(255,255,255,.06); }
     }
 
+
+
+    /* v2.2 Front / Back / Total premium scoreboard — presentation only */
+    .round-scoreboard {
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:14px;
+      padding:12px;
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:20px;
+      background:
+        radial-gradient(circle at 100% 0%,rgba(84,232,111,.10),transparent 38%),
+        linear-gradient(180deg,rgba(7,17,27,.92),rgba(2,9,15,.96));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 12px 28px rgba(0,0,0,.20);
+    }
+
+    .round-scoreboard::before {
+      content:"Round Score";
+      position:absolute;
+      top:8px;
+      right:12px;
+      color:rgba(148,163,184,.28);
+      font-size:9px;
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      pointer-events:none;
+    }
+
+    .round-score-tile {
+      position:relative;
+      overflow:hidden;
+      min-height:112px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:17px 10px 13px;
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(22,35,49,.90),rgba(10,21,31,.96));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .round-score-tile::after {
+      content:"";
+      position:absolute;
+      left:18%;
+      right:18%;
+      bottom:0;
+      height:2px;
+      border-radius:999px;
+      background:rgba(96,165,250,.75);
+      box-shadow:0 0 12px rgba(96,165,250,.34);
+    }
+
+    .round-score-tile.back::after {
+      background:rgba(168,85,247,.78);
+      box-shadow:0 0 12px rgba(168,85,247,.35);
+    }
+
+    .round-score-tile.total {
+      border-color:rgba(84,232,111,.32);
+      background:
+        radial-gradient(circle at 50% 0%,rgba(84,232,111,.16),transparent 55%),
+        linear-gradient(180deg,rgba(18,55,39,.88),rgba(7,27,20,.98));
+      box-shadow:0 0 24px rgba(34,197,94,.08),inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .round-score-tile.total::after {
+      left:12%;
+      right:12%;
+      height:3px;
+      background:linear-gradient(90deg,#22c55e,#86efac);
+      box-shadow:0 0 15px rgba(84,232,111,.48);
+    }
+
+    .round-score-label {
+      color:#93a4b7;
+      font-size:10px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.13em;
+      text-transform:uppercase;
+    }
+
+    .round-score-value {
+      margin-top:8px;
+      color:#f8fafc;
+      font-size:38px;
+      line-height:.95;
+      font-weight:1000;
+      letter-spacing:-.035em;
+      text-shadow:0 8px 24px rgba(0,0,0,.25);
+    }
+
+    .round-score-tile.total .round-score-value {
+      color:#69f087;
+      font-size:43px;
+      text-shadow:0 0 20px rgba(84,232,111,.18);
+    }
+
+    .round-score-caption {
+      margin-top:7px;
+      color:#718196;
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    @media (max-width:420px) {
+      .round-scoreboard { gap:7px;padding:9px;border-radius:17px; }
+      .round-score-tile { min-height:98px;padding:14px 6px 11px;border-radius:14px; }
+      .round-score-value { font-size:32px; }
+      .round-score-tile.total .round-score-value { font-size:36px; }
+      .round-score-label { font-size:9px;letter-spacing:.09em; }
+      .round-score-caption { font-size:8px; }
+    }
+
     /* My Team identity banner */
     #view-game .my-team-hero {
       position:relative;
@@ -6814,18 +6937,21 @@ const teamCount = getActiveTeamCount();
     function renderMoneyTotalsMini(totals) {
       const safe = totals || { front: 0, back: 0, total: 0 };
       return `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
-          <div style="text-align:center;padding:10px;border-radius:14px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);">
-            <div class="muted" style="font-size:12px;font-weight:950;text-transform:uppercase;">Front</div>
-            <div style="font-size:24px;font-weight:950;color:#54e86f;">${safe.front}</div>
+        <div class="round-scoreboard" aria-label="Front, back, and total round points">
+          <div class="round-score-tile front">
+            <div class="round-score-label">Front</div>
+            <div class="round-score-value">${safe.front}</div>
+            <div class="round-score-caption">Holes 1–9</div>
           </div>
-          <div style="text-align:center;padding:10px;border-radius:14px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.16);">
-            <div class="muted" style="font-size:12px;font-weight:950;text-transform:uppercase;">Back</div>
-            <div style="font-size:24px;font-weight:950;color:#54e86f;">${safe.back}</div>
+          <div class="round-score-tile back">
+            <div class="round-score-label">Back</div>
+            <div class="round-score-value">${safe.back}</div>
+            <div class="round-score-caption">Holes 10–18</div>
           </div>
-          <div style="text-align:center;padding:10px;border-radius:14px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.24);">
-            <div class="muted" style="font-size:12px;font-weight:950;text-transform:uppercase;">Total</div>
-            <div style="font-size:24px;font-weight:950;color:#54e86f;">${safe.total}</div>
+          <div class="round-score-tile total">
+            <div class="round-score-label">Total</div>
+            <div class="round-score-value">${safe.total}</div>
+            <div class="round-score-caption">Round Points</div>
           </div>
         </div>`;
     }
