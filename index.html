@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Golf Money Game</title>
+  <title>Money Game Central</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -501,12 +501,83 @@
       .demo-stage-grid { grid-template-columns: 1fr; }
     }
 
+
+    /* =========================================================
+       MONEY GAME CENTRAL — PRODUCTION MERGE v1.4.0 / PHASE 1
+       Broadcast Classic shell + navigation. Core engine preserved.
+       ========================================================= */
+    :root {
+      --mgc-bg:#06110d; --mgc-panel:#0c1d16; --mgc-panel2:#10271d;
+      --mgc-border:rgba(255,255,255,.09); --mgc-text:#f4fff7;
+      --mgc-muted:#8da99a; --mgc-green:#35e978; --mgc-gold:#f4c85a;
+    }
+    body { padding:0; background:radial-gradient(circle at top right,rgba(53,233,120,.10),transparent 30%),var(--mgc-bg); }
+    .mgc-shell { display:grid; grid-template-columns:270px minmax(0,1fr); min-height:100vh; }
+    .mgc-sidebar { position:sticky; top:0; height:100vh; overflow-y:auto; padding:22px 16px; background:rgba(5,15,11,.97); border-right:1px solid var(--mgc-border); z-index:30; }
+    .mgc-brand { padding:8px 10px 22px; }
+    .mgc-brand-badge { display:inline-flex; padding:6px 10px; border-radius:999px; background:rgba(53,233,120,.12); color:var(--mgc-green); font-size:11px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+    .mgc-brand h1 { margin:13px 0 4px; font-size:23px; line-height:1.05; }
+    .mgc-brand p { margin:0; color:var(--mgc-muted); font-size:12px; }
+    .mgc-nav-label { padding:15px 10px 7px; color:#6f8d7e; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+    .mgc-nav-btn { width:100%; display:flex; align-items:center; gap:10px; margin:4px 0; padding:12px 13px; border:1px solid transparent; border-radius:12px; background:transparent; color:#cfe3d7; font-weight:800; text-align:left; cursor:pointer; }
+    .mgc-nav-btn:hover { background:rgba(255,255,255,.045); }
+    .mgc-nav-btn.active { background:linear-gradient(135deg,rgba(53,233,120,.18),rgba(53,233,120,.05)); border-color:rgba(53,233,120,.24); color:var(--mgc-green); }
+    .mgc-main { min-width:0; padding:22px; }
+    .mgc-topbar { max-width:980px; margin:0 auto 16px; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; border:1px solid var(--mgc-border); border-radius:16px; background:rgba(12,29,22,.82); backdrop-filter:blur(12px); }
+    .mgc-topbar h2 { margin:0; font-size:19px; }
+    .mgc-topbar p { margin:3px 0 0; color:var(--mgc-muted); font-size:12px; }
+    .mgc-menu { display:none; width:42px; height:42px; border:1px solid var(--mgc-border); border-radius:11px; background:var(--mgc-panel2); color:white; font-size:20px; }
+    .mgc-content.container { max-width:980px; padding:0; }
+    .mgc-content .card { max-width:760px; margin-left:auto; margin-right:auto; border-radius:20px; background:linear-gradient(145deg,rgba(16,39,29,.98),rgba(8,24,17,.98)); }
+    .mgc-content .header { background:linear-gradient(145deg,#153e29 0%,#0b2418 58%,#07110d 100%); border-bottom:2px solid rgba(53,233,120,.32); }
+    .mgc-content .btn-primary,.mgc-content .btn-success { background:var(--mgc-green); color:#03240f; box-shadow:none; }
+    .mgc-content .players-count,.mgc-content .you-badge { background:var(--mgc-green); color:#03240f; }
+    .mgc-content .tab-btn.active,.mgc-content .admin-pill-btn.active { background:rgba(53,233,120,.15); color:var(--mgc-green); border:1px solid rgba(53,233,120,.24); box-shadow:none; }
+    #live-status { margin:0; border-radius:999px; padding:8px 11px; width:auto; white-space:nowrap; font-size:11px; background:rgba(53,233,120,.10); color:var(--mgc-green); }
+    #demo-tab-btn,#admin-demo,#demo-mode-banner { display:none!important; }
+    .mgc-module-placeholder { text-align:center; padding:34px 20px; }
+    .mgc-module-placeholder .icon { font-size:42px; margin-bottom:10px; }
+    .mgc-module-placeholder h2 { margin:0 0 8px; }
+    .mgc-module-placeholder p { color:var(--mgc-muted); max-width:520px; margin:0 auto 18px; line-height:1.5; }
+    .mgc-overlay { display:none; }
+    @media(max-width:900px){
+      .mgc-shell{grid-template-columns:1fr}.mgc-sidebar{position:fixed;left:0;top:0;bottom:0;width:280px;transform:translateX(-105%);transition:transform .2s ease;box-shadow:20px 0 50px rgba(0,0,0,.45)}
+      .mgc-shell.menu-open .mgc-sidebar{transform:translateX(0)}.mgc-menu{display:inline-grid;place-items:center}.mgc-main{padding:12px}.mgc-topbar{position:sticky;top:8px;z-index:20}
+      .mgc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:25}.mgc-shell.menu-open .mgc-overlay{display:block}
+    }
+    @media(max-width:520px){.mgc-topbar p{display:none}.mgc-main{padding:8px}.mgc-content .card{border-radius:16px}.hero-brand img{width:78px;height:78px}}
+
   </style>
 </head>
 <body>
-  <div class="container">
-   <div id="demo-mode-banner" class="demo-banner">🎮 DEMO MODE — NO REAL DATA IS BEING CHANGED</div>
-   <div class="status-line" id="live-status">Connecting...</div>
+<div id="mgc-shell" class="mgc-shell">
+  <div class="mgc-overlay" onclick="toggleMgcMenu(false)"></div>
+  <aside class="mgc-sidebar">
+    <div class="mgc-brand">
+      <span class="mgc-brand-badge">Saturday Golf</span>
+      <h1>Money Game Central</h1>
+      <p>Cliffside Golf Club</p>
+    </div>
+    <div class="mgc-nav-label">Today</div>
+    <button class="mgc-nav-btn active" data-route="view-home" onclick="navigateApp('view-home',this)">🏠 Dashboard</button>
+    <button class="mgc-nav-btn" data-route="view-game" onclick="navigateApp('view-game',this)">👥 My Team</button>
+    <button class="mgc-nav-btn" data-route="live-scoring" onclick="navigateApp('live-scoring',this)">⛳ Live Scoring</button>
+    <button class="mgc-nav-btn" data-route="view-leaderboard" onclick="navigateApp('view-leaderboard',this)">🏌️ Players</button>
+    <button class="mgc-nav-btn" data-route="profile" onclick="navigateApp('profile',this)">👤 My Profile</button>
+    <button class="mgc-nav-btn" data-route="draft" onclick="navigateApp('draft',this)">🎯 Draft Central</button>
+    <button class="mgc-nav-btn" data-route="recap" onclick="navigateApp('recap',this)">🏆 Official Recap</button>
+    <div class="mgc-nav-label">App</div>
+    <button class="mgc-nav-btn" data-route="view-admin" onclick="navigateApp('view-admin',this)">⚙️ Admin Command Center</button>
+  </aside>
+  <main class="mgc-main">
+    <div class="mgc-topbar">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <button class="mgc-menu" onclick="toggleMgcMenu()">☰</button>
+        <div><h2 id="mgc-page-title">Dashboard</h2><p id="mgc-page-subtitle">Your Saturday money game</p></div>
+      </div>
+      <div class="status-line" id="live-status">Connecting...</div>
+    </div>
+    <div class="container mgc-content">
 
 <div id="view-home" class="card">
   <div class="header">
@@ -648,6 +719,15 @@
         <ul id="leaderboard-list" class="player-list"></ul>
       </div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
+    </div>
+
+    <div id="view-module" class="card hidden">
+      <div class="mgc-module-placeholder">
+        <div id="module-icon" class="icon">⛳</div>
+        <h2 id="module-title">Module</h2>
+        <p id="module-copy">This module is being connected to the production engine.</p>
+        <button class="btn btn-primary" onclick="navigateApp('view-home')">Back to Dashboard</button>
+      </div>
     </div>
 
     <div id="view-admin" class="card hidden">
@@ -794,7 +874,9 @@
 
       <button class="btn logout-soft" onclick="logout()">← Log Out</button>
     </div>
-  </div>
+    </div>
+  </main>
+</div>
 
   <script>
     let isSubmittingScores = false;
@@ -1024,8 +1106,59 @@ let isTypingScores = false;
     }
 
     function showView(v){
-      document.querySelectorAll('.card').forEach(e=>e.classList.add('hidden'));
-      document.getElementById(v).classList.remove('hidden');
+      document.querySelectorAll('.mgc-content > .card').forEach(e=>e.classList.add('hidden'));
+      const target = document.getElementById(v);
+      if (target) target.classList.remove('hidden');
+      syncMgcNavigation(v);
+      toggleMgcMenu(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const MGC_PAGE_META = {
+      'view-home':['Dashboard','Your Saturday money game'],
+      'view-game':['My Team','Scores, roster and final results'],
+      'view-leaderboard':['Players','Today’s field and leaderboard'],
+      'view-admin':['Admin Command Center','Secure league controls'],
+      'view-admin-dashboard':['Admin Command Center','Players, teams and settings'],
+      'view-confirm':['Registration Complete','Waiting for admin approval']
+    };
+
+    function syncMgcNavigation(route){
+      const title=document.getElementById('mgc-page-title');
+      const subtitle=document.getElementById('mgc-page-subtitle');
+      const meta=MGC_PAGE_META[route]||['Money Game Central','Cliffside Golf Club'];
+      if(title) title.textContent=meta[0];
+      if(subtitle) subtitle.textContent=meta[1];
+      document.querySelectorAll('.mgc-nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.route===route || (route==='view-admin-dashboard'&&b.dataset.route==='view-admin')));
+    }
+
+    function toggleMgcMenu(force){
+      const shell=document.getElementById('mgc-shell');
+      if(!shell) return;
+      const open=typeof force==='boolean'?force:!shell.classList.contains('menu-open');
+      shell.classList.toggle('menu-open',open);
+    }
+
+    function showModulePlaceholder(type){
+      const data={
+        profile:['👤','My Profile','Player profile, statistics and history will be connected here without changing the scoring engine.'],
+        draft:['🎯','Draft Central','The approved Draft Central experience is next in the production merge. Captain-only drafting and publish controls will remain intact.'],
+        recap:['🏆','Official Recap','The Broadcast Classic recap will use the real front, back and total Money Game results.']
+      }[type]||['⛳','Money Game Central','This production module is being connected.'];
+      document.getElementById('module-icon').textContent=data[0];
+      document.getElementById('module-title').textContent=data[1];
+      document.getElementById('module-copy').textContent=data[2];
+      MGC_PAGE_META['view-module']=[data[1],'Production integration'];
+      showView('view-module');
+      document.querySelectorAll('.mgc-nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.route===type));
+    }
+
+    function navigateApp(route,button){
+      if(route==='live-scoring'){ showView('view-game'); switchGameTab('myteam'); loadGameView(); document.getElementById('mgc-page-title').textContent='Live Scoring'; return; }
+      if(['profile','draft','recap'].includes(route)){ showModulePlaceholder(route); return; }
+      if(route==='view-game') loadGameView();
+      if(route==='view-leaderboard') renderLeaderboard();
+      showView(route);
     }
 
     function showAdminLogin(){ showView('view-admin'); }
@@ -1543,6 +1676,7 @@ renderCaptainTeamSelection();
     function switchGameTab(t, ev){
       document.querySelectorAll('#view-game .tab-btn').forEach(b=>b.classList.remove('active'));
       if (ev?.target) ev.target.classList.add('active');
+      else { const tabs=document.querySelectorAll('#view-game .tab-btn'); if(tabs[t==='myteam'?0:1]) tabs[t==='myteam'?0:1].classList.add('active'); }
       document.getElementById('tab-myteam').classList.add('hidden');
       document.getElementById('tab-otherteams').classList.add('hidden');
       document.getElementById('tab-'+t).classList.remove('hidden');
@@ -2723,7 +2857,6 @@ await loadAllData();
     async function initApp() {
       try {
         loadDeviceState();
-        renderDemoControls();
         setStatus('Connecting...');
         await ensureBaseData();
         await loadAllData();
@@ -2734,6 +2867,7 @@ await loadAllData();
         updateAutoRefreshMode();
        
         setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
+        syncMgcNavigation('view-home');
 
         window.supabaseClient
           .channel('players-live')
