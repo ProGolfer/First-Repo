@@ -375,7 +375,7 @@
       margin-right: auto;
     }
     #view-admin-dashboard .admin-pill-tabs {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-bottom: 22px;
     }
@@ -441,10 +441,71 @@
       }
     }
 
+
+    /* ADMIN DEMO MODE */
+    .demo-banner {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: none;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      color: #1f1300;
+      font-weight: 950;
+      text-align: center;
+      letter-spacing: .04em;
+      box-shadow: 0 10px 24px rgba(234,88,12,.28);
+    }
+    .demo-banner.active { display: block; }
+    .demo-stage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .demo-stage-btn {
+      min-height: 74px;
+      border: 1px solid rgba(121,151,178,.22);
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      color: #eef6ff;
+      padding: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      text-align: left;
+    }
+    .demo-stage-btn.active {
+      border-color: rgba(245,158,11,.7);
+      background: rgba(245,158,11,.14);
+      color: #ffd78a;
+      box-shadow: 0 0 0 1px rgba(245,158,11,.14);
+    }
+    .demo-score-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .demo-score-table th,
+    .demo-score-table td { padding: 9px 7px; }
+    .demo-safe-note {
+      border: 1px solid rgba(99,222,131,.3);
+      background: rgba(34,197,94,.08);
+      border-radius: 14px;
+      padding: 12px;
+      color: #dff7e7;
+      line-height: 1.45;
+    }
+    @media (max-width: 640px) {
+      .demo-stage-grid { grid-template-columns: 1fr; }
+    }
+
   </style>
 </head>
 <body>
   <div class="container">
+   <div id="demo-mode-banner" class="demo-banner">🎮 DEMO MODE — NO REAL DATA IS BEING CHANGED</div>
    <div class="status-line" id="live-status">Connecting...</div>
 
 <div id="view-home" class="card">
@@ -614,6 +675,7 @@
         </button>
         <button class="admin-pill-btn" onclick="switchAdminTab('teams', event)">Select a Team</button>
         <button class="admin-pill-btn" onclick="switchAdminTab('settings', event)">Settings</button>
+        <button class="admin-pill-btn" id="demo-tab-btn" onclick="switchAdminTab('demo', event)">🎮 Demo Mode</button>
       </div>
 
       <div id="admin-players">
@@ -695,6 +757,41 @@
         <button class="btn btn-danger" onclick="clearAllPlayers()">Clear All Players</button>
       </div>
 
+      <div id="admin-demo" class="hidden">
+        <div class="approval-note">
+          <div class="title">🎮 Demo Mode</div>
+          <div>Show the entire app with sample golfers, realistic 18-hole averages, teams, scores, and payouts.</div>
+        </div>
+
+        <div class="admin-section">
+          <div class="demo-safe-note">
+            <strong>Safe demonstration:</strong> Demo Mode uses temporary in-memory data. Supabase and Google Sheets writes are blocked until you exit Demo Mode.
+          </div>
+
+          <div class="section-title" style="margin-top:18px;">Choose a Demo Stage</div>
+          <div class="demo-stage-grid">
+            <button class="demo-stage-btn" data-demo-stage="registration" onclick="startDemoMode('registration')">📝 Registration Open<br><span class="muted">12 golfers waiting/approved</span></button>
+            <button class="demo-stage-btn" data-demo-stage="teams" onclick="startDemoMode('teams')">👥 Team Selection<br><span class="muted">3 captains and 3 teams</span></button>
+            <button class="demo-stage-btn" data-demo-stage="live" onclick="startDemoMode('live')">🏌️ Round in Progress<br><span class="muted">Realistic 18-hole scores</span></button>
+            <button class="demo-stage-btn" data-demo-stage="final" onclick="startDemoMode('final')">🏆 Final Results<br><span class="muted">Money Game complete</span></button>
+          </div>
+
+          <div id="demo-status-card" class="admin-top-status" style="margin-top:14px;">
+            <strong>Demo Status: <span id="demo-status-text" class="closed">OFF</span></strong>
+            <div id="demo-stage-text" style="margin-top:8px;">Choose a stage to begin.</div>
+          </div>
+
+          <button class="btn btn-warning" onclick="resetDemoMode()">Reset Current Demo</button>
+          <button class="btn btn-danger" onclick="exitDemoMode()">Exit Demo Mode</button>
+        </div>
+
+        <div class="admin-section">
+          <h3 style="margin-bottom:8px;">18-Hole Demo Averages</h3>
+          <div class="muted">These are full-round golf averages, such as 72, 77, 84, and 91—not 9-hole averages.</div>
+          <div id="demo-player-preview"></div>
+        </div>
+      </div>
+
       <button class="btn logout-soft" onclick="logout()">← Log Out</button>
     </div>
   </div>
@@ -710,6 +807,7 @@ const scoreDraft = {};
     const DEVICE_PLAYER_KEY = 'golf_money_game_player_name';
     const DEVICE_ID_KEY = 'golf_money_game_device_id';
     const TEAMS_SUBMITTED_KEY = 'golf_money_game_teams_submitted';
+    const DEMO_SESSION_KEY = 'golf_money_game_demo_stage';
     const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
     const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
     const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIFLGDZCgC_B-sHex_hPtC095UTp0j67Y7YteedmznYK7P-8aSXVcIDFachcfDcSVrg/exec";
@@ -783,6 +881,10 @@ const scoreDraft = {};
 
 async function sendScoresToSheet(players) {
   try {
+    if (appState.demoMode) {
+      console.info('[Demo Mode] Blocked Google Sheets score write');
+      return true;
+    }
     const payload = {
       date: `${new Date().getMonth() + 1}/${new Date().getDate()}`,
       players: Array.isArray(players) ? players : [],
@@ -823,7 +925,10 @@ let isTypingScores = false;
       numTeams: 4,
       selectedNumTeams: 4,
       teamsSubmitted: false,
-      autoRefreshIntervalId: null
+      autoRefreshIntervalId: null,
+      demoMode: false,
+      demoStage: '',
+      realStateSnapshot: null
     };
 
     function formatError(err) {
@@ -1003,6 +1108,11 @@ let isTypingScores = false;
 
     async function db(promise, label) {
       try {
+        const isRead = /^(Load|Seed)/i.test(label || '');
+        if (appState.demoMode && !isRead) {
+          console.info('[Demo Mode] Blocked database write:', label);
+          return { data: null, error: null, demoBlocked: true };
+        }
         const result = await promise;
         if (result?.error) {
           const msg = formatError(result.error);
@@ -1057,6 +1167,10 @@ let isTypingScores = false;
 
     async function loadAllData() {
       if (isTypingScores) return;
+      if (appState.demoMode) {
+        renderAllDemoViews();
+        return;
+      }
       const [playersResult, teamsResult, settingsResult] = await Promise.all([
         db(window.supabaseClient.from('players').select('*').order('registered_at', { ascending: true }), 'Load players'),
         db(window.supabaseClient.from('teams').select('*').order('team_number', { ascending: true }), 'Load teams'),
@@ -2393,16 +2507,215 @@ await loadAllData();
       }
     }
 
+
+    function getDemoPlayerSeed() {
+      return [
+        { name: 'Gabe', avg: 72, score: 73 },
+        { name: 'Mike', avg: 74, score: 76 },
+        { name: 'Ryan', avg: 77, score: 75 },
+        { name: 'Chris', avg: 79, score: 81 },
+        { name: 'Joe', avg: 81, score: 80 },
+        { name: 'Fred', avg: 84, score: 86 },
+        { name: 'John', avg: 85, score: 83 },
+        { name: 'Steve', avg: 87, score: 89 },
+        { name: 'Matt', avg: 88, score: 87 },
+        { name: 'Tony', avg: 90, score: 92 },
+        { name: 'Derek', avg: 92, score: 90 },
+        { name: 'Sam', avg: 95, score: 98 }
+      ];
+    }
+
+    function buildDemoData(stage) {
+      const today = new Date().toISOString();
+      const base = getDemoPlayerSeed();
+      const teamIds = [1, 2, 3];
+      const teamAssignments = [1,2,3,1,2,3,1,2,3,1,2,3];
+      const captainIndexes = new Set([0,1,2]);
+
+      const players = base.map((p, index) => {
+        const isRegistration = stage === 'registration';
+        const team = isRegistration ? null : teamAssignments[index];
+        const status = isRegistration && index >= 9 ? 'pending' : 'approved';
+        return {
+          id: `demo-player-${index + 1}`,
+          name: p.name,
+          avg: p.avg,
+          score: (stage === 'live' || stage === 'final') ? p.score : null,
+          phone: null,
+          course: 'Cliffside Golf Club',
+          status,
+          team,
+          registered_at: today,
+          is_captain: captainIndexes.has(index),
+          device_token: index === 0 ? appState.myDeviceId : `demo-device-${index + 1}`
+        };
+      });
+
+      const scoreSets = {
+        registration: [null, null, null],
+        teams: [null, null, null],
+        live: [
+          { front: 18, back: 17, total: 35, submitted: true },
+          { front: 19, back: 18, total: 37, submitted: true },
+          { front: null, back: null, total: null, submitted: false }
+        ],
+        final: [
+          { front: 18, back: 17, total: 35, submitted: true },
+          { front: 20, back: 18, total: 38, submitted: true },
+          { front: 19, back: 20, total: 39, submitted: true }
+        ]
+      };
+      const selected = scoreSets[stage] || scoreSets.registration;
+      const teams = teamIds.map((id, idx) => {
+        const score = selected[idx];
+        return {
+          id,
+          team_number: id,
+          team_name: `Team ${id}`,
+          captain_id: `demo-player-${id}`,
+          front_score: score?.front ?? null,
+          back_score: score?.back ?? null,
+          team_score: score?.total ?? null,
+          score_submitted_at: score?.submitted ? today : null
+        };
+      });
+
+      return { players, teams };
+    }
+
+    function demoStageLabel(stage) {
+      return ({
+        registration: 'Registration Open',
+        teams: 'Team Selection',
+        live: 'Round in Progress',
+        final: 'Final Results & Money Game'
+      })[stage] || 'Demo';
+    }
+
+    function renderDemoControls() {
+      const banner = document.getElementById('demo-mode-banner');
+      if (banner) banner.classList.toggle('active', appState.demoMode);
+
+      const status = document.getElementById('demo-status-text');
+      if (status) {
+        status.textContent = appState.demoMode ? 'ON' : 'OFF';
+        status.className = appState.demoMode ? 'open' : 'closed';
+      }
+      const stageText = document.getElementById('demo-stage-text');
+      if (stageText) stageText.textContent = appState.demoMode ? `Showing: ${demoStageLabel(appState.demoStage)}` : 'Choose a stage to begin.';
+
+      document.querySelectorAll('[data-demo-stage]').forEach(btn => {
+        btn.classList.toggle('active', appState.demoMode && btn.dataset.demoStage === appState.demoStage);
+      });
+
+      const preview = document.getElementById('demo-player-preview');
+      if (preview) {
+        preview.innerHTML = `<div class="table-container"><table class="demo-score-table"><thead><tr><th>Golfer</th><th>18-Hole Avg</th><th>Demo Round</th></tr></thead><tbody>${getDemoPlayerSeed().map(p => `<tr><td style="font-weight:800;">${p.name}</td><td>${p.avg}</td><td>${p.score}</td></tr>`).join('')}</tbody></table></div>`;
+      }
+    }
+
+    function renderAllDemoViews() {
+      renderHome();
+      renderAdminPlayers();
+      renderAdminTeams();
+      renderLeaderboard();
+      loadGameView();
+      updateSettingsView();
+      renderDemoControls();
+      setStatus(`Demo Mode: ${demoStageLabel(appState.demoStage)}`);
+    }
+
+    function startDemoMode(stage) {
+      const validStages = ['registration', 'teams', 'live', 'final'];
+      if (!validStages.includes(stage)) stage = 'registration';
+
+      if (!appState.demoMode) {
+        appState.realStateSnapshot = {
+          players: appState.players,
+          teams: appState.teams,
+          settings: { ...appState.settings },
+          numTeams: appState.numTeams,
+          selectedNumTeams: appState.selectedNumTeams,
+          teamsSubmitted: appState.teamsSubmitted,
+          myPlayerName: appState.myPlayerName
+        };
+      }
+
+      const demo = buildDemoData(stage);
+      appState.demoMode = true;
+      appState.demoStage = stage;
+      appState.players = demo.players;
+      appState.teams = demo.teams;
+      appState.numTeams = 3;
+      appState.selectedNumTeams = 3;
+      appState.teamsSubmitted = stage !== 'registration';
+      appState.settings = {
+        ...appState.settings,
+        open_time: '06:00',
+        cutoff_time: '23:59',
+        registration_closed: stage !== 'registration',
+        game_started: stage === 'live' || stage === 'final'
+      };
+      appState.myPlayerName = 'Gabe';
+      sessionStorage.setItem(DEMO_SESSION_KEY, stage);
+      stopAutoRefresh();
+      renderAllDemoViews();
+      showView('view-admin-dashboard');
+      switchAdminTab('demo');
+    }
+
+    function resetDemoMode() {
+      if (!appState.demoMode) {
+        alert('Demo Mode is not active. Choose a demo stage first.');
+        return;
+      }
+      startDemoMode(appState.demoStage || 'registration');
+    }
+
+    async function exitDemoMode() {
+      if (!appState.demoMode) {
+        renderDemoControls();
+        return;
+      }
+      appState.demoMode = false;
+      appState.demoStage = '';
+      sessionStorage.removeItem(DEMO_SESSION_KEY);
+      const snapshot = appState.realStateSnapshot;
+      appState.realStateSnapshot = null;
+
+      if (snapshot) {
+        appState.players = snapshot.players;
+        appState.teams = snapshot.teams;
+        appState.settings = snapshot.settings;
+        appState.numTeams = snapshot.numTeams;
+        appState.selectedNumTeams = snapshot.selectedNumTeams;
+        appState.teamsSubmitted = snapshot.teamsSubmitted;
+        appState.myPlayerName = snapshot.myPlayerName;
+      }
+
+      renderDemoControls();
+      setStatus('Restoring real app data...');
+      await loadAllData();
+      updateAutoRefreshMode();
+      showView('view-admin-dashboard');
+      switchAdminTab('demo');
+      alert('Demo Mode ended. Real app data is restored.');
+    }
+
     function switchAdminTab(t, ev){
       document.querySelectorAll('.admin-pill-btn').forEach(b=>b.classList.remove('active'));
-      if (ev?.target) ev.target.classList.add('active');
-      document.getElementById('admin-players').classList.add('hidden');
-      document.getElementById('admin-teams').classList.add('hidden');
-      document.getElementById('admin-settings').classList.add('hidden');
-      document.getElementById('admin-'+t).classList.remove('hidden');
+      const clicked = ev?.currentTarget || ev?.target;
+      if (clicked) clicked.classList.add('active');
+      ['players','teams','settings','demo'].forEach(name => {
+        const panel = document.getElementById('admin-' + name);
+        if (panel) panel.classList.add('hidden');
+      });
+      const nextPanel = document.getElementById('admin-'+t);
+      if (nextPanel) nextPanel.classList.remove('hidden');
       if(t==='players') renderAdminPlayers();
       if(t==='teams') renderAdminTeams();
       if(t==='settings') updateSettingsView();
+      if(t==='demo') renderDemoControls();
     }
 
     function logout(){ showView('view-home'); }
@@ -2410,6 +2723,7 @@ await loadAllData();
     async function initApp() {
       try {
         loadDeviceState();
+        renderDemoControls();
         setStatus('Connecting...');
         await ensureBaseData();
         await loadAllData();
