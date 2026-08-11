@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 2.1 Premium Saturday Dashboard
+    Version: 2.6 Official League Posting + Manual Admin Player
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -3801,6 +3801,23 @@
               <div class="health-item"><span class="health-dot" id="health-backup-dot"></span><div><strong>Backup</strong><small id="health-backup-text">Checking…</small></div></div>
             </div>
 
+
+            <div class="admin-section" id="admin-finalize-round-card" style="border-color:rgba(245,158,11,.32);background:linear-gradient(180deg,rgba(42,31,10,.62),rgba(15,23,42,.82));">
+              <div class="players-header" style="margin-bottom:10px;">
+                <h3>🏁 Finalize Round</h3>
+                <span class="players-count" id="admin-finalize-status-badge">Waiting</span>
+              </div>
+              <p class="muted" id="admin-finalize-status-text" style="font-weight:800;line-height:1.45;margin-bottom:12px;">
+                Finalize becomes available after every active team submits its official final score.
+              </p>
+              <button class="btn btn-warning" id="admin-finalize-round-btn" onclick="finalizeRoundToLeague()" disabled>
+                🏁 Finalize & Post to League
+              </button>
+              <div class="muted" style="font-size:12px;font-weight:800;line-height:1.4;">
+                This posts the exact final results already shown in Money Game Central to permanent league history. It does not recalculate the scoring engine.
+              </div>
+            </div>
+
             <div class="admin-command-grid">
               <button class="admin-command-card" onclick="switchAdminTab('players')"><span class="admin-command-icon">👥</span><strong>Players</strong><small>Approve registrations, assign captains, remove duplicates, and manage QR access.</small></button>
               <button class="admin-command-card" onclick="switchAdminTab('teams')"><span class="admin-command-icon">🚩</span><strong>Teams</strong><small>Control auto/manual team count and manage today’s team assignments.</small></button>
@@ -3824,6 +3841,30 @@
             <div class="approval-note">
               <div class="title">✅ Approval Always Available</div>
               <div>You can approve or decline players anytime, even while registration is open.</div>
+            </div>
+
+
+            <div class="section-title">➕ Add Player Manually</div>
+            <div class="admin-section">
+              <p class="muted" style="font-weight:800;line-height:1.45;margin-bottom:12px;">
+                Emergency option for a late arrival or registration problem. Manually added players are approved immediately and use the same live scoring and final results as everyone else.
+              </p>
+              <div class="form-group">
+                <label>Player Name</label>
+                <input type="text" id="admin-manual-player-name" placeholder="Enter player name" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Team <span class="muted">(optional)</span></label>
+                <select id="admin-manual-player-team">
+                  <option value="">No team yet</option>
+                </select>
+              </div>
+              <label style="display:flex;align-items:center;gap:10px;margin:4px 0 14px;font-weight:900;">
+                <input type="checkbox" id="admin-manual-player-captain" style="width:20px;height:20px;">
+                Make this player captain of the selected team
+              </label>
+              <button class="btn btn-primary" onclick="adminAddPlayerManual()">➕ Add Approved Player</button>
+              <div id="admin-manual-player-status" class="muted" style="font-weight:800;margin-top:6px;">Ready.</div>
             </div>
 
             <div class="section-title">⏳ Pending Players</div>
@@ -8060,6 +8101,7 @@ Total: ${totals.total}`);
           <div class="muted" style="font-weight:800;margin-bottom:10px;">Tap any player below to view their golf scorecard.</div>
         </div>
         ${teamCards}`;
+      updateRoundFinalizeAdmin();
     }
 
     function getScoreCircleClass(score, par) {
@@ -8627,6 +8669,388 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
 
     // ======================================================
 
+
+    // ======================================================
+    // ROUND FINALIZATION + MANUAL ADMIN PLAYER v2.6
+    // Final results are the source of truth. This layer only
+    // posts those already-calculated results to league history.
+    // ======================================================
+
+    const ROUND_FINALIZED_LOCAL_PREFIX = 'gmg_round_finalized_';
+
+    function roundDateKey(dateValue = new Date()) {
+      if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+      const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    }
+
+    function roundFinalizedLocalKey(dateKey = roundDateKey()) {
+      return ROUND_FINALIZED_LOCAL_PREFIX + dateKey;
+    }
+
+    function isRoundLocallyFinalized(dateKey = roundDateKey()) {
+      return localStorage.getItem(roundFinalizedLocalKey(dateKey)) === 'true';
+    }
+
+    function markRoundLocallyFinalized(dateKey = roundDateKey()) {
+      localStorage.setItem(roundFinalizedLocalKey(dateKey), 'true');
+    }
+
+    function historyRowDateKey(row) {
+      const raw = row?.game_date || row?.date || row?.played_at || row?.created_at;
+      if (!raw) return '';
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? String(raw).slice(0, 10) : roundDateKey(d);
+    }
+
+    function hasOfficialHistoryForPlayer(player, dateKey) {
+      const pid = String(player?.league_player_id || '');
+      const pname = cleanName(player?.name || '');
+      return (appState.leagueHistory || []).some(row => {
+        if (historyRowDateKey(row) !== dateKey) return false;
+        const rowPid = String(row?.league_player_id || row?.player_id || row?.player?.id || '');
+        const rowName = cleanName(playerNameFromRow(row));
+        return (pid && rowPid && pid === rowPid) || (pname && rowName === pname);
+      });
+    }
+
+    async function ensureLeaguePlayerForAdmin(name) {
+      const displayName = String(name || '').trim();
+      const normalizedName = cleanName(displayName);
+      if (!displayName) throw new Error('Player name is required.');
+
+      const existing = await window.supabaseClient
+        .from('league_players')
+        .select('id, name, normalized_name')
+        .eq('normalized_name', normalizedName)
+        .maybeSingle();
+
+      if (existing?.error) throw existing.error;
+      if (existing?.data?.id) return existing.data;
+
+      const created = await window.supabaseClient
+        .from('league_players')
+        .insert([{ name: displayName, normalized_name: normalizedName }])
+        .select('id, name, normalized_name')
+        .single();
+
+      if (created?.error) throw created.error;
+      return created.data;
+    }
+
+    function renderAdminManualPlayerTeams() {
+      const select = document.getElementById('admin-manual-player-team');
+      if (!select) return;
+      const current = select.value;
+      const teams = getActiveTeams();
+      select.innerHTML = `<option value="">No team yet</option>` +
+        teams.map(t => `<option value="${t.id}">${escapeHtml(getTeamName(t.id))}</option>`).join('');
+      if ([...select.options].some(o => String(o.value) === String(current))) select.value = current;
+    }
+
+    async function adminAddPlayerManual() {
+      const nameEl = document.getElementById('admin-manual-player-name');
+      const teamEl = document.getElementById('admin-manual-player-team');
+      const captainEl = document.getElementById('admin-manual-player-captain');
+      const statusEl = document.getElementById('admin-manual-player-status');
+
+      const name = String(nameEl?.value || '').trim();
+      const teamId = String(teamEl?.value || '');
+      const makeCaptain = !!captainEl?.checked;
+
+      if (!name) { alert('Enter the player name.'); return; }
+      if (makeCaptain && !teamId) { alert('Select a team before making this player a captain.'); return; }
+      if (appState.players.some(p => cleanName(p.name) === cleanName(name))) {
+        alert(`${name} is already registered today.`);
+        return;
+      }
+
+      try {
+        if (statusEl) statusEl.textContent = 'Adding player...';
+
+        const leaguePlayer = await ensureLeaguePlayerForAdmin(name);
+        const payload = {
+          name,
+          league_player_id: leaguePlayer.id,
+          course: 'Cliffside Golf Club',
+          status: 'approved',
+          team: teamId ? Number(teamId) : null,
+          registered_at: new Date().toISOString(),
+          is_captain: makeCaptain,
+          device_token: null
+        };
+
+        const inserted = await db(
+          window.supabaseClient.from('players').insert([payload]).select('*').single(),
+          'Admin manually add player'
+        );
+
+        const player = inserted?.data || payload;
+
+        if (makeCaptain && teamId && player?.id) {
+          await db(
+            window.supabaseClient.from('teams').update({ captain_id: player.id }).eq('id', teamId),
+            'Admin assign manual captain'
+          );
+        }
+
+        await recordActivity(
+          'player',
+          'Player Added Manually',
+          `${name} was manually added and approved by Admin${teamId ? ` on ${getTeamName(teamId)}` : ''}.`,
+          { icon:'➕', actor:'Admin' }
+        );
+
+        if (nameEl) nameEl.value = '';
+        if (teamEl) teamEl.value = '';
+        if (captainEl) captainEl.checked = false;
+        if (statusEl) statusEl.textContent = `${name} added successfully.`;
+
+        await loadAllData();
+        renderAdminManualPlayerTeams();
+      } catch (err) {
+        console.error('adminAddPlayerManual error', err);
+        if (statusEl) statusEl.textContent = 'Could not add player.';
+        alert(`Could not add player: ${formatError(err)}`);
+      }
+    }
+
+    function currentRoundOfficialRows() {
+      const recap = getFinalRecapData();
+      if (!recap) return null;
+
+      const teamRank = new Map();
+      recap.standings.forEach((row, index) => teamRank.set(String(row.team.id), index + 1));
+
+      return recap.standings.flatMap(row => {
+        const teamPayout = Number(recap.payoutData.payouts.get(String(row.team.id))?.grandTotal || 0);
+        const perPlayerPayout = row.players.length ? teamPayout / row.players.length : 0;
+
+        const cat = recap.payoutData.categories || {};
+        const teamWon = field => !!cat[field]?.winners?.some(w => String(w.team.id) === String(row.team.id));
+        const frontWin = recap.payoutData.everyTeamTied ? 0 : (teamWon('front') ? 1 : 0);
+        const backWin = recap.payoutData.everyTeamTied ? 0 : (teamWon('back') ? 1 : 0);
+        const totalWin = recap.payoutData.everyTeamTied ? 0 : (teamWon('total') ? 1 : 0);
+
+        return row.players.map(player => {
+          const card = getPlayerScorecardData(player.id);
+          const birdies = card ? card.holes.filter(h => h.score !== null && Number(h.score) < Number(h.par)).length : 0;
+          return {
+            player,
+            team: row.team,
+            teamPlace: teamRank.get(String(row.team.id)) || 0,
+            teamFront: Number(row.front || 0),
+            teamBack: Number(row.back || 0),
+            teamTotal: Number(row.total || 0),
+            roundScore: card?.completed === 18 ? Number(card.totalScore) : null,
+            playerPoints: card?.completed === 18 ? Number(card.totalPoints) : Number(row.total || 0),
+            moneyWon: Number(perPlayerPayout.toFixed(2)),
+            birdies,
+            frontWin,
+            backWin,
+            totalWin,
+            isCaptain: isCaptainPlayer(player),
+            completeTie: !!recap.payoutData.everyTeamTied
+          };
+        });
+      });
+    }
+
+    function buildCanonicalHistoryPayload(item, dateKey, finalizedBy) {
+      const won = Number(item.teamPlace) === 1;
+      return {
+        league_player_id: item.player.league_player_id || null,
+        player_id: item.player.league_player_id || item.player.id || null,
+        player_name: item.player.name,
+        name: item.player.name,
+        game_date: dateKey,
+        date: dateKey,
+        season: String(dateKey).slice(0, 4),
+        team_id: item.team.id,
+        team_name: getTeamName(item.team.id),
+        place: item.teamPlace,
+        finish: item.teamPlace,
+        position: item.teamPlace,
+        won,
+        is_winner: won,
+        result: won ? 'win' : (item.completeTie ? 'push' : 'played'),
+        is_captain: !!item.isCaptain,
+        was_captain: !!item.isCaptain,
+        captain: !!item.isCaptain,
+        captain_win: item.isCaptain && won ? 1 : 0,
+        round_score: item.roundScore,
+        stroke_score: item.roundScore,
+        points: item.playerPoints,
+        total_points: item.playerPoints,
+        front_score: item.teamFront,
+        back_score: item.teamBack,
+        total_score: item.playerPoints,
+        team_total: item.teamTotal,
+        money_won: item.moneyWon,
+        winnings: item.moneyWon,
+        payout: item.moneyWon,
+        front_win: item.frontWin,
+        back_win: item.backWin,
+        total_win: item.totalWin,
+        birdies: item.birdies,
+        finalized_by: finalizedBy,
+        finalized_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      };
+    }
+
+    function unknownColumnFromError(error) {
+      const msg = String(error?.message || error || '');
+      const patterns = [
+        /Could not find the '([^']+)' column/i,
+        /column ["']?([a-zA-Z0-9_]+)["']? does not exist/i,
+        /column ([a-zA-Z0-9_]+) of relation/i
+      ];
+      for (const p of patterns) {
+        const m = msg.match(p);
+        if (m?.[1]) return m[1];
+      }
+      return '';
+    }
+
+    async function insertAdaptiveHistoryRow(table, fullPayload) {
+      const payload = { ...fullPayload };
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const result = await window.supabaseClient.from(table).insert([payload]).select('*').single();
+        if (!result?.error) return result.data || payload;
+
+        const badColumn = unknownColumnFromError(result.error);
+        if (badColumn && Object.prototype.hasOwnProperty.call(payload, badColumn)) {
+          delete payload[badColumn];
+          continue;
+        }
+        throw result.error;
+      }
+      throw new Error(`Could not match the ${table} history schema.`);
+    }
+
+    async function resolveLeagueHistoryTable() {
+      for (const table of LEAGUE_HISTORY_TABLES) {
+        try {
+          const result = await window.supabaseClient.from(table).select('*').limit(1);
+          if (!result?.error) return table;
+        } catch (_) {}
+      }
+      return '';
+    }
+
+    async function finalizeRoundToLeague(options = {}) {
+      const automatic = !!options.automatic;
+      const dateKey = options.gameDate || roundDateKey();
+
+      const rows = currentRoundOfficialRows();
+      if (!rows?.length) {
+        if (!automatic) alert('Finalize is available after every active team submits its official final score.');
+        return false;
+      }
+
+      if (!automatic) {
+        const ok = confirm(
+          `Finalize ${dateKey} and post the exact Final Results to league history?\n\n` +
+          `${rows.length} players will receive an official league round record.\n\n` +
+          `This does not recalculate the scores or payouts.`
+        );
+        if (!ok) return false;
+      }
+
+      try {
+        await loadLeagueModuleData();
+
+        const table = await resolveLeagueHistoryTable();
+        if (!table) throw new Error('No league history table was found in Supabase.');
+
+        let added = 0;
+        let skipped = 0;
+        const finalizedBy = automatic ? 'Auto Finalize' : 'Admin';
+
+        for (const item of rows) {
+          if (!item.player.league_player_id) {
+            const permanent = await ensureLeaguePlayerForAdmin(item.player.name);
+            item.player.league_player_id = permanent.id;
+            try {
+              await db(
+                window.supabaseClient.from('players').update({ league_player_id: permanent.id }).eq('id', item.player.id),
+                'Link player before finalizing round'
+              );
+            } catch (_) {}
+          }
+
+          if (hasOfficialHistoryForPlayer(item.player, dateKey)) {
+            skipped++;
+            continue;
+          }
+
+          const payload = buildCanonicalHistoryPayload(item, dateKey, finalizedBy);
+          const inserted = await insertAdaptiveHistoryRow(table, payload);
+          appState.leagueHistory = [inserted, ...(appState.leagueHistory || [])];
+          added++;
+        }
+
+        markRoundLocallyFinalized(dateKey);
+
+        await recordActivity(
+          'results',
+          automatic ? 'Round Auto-Finalized' : 'Round Finalized',
+          `${dateKey}: ${added} player result${added === 1 ? '' : 's'} posted to league history${skipped ? `, ${skipped} already existed` : ''}.`,
+          { icon:'🏁', actor:automatic ? 'System' : 'Admin' }
+        );
+
+        await loadLeagueModuleData();
+        updateRoundFinalizeAdmin();
+
+        if (!automatic) {
+          alert(`Round is official.\n\n${added} player result${added === 1 ? '' : 's'} posted to league history.${skipped ? `\n${skipped} already existed and were not duplicated.` : ''}`);
+        }
+        return true;
+      } catch (err) {
+        console.error('finalizeRoundToLeague error', err);
+        if (!automatic) alert(`Could not finalize the round: ${formatError(err)}`);
+        return false;
+      }
+    }
+
+    function updateRoundFinalizeAdmin() {
+      renderAdminManualPlayerTeams();
+
+      const btn = document.getElementById('admin-finalize-round-btn');
+      const badge = document.getElementById('admin-finalize-status-badge');
+      const text = document.getElementById('admin-finalize-status-text');
+      if (!btn || !badge || !text) return;
+
+      const rows = getTeamScoreRows();
+      const complete = rows.length > 0 && rows.every(r => r.submitted);
+      const dateKey = roundDateKey();
+      const finalized = isRoundLocallyFinalized(dateKey);
+
+      if (finalized) {
+        btn.disabled = true;
+        btn.textContent = '✅ Round Posted to League';
+        badge.textContent = 'Official';
+        text.textContent = 'Today’s final results have been posted to permanent league history.';
+        return;
+      }
+
+      if (complete) {
+        btn.disabled = false;
+        btn.textContent = '🏁 Finalize & Post to League';
+        badge.textContent = 'Ready';
+        text.textContent = 'All active teams have submitted. The exact Final Results are ready to become the official league record.';
+      } else {
+        const submitted = rows.filter(r => r.submitted).length;
+        btn.disabled = true;
+        btn.textContent = '🏁 Waiting for All Teams';
+        badge.textContent = `${submitted}/${rows.length || 0}`;
+        text.textContent = `Finalize unlocks when every active team submits. Currently ${submitted} of ${rows.length || 0} teams are finished.`;
+      }
+    }
+
+
     // ADMIN CONTROL CENTER
 
     // ======================================================
@@ -8738,6 +9162,7 @@ async function toggleCaptain(id, makeCaptain) {
       if (pendingMini) pendingMini.textContent = pending.length;
       if (captainsMini) captainsMini.textContent = appState.players.filter(p => isCaptainPlayer(p)).length;
       renderCaptainQRList();
+      updateRoundFinalizeAdmin();
     }
 
     function renderCaptainQRList() {
@@ -10220,10 +10645,26 @@ async function loadWeather() {
   }
 }
 async function resetDailyGameIfNeeded() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = roundDateKey();
   const lastReset = localStorage.getItem('gmg_last_reset_date');
 
   if (lastReset === today) return;
+
+  // Safety net: if yesterday's round was complete but Admin forgot to finalize,
+  // load the still-current player/team data and post it BEFORE the daily reset.
+  if (lastReset && !isRoundLocallyFinalized(lastReset)) {
+    try {
+      const [playersResult, teamsResult] = await Promise.all([
+        window.supabaseClient.from('players').select('*').order('registered_at', { ascending:true }),
+        window.supabaseClient.from('teams').select('*').order('team_number', { ascending:true })
+      ]);
+      if (!playersResult?.error) appState.players = playersResult.data || [];
+      if (!teamsResult?.error) appState.teams = teamsResult.data || [];
+      await finalizeRoundToLeague({ automatic:true, gameDate:lastReset });
+    } catch (err) {
+      console.warn('Automatic finalize safety check failed; daily reset will continue.', err);
+    }
+  }
 
   await db(
     window.supabaseClient
