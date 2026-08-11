@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.5 — Live Team Standings</title>
+  <title>Money Game Central v2.5 — Broadcast Profile Polish</title>
 
   <!--
     Golf Money Game
@@ -3227,7 +3227,29 @@
       #view-money-central .mgc-standing-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
       #view-money-central .mgc-rank-badge { width:38px;height:38px;font-size:19px; }
     }
-</style>
+
+
+    /* ======================================================
+       MY PROFILE — Broadcast Classic Polish
+       Approved Developer Studio presentation, live data only.
+       Core scoring engine untouched.
+       ====================================================== */
+    .mgc-profile-shell{background:#050b08;border:1px solid rgba(255,255,255,.08);border-radius:24px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28);margin-bottom:14px}
+    .mgc-profile-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.09);background:#07100c}
+    .mgc-profile-toolbar h2{margin:0;font-size:20px;letter-spacing:.04em}.mgc-profile-tool{border:1px solid rgba(255,255,255,.09);background:#0d1712;color:#f4fff7;border-radius:11px;padding:10px 13px;font-weight:850;cursor:pointer}
+    .mgc-profile-body{padding:20px}.mgc-profile-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:170px 1fr;gap:26px;align-items:center;padding:26px;border:1px solid rgba(84,232,111,.28);border-radius:20px;background:linear-gradient(110deg,rgba(17,74,45,.48),rgba(7,18,13,.95)),radial-gradient(circle at 75% 25%,rgba(84,232,111,.16),transparent 30%)}
+    .mgc-profile-avatar{width:158px;height:158px;border-radius:50%;display:grid;place-items:center;border:3px solid #54e86f;background:linear-gradient(145deg,#26382e,#0b1510);box-shadow:0 0 0 6px rgba(84,232,111,.08);font-size:46px;font-weight:950;position:relative}
+    .mgc-profile-verify{position:absolute;right:3px;bottom:14px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#238cf0;border:3px solid #07100c;font-size:16px}.mgc-profile-name{font-size:42px;line-height:1;margin:0 0 7px}.mgc-profile-subtitle{color:#54e86f;font-size:17px;font-weight:850;margin-bottom:13px}.mgc-profile-badges{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}.mgc-profile-badge{padding:8px 11px;border-radius:9px;border:1px solid #54e86f;color:#eafff1;font-weight:850;background:rgba(84,232,111,.05);font-size:12px}.mgc-profile-badge.gold{border-color:#f4c85a;color:#f4c85a;background:rgba(244,200,90,.05)}.mgc-profile-meta{display:flex;gap:18px;flex-wrap:wrap;color:#c6d8cd;font-size:13px}
+    .mgc-profile-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}.mgc-profile-card{grid-column:span 4;background:#0a1410;border:1px solid rgba(255,255,255,.09);border-radius:17px;padding:18px}.mgc-profile-card.span-5{grid-column:span 5}.mgc-profile-card.span-7{grid-column:span 7}.mgc-profile-card.wide{grid-column:1/-1}.mgc-profile-card-title{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.09);padding-bottom:11px;margin-bottom:13px}.mgc-profile-card-title h3{margin:0;font-size:16px;letter-spacing:.03em}.mgc-profile-card-title h3:after{content:"";display:block;width:48px;height:2px;background:#54e86f;margin-top:9px}.mgc-profile-link{color:#54e86f;font-size:13px;background:none;border:0;font-weight:900;cursor:pointer}
+    .mgc-profile-snapshot{grid-column:span 5}.mgc-profile-rounds{grid-column:span 7}.mgc-snapshot-grid{display:grid;grid-template-columns:repeat(3,1fr)}.mgc-snapshot-stat{text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,.09);border-bottom:1px solid rgba(255,255,255,.09)}.mgc-snapshot-stat:nth-child(3n){border-right:0}.mgc-snapshot-stat:nth-child(n+4){border-bottom:0}.mgc-snapshot-stat strong{display:block;color:#54e86f;font-size:27px}.mgc-snapshot-stat strong.gold{color:#f4c85a}.mgc-snapshot-stat small{display:block;margin-top:5px;color:#d1ddd6;font-size:11px}
+    .mgc-mini-chart{height:105px;display:flex;align-items:flex-end;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);padding:0 8px 8px}.mgc-mini-bar{flex:1;background:linear-gradient(to top,#159447,#54e86f);border-radius:7px 7px 2px 2px;min-height:18px;position:relative}.mgc-mini-bar:after{content:attr(data-score);position:absolute;top:-23px;left:50%;transform:translateX(-50%);font-weight:900;color:#54e86f}.mgc-round-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:15px}.mgc-round-chip{text-align:center;border:1px solid rgba(84,232,111,.25);background:rgba(84,232,111,.04);border-radius:10px;padding:9px}.mgc-round-chip strong{font-size:18px;color:#54e86f}.mgc-round-chip small{display:block;color:#94a3b8;margin-top:3px;font-size:9px}
+    .mgc-profile-stat-list{display:grid}.mgc-profile-stat-row{display:flex;justify-content:space-between;gap:15px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}.mgc-profile-stat-row:last-child{border-bottom:0}.mgc-profile-stat-row strong.green{color:#54e86f}.mgc-profile-stat-row strong.gold{color:#f4c85a}.mgc-profile-stat-row strong.red{color:#ff6868}
+    .mgc-win-ring{width:126px;height:126px;margin:5px auto 10px;border-radius:50%;display:grid;place-items:center;position:relative}.mgc-win-ring:before{content:"";position:absolute;inset:12px;background:#0a1410;border-radius:50%}.mgc-win-ring div{position:relative;text-align:center}.mgc-win-ring strong{font-size:31px;color:#54e86f}.mgc-win-ring small{display:block;color:#94a3b8}.mgc-profile-awards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mgc-profile-award{min-height:125px;border:1px solid rgba(244,200,90,.18);border-radius:12px;padding:12px;text-align:center;background:#0d1813}.mgc-profile-award-icon{font-size:38px}.mgc-profile-award strong{display:block;color:#f4c85a;font-size:15px;margin-top:6px}.mgc-profile-award small{display:block;line-height:1.2;color:#cbd5e1;margin-top:5px}
+    .mgc-profile-timeline{display:grid}.mgc-profile-timeline-row{display:grid;grid-template-columns:110px 95px 1fr 85px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px}.mgc-profile-timeline-row:last-child{border-bottom:0}.mgc-place-pill{padding:5px 8px;border-radius:7px;background:rgba(84,232,111,.12);color:#54e86f;text-align:center}.mgc-money-positive{color:#54e86f;font-weight:900;text-align:right}.mgc-profile-footnote{text-align:center;color:#94a3b8;padding:18px 10px 2px;font-size:12px}.mgc-profile-footnote b{color:#54e86f}
+    @media(max-width:900px){.mgc-profile-card,.mgc-profile-card.span-5,.mgc-profile-card.span-7,.mgc-profile-snapshot,.mgc-profile-rounds{grid-column:span 6}.mgc-profile-timeline-row{grid-template-columns:90px 80px 1fr 70px}.mgc-profile-awards{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:760px){.mgc-profile-body{padding:12px}.mgc-profile-toolbar{align-items:flex-start}.mgc-profile-hero{grid-template-columns:1fr;text-align:center;padding:22px}.mgc-profile-avatar{margin:auto;width:138px;height:138px}.mgc-profile-name{font-size:34px}.mgc-profile-badges,.mgc-profile-meta{justify-content:center}.mgc-profile-card,.mgc-profile-card.span-5,.mgc-profile-card.span-7,.mgc-profile-snapshot,.mgc-profile-rounds{grid-column:1/-1}.mgc-snapshot-grid{grid-template-columns:repeat(2,1fr)}.mgc-snapshot-stat:nth-child(3n){border-right:1px solid rgba(255,255,255,.09)}.mgc-snapshot-stat:nth-child(2n){border-right:0}.mgc-snapshot-stat:nth-child(n+5){border-bottom:0}.mgc-round-chips{grid-template-columns:repeat(5,minmax(70px,1fr));overflow-x:auto}.mgc-profile-timeline-row{grid-template-columns:80px 72px 1fr;font-size:11px}.mgc-profile-timeline-row .money-col{display:none}}
+
+  </style>
 </head>
 <body>
   <div class="container">
@@ -5990,11 +6012,38 @@ async function handleUniversalProfilePhoto(event){
   catch(err){if(status)status.textContent='Photo upload failed. Preview remains only on this device.';console.error('Profile photo save failed:',err);} finally{event.target.value='';}
 }
 
+async function loadMyStrokeAverage(name) {
+  if (!name) return { avg:'—', last:'—' };
+  try {
+    const PLAYER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3KxLkijkRDSzVZgpZWn3RnbbS0b8-RT-8au35PL_jzlAUFhPXOWXB2U5VvFPt6s_H6gXsP6q37WM7/pub?output=csv";
+    const res = await fetch(PLAYER_SHEET_URL + `&t=${Date.now()}`);
+    const csv = await res.text();
+    const rows = csv.trim().split('\n').map(r => r.split(',').map(cell => (cell || '').trim()));
+    if (rows.length < 2) return { avg:'—', last:'—' };
+    const header = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim());
+    let avgIndex = header.findIndex(h => ['avg','average','averages'].includes(String(h || '').replace(/[^a-z]/gi, '').toLowerCase()));
+    if (avgIndex === -1) avgIndex = header.length - 1;
+    const row = rows.slice(1).find(r => cleanName(r[0] || '') === cleanName(name));
+    if (!row) return { avg:'—', last:'—' };
+    let last = '—';
+    for (let i = avgIndex - 1; i >= 2; i--) {
+      if ((row[i] || '').trim() !== '') { last = (row[i] || '').trim(); break; }
+    }
+    return { avg:(row[avgIndex] || '—').trim() || '—', last };
+  } catch (err) {
+    console.warn('Profile stroke average unavailable', err);
+    return { avg:'—', last:'—' };
+  }
+}
+
 async function showMyProfile() {
   showView('view-profile');
   const mount=document.getElementById('profile-content');
   if(mount) mount.innerHTML='<div class="award-empty">Loading your league profile...</div>';
   await loadLeagueModuleData();
+  const permanentPlayer=getMyPermanentLeaguePlayer();
+  const name=permanentPlayer?.name || getMyPlayerName();
+  appState.myProfileStroke = await loadMyStrokeAverage(name);
   renderMyProfile();
 }
 
@@ -6003,39 +6052,78 @@ function renderMyProfile() {
   const permanentPlayer=getMyPermanentLeaguePlayer();
   const name=permanentPlayer?.name || getMyPlayerName();
   if(!name){ mount.innerHTML=`<div class="league-hero"><div class="league-kicker">My Profile</div><div class="league-title">Register this device</div><div class="league-subtitle">Your player profile appears after this device is linked to a registered player.</div></div>`; return; }
+
   const summary=calculatePlayerSummary(name, permanentPlayer?.id || '');
+  const career=permanentPlayer ? hallCareerMetrics(permanentPlayer) : null;
+  const stroke=appState.myProfileStroke || {avg:'—',last:'—'};
   const playerAwards=[...(appState.seasonAwards||[]),...(appState.specialAwards||[])].filter(a=>cleanName(playerNameFromRow(a))===cleanName(name));
-  const preview=playerAwards.slice(0,3);
   const ranked=(appState.leaguePlayers||[]).map(p=>({player:p,summary:calculatePlayerSummary(p.name,p.id)})).sort((a,b)=>b.summary.wins-a.summary.wins || b.summary.winnings-a.summary.winnings || b.summary.games-a.summary.games);
   const rankIndex=ranked.findIndex(x=>String(x.player.id)===String(permanentPlayer?.id||''));
   const seasonRank=rankIndex>=0 ? `#${rankIndex+1}` : '—';
+  const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase() || 'MG';
+  const isCaptain=(appState.players||[]).some(p=>cleanName(p.name)===cleanName(name) && p.is_captain===true) || (career?.captainGames||0)>0;
+  const captainPct=career?.captainPct || 0;
+  const memberSince=permanentPlayer?.created_at ? new Date(permanentPlayer.created_at).toLocaleDateString(undefined,{month:'long',year:'numeric'}) : 'League Member';
   const recentRows=summary.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0)).slice(0,5);
-  const recentHtml=recentRows.length ? recentRows.map(r=>{
-    const rawDate=r.game_date||r.date||r.created_at;
-    const dateText=rawDate ? new Date(rawDate).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'League round';
-    const score=num(r.total_score||r.score||r.round_score);
-    const finish=num(r.place||r.finish||r.position);
-    const won=num(r.money_won||r.winnings||r.payout);
-    return `<div class="mgc-scorecard-row"><div><strong>${escapeHtml(dateText)}</strong><div class="muted" style="font-size:12px;margin-top:3px;">${finish?`Finish #${finish}`:'Round recorded'}</div></div><div style="text-align:right;font-weight:950;color:#54e86f;">${score||'—'} pts<div class="muted" style="font-size:12px;">${money(won)}</div></div></div>`;
-  }).join('') : '<div class="award-empty">Your recent rounds will appear after league history is recorded.</div>';
+  const recentScores=recentRows.map(r=>num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score)).filter(v=>v>0);
+  const chartScores=recentScores.length ? recentScores : [];
+  const minScore=chartScores.length?Math.min(...chartScores):0, maxScore=chartScores.length?Math.max(...chartScores):0;
+  const barHtml=recentRows.length ? recentRows.map((r,i)=>{
+    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const range=Math.max(1,maxScore-minScore); const pct=score?Math.max(28,Math.min(88,82-((score-minScore)/range)*46)):28;
+    return `<div class="mgc-mini-bar" data-score="${score||'—'}" style="height:${pct}%"></div>`;
+  }).join('') : '<div class="award-empty" style="width:100%;">Recent rounds will appear here.</div>';
+  const chipsHtml=recentRows.length ? recentRows.map((r,i)=>{
+    const rawDate=r.game_date||r.date||r.created_at; const d=rawDate?new Date(rawDate):null;
+    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const finish=num(r.place||r.finish||r.position); const dateText=d&&!Number.isNaN(d.getTime())?d.toLocaleDateString(undefined,{month:'short',day:'numeric'}):`Round ${i+1}`;
+    return `<div class="mgc-round-chip"><strong>${score||'—'}</strong><small>${finish?`#${finish} · `:''}${escapeHtml(dateText)}</small></div>`;
+  }).join('') : '';
+  const timelineHtml=recentRows.length ? recentRows.map(r=>{
+    const rawDate=r.game_date||r.date||r.created_at; const d=rawDate?new Date(rawDate):null;
+    const dateText=d&&!Number.isNaN(d.getTime())?d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'League round';
+    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const finish=num(r.place||r.finish||r.position); const won=num(r.money_won||r.winnings||r.payout);
+    return `<div class="mgc-profile-timeline-row"><span>${escapeHtml(dateText)}</span><span class="mgc-place-pill">${finish?`#${finish}`:'Played'}</span><span>${score?`Round score ${score}`:'Round recorded'}</span><strong class="money-col ${won>0?'mgc-money-positive':''}">${money(won)}</strong></div>`;
+  }).join('') : '<div class="award-empty">Your career timeline will grow as league history is recorded.</div>';
+  const awardHtml=playerAwards.length ? playerAwards.slice(0,6).map(a=>`<div class="mgc-profile-award"><div class="mgc-profile-award-icon">${a.icon||'🏆'}</div><strong>${escapeHtml(a.title||a.award_title||a.award_key||'Award')}</strong><small>${escapeHtml(a.description||a.detail||String(a.season||''))}</small></div>`).join('') : '<div class="award-empty" style="grid-column:1/-1;">Awards will appear as game history grows.</div>';
+  const bestSeason=career?.bestSeason;
+  const earningsPerRound=summary.games ? summary.winnings/summary.games : 0;
+
   mount.innerHTML=`
-    <div class="league-hero"><div class="league-kicker">Cliffside League Profile</div><div class="league-title">👤 ${escapeHtml(name)}</div><div class="league-subtitle">One continuous view of your season, history, statistics, recaps, and awards.</div>
-      <div class="profile-stat-grid">
-        <div class="profile-stat"><strong>${summary.games}</strong><small>Games</small></div>
-        <div class="profile-stat"><strong>${summary.wins}</strong><small>Wins</small></div>
-        <div class="profile-stat"><strong>${summary.average}</strong><small>Average</small></div>
-        <div class="profile-stat"><strong>${money(summary.winnings)}</strong><small>Won</small></div>
-        <div class="profile-stat"><strong>${seasonRank}</strong><small>Season Rank</small></div>
+    <div class="mgc-profile-shell">
+      <div class="mgc-profile-toolbar"><button class="mgc-profile-tool" onclick="showView('view-home')">← Dashboard</button><h2>MY PROFILE</h2><button class="mgc-profile-tool" onclick="openMyUniversalProfile()">View Player Card</button></div>
+      <div class="mgc-profile-body">
+        <div class="mgc-profile-hero">
+          <div class="mgc-profile-avatar">${escapeHtml(initials)}<span class="mgc-profile-verify">✓</span></div>
+          <div><h1 class="mgc-profile-name">${escapeHtml(name)}</h1><div class="mgc-profile-subtitle">Cliffside League Player</div>
+            <div class="mgc-profile-badges"><span class="mgc-profile-badge">⛳ ACTIVE PLAYER</span>${isCaptain?'<span class="mgc-profile-badge gold">♛ CAPTAIN</span>':''}${playerAwards.length?'<span class="mgc-profile-badge gold">🏆 AWARD WINNER</span>':''}</div>
+            <div class="mgc-profile-meta"><span>Member Since: ${escapeHtml(memberSince)}</span><span>Player ID: ${escapeHtml(String(permanentPlayer?.id||'—'))}</span><span>18-Hole Avg: <b style="color:#54e86f">${escapeHtml(String(stroke.avg))}</b></span></div>
+          </div>
+        </div>
+
+        <div class="mgc-profile-grid">
+          <article class="mgc-profile-card mgc-profile-snapshot"><div class="mgc-profile-card-title"><h3>QUICK SNAPSHOT</h3></div><div class="mgc-snapshot-grid">
+            <div class="mgc-snapshot-stat"><strong>${summary.games}</strong><small>Rounds Played</small></div><div class="mgc-snapshot-stat"><strong>${escapeHtml(String(stroke.avg))}</strong><small>18-Hole Average</small></div><div class="mgc-snapshot-stat"><strong class="gold">${money(summary.winnings)}</strong><small>Career Money Won</small></div>
+            <div class="mgc-snapshot-stat"><strong>${summary.wins}</strong><small>Weekly Wins</small></div><div class="mgc-snapshot-stat"><strong>${captainPct.toFixed(0)}%</strong><small>Captain Win %</small></div><div class="mgc-snapshot-stat"><strong class="gold">${seasonRank}</strong><small>Season Rank</small></div>
+          </div></article>
+          <article class="mgc-profile-card mgc-profile-rounds"><div class="mgc-profile-card-title"><h3>LAST 5 ROUNDS</h3></div><div class="mgc-mini-chart">${barHtml}</div><div class="mgc-round-chips">${chipsHtml}</div></article>
+
+          <article class="mgc-profile-card"><div class="mgc-profile-card-title"><h3>CAREER STATISTICS</h3></div><div class="mgc-profile-stat-list">
+            <div class="mgc-profile-stat-row"><span>Rounds Played</span><strong>${summary.games}</strong></div><div class="mgc-profile-stat-row"><span>18-Hole Average</span><strong class="green">${escapeHtml(String(stroke.avg))}</strong></div><div class="mgc-profile-stat-row"><span>Last Round</span><strong class="green">${escapeHtml(String(stroke.last))}</strong></div><div class="mgc-profile-stat-row"><span>Total Money Won</span><strong class="gold">${money(summary.winnings)}</strong></div><div class="mgc-profile-stat-row"><span>Weekly Wins</span><strong class="green">${summary.wins}</strong></div><div class="mgc-profile-stat-row"><span>Earnings / Round</span><strong>${money(earningsPerRound)}</strong></div>
+          </div></article>
+          <article class="mgc-profile-card"><div class="mgc-profile-card-title"><h3>CAPTAIN RECORD</h3><span style="color:#f4c85a">♛</span></div><div class="mgc-win-ring" style="background:conic-gradient(#54e86f 0 ${Math.max(0,Math.min(100,captainPct))}%,#27342d ${Math.max(0,Math.min(100,captainPct))}% 100%)"><div><strong>${captainPct.toFixed(0)}%</strong><small>Win Rate</small></div></div><div class="mgc-profile-stat-list"><div class="mgc-profile-stat-row"><span>Captain Starts</span><strong>${career?.captainGames||0}</strong></div><div class="mgc-profile-stat-row"><span>Captain Wins</span><strong class="green">${career?.captainWins||0}</strong></div><div class="mgc-profile-stat-row"><span>Status</span><strong>${isCaptain?'Captain':'Player'}</strong></div></div></article>
+          <article class="mgc-profile-card"><div class="mgc-profile-card-title"><h3>BEST SEASON</h3><span>🏆</span></div>${bestSeason?`<div style="text-align:center;color:#54e86f;font-size:32px;font-weight:950;margin:7px 0 13px;">${escapeHtml(String(bestSeason.season))}</div><div class="mgc-profile-stat-list"><div class="mgc-profile-stat-row"><span>Season Wins</span><strong>${bestSeason.wins}</strong></div><div class="mgc-profile-stat-row"><span>Season Money</span><strong class="gold">${money(bestSeason.money)}</strong></div></div>`:'<div class="award-empty">A best season will appear as league history grows.</div>'}</article>
+
+          <article class="mgc-profile-card span-5"><div class="mgc-profile-card-title"><h3>PERSONAL RECORDS</h3></div><div class="mgc-profile-stat-list"><div class="mgc-profile-stat-row"><span>🔥 Best Recorded Round</span><strong>${career?.bestRound==null?'—':Math.round(career.bestRound)}</strong></div><div class="mgc-profile-stat-row"><span>💰 Largest Payday</span><strong class="gold">${money(career?.biggestPayday||0)}</strong></div><div class="mgc-profile-stat-row"><span>🏆 Career Victories</span><strong>${summary.wins}</strong></div><div class="mgc-profile-stat-row"><span>📈 Season Rank</span><strong class="green">${seasonRank}</strong></div></div></article>
+          <article class="mgc-profile-card span-7"><div class="mgc-profile-card-title"><h3>ACHIEVEMENTS</h3><button class="mgc-profile-link" onclick="showTrophyRoom('${escapeHtml(name)}')">Full Trophy Room →</button></div><div class="mgc-profile-awards">${awardHtml}</div></article>
+          <article class="mgc-profile-card wide"><div class="mgc-profile-card-title"><h3>CAREER TIMELINE</h3><button class="mgc-profile-link" onclick="quickNavGo('history')">View Full History →</button></div><div class="mgc-profile-timeline">${timelineHtml}</div></article>
+        </div>
+        <div class="mgc-profile-footnote">Career data updates from your live league records. Your <b>18-hole average</b> comes from the existing player-average sheet.</div>
       </div>
-    </div>
-    <div class="league-section"><div class="league-section-head"><h3>🏆 Awards</h3><button class="league-link" onclick="showTrophyRoom('${escapeHtml(name)}')">View All →</button></div>
-      <div class="award-grid">${preview.length?preview.map(a=>awardCardHtml(a.icon||'🏆',a.title||a.award_title||a.award_key,playerNameFromRow(a),a.description||a.detail||String(a.season||''))).join(''):'<div class="award-empty" style="grid-column:1/-1;">Awards will appear as game history grows.</div>'}</div>
-    </div>
-    <div class="league-section"><div class="league-section-head"><h3>📖 Recent Rounds</h3><button class="league-link" onclick="quickNavGo('history')">View History →</button></div>${recentHtml}</div>
-    <div class="league-section"><div class="league-section-head"><h3>📊 League Connections</h3></div>
-      <div class="quick-nav-grid"><button class="quick-nav-item" onclick="openMyUniversalProfile()"><span class="quick-nav-icon">⭐</span><span>Universal Profile</span><small>Open your v2.0 player card</small></button><button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button><button class="quick-nav-item" onclick="quickNavGo('stats')"><span class="quick-nav-icon">📊</span><span>Statistics</span><small>View league averages</small></button><button class="quick-nav-item" onclick="quickNavGo('history')"><span class="quick-nav-icon">📖</span><span>History</span><small>View previous results</small></button><button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">📋</span><span>Recent Recap</span><small>Return to the latest round</small></button><button class="quick-nav-item" onclick="showTrophyRoom()"><span class="quick-nav-icon">🏆</span><span>Trophy Room</span><small>Season and career awards</small></button><button class="quick-nav-item" onclick="quickNavGo('hall')"><span class="quick-nav-icon">🏛️</span><span>Hall of Fame</span><small>Career player profiles</small></button></div>
     </div>`;
 }
+
 
 async function showTrophyRoom(playerFilter='') {
   showView('view-trophy-room');
