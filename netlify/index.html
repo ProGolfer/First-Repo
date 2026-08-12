@@ -5465,7 +5465,7 @@
 // the module can be deployed before optional award tables exist.
 // Core registration, teams, scoring, payouts and privacy untouched.
 // ======================================================
-const LEAGUE_HISTORY_TABLES = ['game_history', 'games_history', 'season_history'];
+const LEAGUE_HISTORY_TABLE = 'game_history';
 const SEASON_AWARDS_TABLE = 'season_awards';
 const SPECIAL_AWARDS_TABLE = 'special_awards';
 
@@ -5519,8 +5519,17 @@ async function loadLeagueModuleData() {
     appState.leaguePlayers = result?.error ? [] : (result.data || []);
   } catch (_) { appState.leaguePlayers = []; }
 
-  const historyResult = await readFirstAvailableTable(LEAGUE_HISTORY_TABLES);
-  appState.leagueHistory = historyResult.rows;
+  try {
+    const historyResult = await window.supabaseClient
+      .from(LEAGUE_HISTORY_TABLE)
+      .select('*')
+      .order('created_at', { ascending:false });
+    if (historyResult?.error) throw historyResult.error;
+    appState.leagueHistory = historyResult.data || [];
+  } catch (err) {
+    console.warn('game_history read failed', err);
+    appState.leagueHistory = [];
+  }
 
   try {
     const result = await window.supabaseClient.from(SEASON_AWARDS_TABLE).select('*').order('created_at',{ascending:false});
@@ -9008,13 +9017,16 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
     }
 
     async function resolveLeagueHistoryTable() {
-      for (const table of LEAGUE_HISTORY_TABLES) {
-        try {
-          const result = await window.supabaseClient.from(table).select('*').limit(1);
-          if (!result?.error) return table;
-        } catch (_) {}
+      const result = await window.supabaseClient
+        .from(LEAGUE_HISTORY_TABLE)
+        .select('id')
+        .limit(1);
+
+      if (result?.error) {
+        throw new Error(`game_history is not accessible: ${result.error.message || result.error}`);
       }
-      return '';
+
+      return LEAGUE_HISTORY_TABLE;
     }
 
     async function finalizeRoundToLeague(options = {}) {
