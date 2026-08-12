@@ -8369,8 +8369,8 @@ function renderVisibleFinishedStandings() {
         </div>
         ${renderMoneyTotalsMini({ front: row.front, back: row.back, total: row.total })}
         <div class="mgc-scorecard-row">
-          <span>${recap.payoutData.everyTeamTied ? 'Buy-in Refund' : 'Team Payout'}</span>
-          <strong class="green">${formatMoneyAmount(recap.payoutData.payouts.get(String(row.team.id))?.grandTotal || 0)}</strong>
+          <span>Team Payout</span>
+          <strong class="green">${allSubmitted ? 'Finalizing…' : 'Pending'}</strong>
         </div>
         ${players.map(p => `
           <div class="mgc-scorecard-row">
