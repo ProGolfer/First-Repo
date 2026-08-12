@@ -7,7 +7,7 @@
 
   <!--
     Golf Money Game
-    Version: 2.6 Official League Posting + Manual Admin Player
+    Version: 2.6.2 League History Fix + Manual Admin Player
 
     Current Stable Features:
     - Dashboard / Game Overview
@@ -5485,6 +5485,28 @@ async function readFirstAvailableTable(tableNames, orderColumn = 'created_at') {
 
 function currentLeagueSeason() { return String(new Date().getFullYear()); }
 function playerNameFromRow(row) { return row?.player_name || row?.name || row?.winner_name || row?.players?.name || 'Unknown Player'; }
+function historyStrokeScore(row) {
+  const candidates = [
+    row?.round_score, row?.stroke_score, row?.golf_score, row?.gross_score,
+    row?.total_strokes, row?.score
+  ];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  // Legacy fallback only. Older league rows may have stored the golf score here.
+  const legacy = Number(row?.total_score);
+  return Number.isFinite(legacy) && legacy > 50 ? legacy : 0;
+}
+function historyPointScore(row) {
+  const candidates = [row?.total_points, row?.points, row?.team_total, row?.total_score];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
+}
+
 function num(value) { const n=Number(value); return Number.isFinite(n) ? n : 0; }
 function money(value) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(num(value)); }
 
@@ -5533,7 +5555,7 @@ function calculatePlayerSummary(name, playerId = '') {
   const rows=historyRowsForPlayer(name, playerId);
   const games=rows.length;
   const wins=rows.filter(r => r.won===true || r.is_winner===true || num(r.place)===1 || String(r.result||'').toLowerCase()==='win').length;
-  const scoreValues=rows.map(r => num(r.total_score || r.score || r.round_score)).filter(v=>v>0);
+  const scoreValues=rows.map(historyStrokeScore).filter(v=>v>0);
   const average=scoreValues.length ? (scoreValues.reduce((a,b)=>a+b,0)/scoreValues.length).toFixed(1) : '—';
   const winnings=rows.reduce((sum,r)=>sum+num(r.money_won || r.winnings || r.payout),0);
   return {rows,games,wins,average,winnings};
@@ -5553,7 +5575,7 @@ function calculateAutomaticSeasonAwards() {
     item.games++;
     if(r.won===true || r.is_winner===true || num(r.place)===1 || String(r.result||'').toLowerCase()==='win') item.wins++;
     item.money += num(r.money_won || r.winnings || r.payout);
-    const score=num(r.total_score || r.score || r.round_score); if(score>0) item.scores.push(score);
+    const score=historyStrokeScore(r); if(score>0) item.scores.push(score);
     item.birdies += num(r.birdies);
     item.captainWins += num(r.captain_win || (r.was_captain && (r.won || r.is_winner)));
     byPlayer.set(name,item);
@@ -5880,22 +5902,55 @@ function hallPlayerAwards(player) {
 function hallCareerMetrics(player) {
   const rows=hallPlayerRows(player);
   const awards=hallPlayerAwards(player);
-  let points=0, scored=0, moneyWon=0, wins=0, frontWins=0, backWins=0, totalWins=0, captainGames=0, captainWins=0;
-  let bestRound=null, biggestPayday=0;
+  let points=0, strokeTotal=0, strokeRounds=0, moneyWon=0, wins=0, frontWins=0, backWins=0, totalWins=0, captainGames=0, captainWins=0;
+  let bestRound=null, bestPoints=null, biggestPayday=0;
   const seasons=new Map();
+
   rows.forEach(row=>{
-    const score=num(row.total_score||row.score||row.round_score||row.points);
-    if(score || String(row.total_score||row.score||row.round_score||row.points||'')==='0'){ points+=score; scored++; bestRound=bestRound==null?score:Math.max(bestRound,score); }
-    const payday=num(row.money_won||row.winnings||row.payout); moneyWon+=payday; biggestPayday=Math.max(biggestPayday,payday);
+    const pointValue=historyPointScore(row);
+    points += pointValue;
+    bestPoints = bestPoints==null ? pointValue : Math.max(bestPoints, pointValue);
+
+    const stroke=historyStrokeScore(row);
+    if(stroke>0){
+      strokeTotal += stroke;
+      strokeRounds++;
+      bestRound = bestRound==null ? stroke : Math.min(bestRound, stroke);
+    }
+
+    const payday=num(row.money_won||row.winnings||row.payout);
+    moneyWon+=payday;
+    biggestPayday=Math.max(biggestPayday,payday);
+
     const finish=num(row.place||row.finish||row.position);
-    const won=row.won===true||row.is_winner===true||finish===1||String(row.result||'').toLowerCase()==='win'; if(won) wins++;
-    frontWins+=num(row.front_win||row.front_wins||row.won_front); backWins+=num(row.back_win||row.back_wins||row.won_back); totalWins+=num(row.total_win||row.total_wins||row.won_total);
-    const isCaptain=row.is_captain===true||row.captain===true||String(row.role||'').toLowerCase()==='captain'; if(isCaptain){ captainGames++; if(won||row.captain_win===true) captainWins++; }
-    const d=seasonRowDate(row); const season=String(row.season||d?.getFullYear()||'Unknown');
-    const sm=seasons.get(season)||{season,games:0,points:0,money:0,wins:0}; sm.games++; sm.points+=score; sm.money+=payday; if(won)sm.wins++; seasons.set(season,sm);
+    const won=row.won===true||row.is_winner===true||finish===1||String(row.result||'').toLowerCase()==='win';
+    if(won) wins++;
+
+    frontWins+=num(row.front_win||row.front_wins||row.won_front);
+    backWins+=num(row.back_win||row.back_wins||row.won_back);
+    totalWins+=num(row.total_win||row.total_wins||row.won_total);
+
+    const isCaptain=row.is_captain===true||row.captain===true||row.was_captain===true||String(row.role||'').toLowerCase()==='captain';
+    if(isCaptain){ captainGames++; if(won||row.captain_win===true||num(row.captain_win)===1) captainWins++; }
+
+    const d=seasonRowDate(row);
+    const season=String(row.season||d?.getFullYear()||'Unknown');
+    const sm=seasons.get(season)||{season,games:0,points:0,money:0,wins:0};
+    sm.games++;
+    sm.points+=pointValue;
+    sm.money+=payday;
+    if(won) sm.wins++;
+    seasons.set(season,sm);
   });
+
   const bestSeason=[...seasons.values()].sort((a,b)=>b.wins-a.wins||b.money-a.money||b.points-a.points)[0];
-  return {rows,awards,games:rows.length,points,average:scored?(points/scored):0,moneyWon,wins,frontWins,backWins,totalWins,captainGames,captainWins,captainPct:captainGames?(captainWins/captainGames*100):0,bestRound,biggestPayday,bestSeason};
+  return {
+    rows,awards,games:rows.length,points,
+    average:strokeRounds ? (strokeTotal/strokeRounds) : 0,
+    moneyWon,wins,frontWins,backWins,totalWins,captainGames,captainWins,
+    captainPct:captainGames?(captainWins/captainGames*100):0,
+    bestRound,bestPoints,biggestPayday,bestSeason
+  };
 }
 
 function renderHallOfFame(playerId='') {
@@ -5925,7 +5980,7 @@ function renderHallPlayerProfile(player){
   const awards=m.awards.slice().sort((a,b)=>new Date(b.awarded_at||b.created_at||0)-new Date(a.awarded_at||a.created_at||0));
   const timeline=m.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0)).slice(0,20).map(row=>{
     const d=row.game_date||row.date||row.created_at; const dateText=d?new Date(d).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'League round';
-    const score=num(row.total_score||row.score||row.round_score||row.points); const payday=num(row.money_won||row.winnings||row.payout); const finish=num(row.place||row.finish||row.position);
+    const score=historyStrokeScore(row); const payday=num(row.money_won||row.winnings||row.payout); const finish=num(row.place||row.finish||row.position);
     return `<div class="hof-timeline-row"><div class="hof-timeline-date">${escapeHtml(dateText)}</div><div><strong>${finish?`Finish #${finish}`:'Completed Round'}</strong><div class="muted" style="font-size:12px;margin-top:3px;">${score||'—'} points</div></div><div style="font-weight:950;color:#54e86f;">${money(payday)}</div></div>`;
   }).join('');
   const awardHtml=awards.length?awards.map(a=>awardCardHtml(a.icon||'🏆',a.title||a.award_title||a.award_key,player.name,a.description||a.detail||String(a.season||''))).join(''):'<div class="award-empty" style="grid-column:1/-1;">No career awards recorded yet.</div>';
@@ -5934,7 +5989,7 @@ function renderHallPlayerProfile(player){
   <div class="season-grid"><div class="season-panel"><div class="league-section-head"><h3>📊 Career Statistics</h3><span class="green">All Time</span></div><div class="hof-record-grid"><div class="hof-record"><small>Total Points</small><strong>${Math.round(m.points)}</strong></div><div class="hof-record"><small>Front Wins</small><strong>${m.frontWins}</strong></div><div class="hof-record"><small>Back Wins</small><strong>${m.backWins}</strong></div><div class="hof-record"><small>Total Wins</small><strong>${m.totalWins}</strong></div><div class="hof-record"><small>Best Round</small><strong>${m.bestRound==null?'—':Math.round(m.bestRound)}</strong></div><div class="hof-record"><small>Biggest Payday</small><strong>${money(m.biggestPayday)}</strong></div></div></div>
   <div class="season-panel"><div class="league-section-head"><h3>👨‍✈️ Captain Record</h3><span class="green">Leadership</span></div>${recordItem('📅','Captain Starts',player.name,m.captainGames,'starts')}${recordItem('🏆','Captain Victories',player.name,m.captainWins,'wins')}${recordItem('📈','Captain Win %',player.name,`${m.captainPct.toFixed(0)}%`,'career')}</div>
   <div class="season-panel"><div class="league-section-head"><h3>🏅 Best Season</h3><span class="green">Career Peak</span></div>${bs?`${recordItem('📅','Season',player.name,bs.season,'best season')}${recordItem('🥇','Season Wins',player.name,bs.wins,'victories')}${recordItem('💰','Season Money',player.name,money(bs.money),'winnings')}`:'<div class="award-empty">A best season will appear after league history is recorded.</div>'}</div>
-  <div class="season-panel"><div class="league-section-head"><h3>🎯 Personal Records</h3><span class="green">Career Marks</span></div>${recordItem('🔥','Highest Points Round',player.name,m.bestRound==null?'—':Math.round(m.bestRound),'points')}${recordItem('💵','Largest Payday',player.name,money(m.biggestPayday),'one round')}${recordItem('🏆','Career Victories',player.name,m.wins,'weekly wins')}</div></div>
+  <div class="season-panel"><div class="league-section-head"><h3>🎯 Personal Records</h3><span class="green">Career Marks</span></div>${recordItem('🔥','Highest Points Round',player.name,m.bestPoints==null?'—':Math.round(m.bestPoints),'points')}${recordItem('💵','Largest Payday',player.name,money(m.biggestPayday),'one round')}${recordItem('🏆','Career Victories',player.name,m.wins,'weekly wins')}</div></div>
   <div class="league-section"><div class="league-section-head"><h3>🏆 Trophy Collection</h3><button class="league-link" onclick="showTrophyRoom('${escapeHtml(player.name)}')">Open Trophy Room →</button></div><div class="award-grid">${awardHtml}</div></div>
   <div class="league-section"><div class="league-section-head"><h3>📖 Career Timeline</h3><span class="green">Latest 20</span></div>${timeline||'<div class="award-empty">Completed rounds will create this career timeline.</div>'}</div>`;
 }
@@ -6027,7 +6082,7 @@ function renderUniversalPlayerProfile(){
   const player=universalPlayerById(appState.universalProfilePlayerId); if(!player)return;
   const m=hallCareerMetrics(player); const profile=getUniversalProfileData(player);
   const rows=m.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0));
-  const last5=rows.slice(0,5).map(r=>num(r.total_score||r.score||r.round_score||r.points));
+  const last5=rows.slice(0,5).map(historyStrokeScore);
   const scored=last5.filter(v=>Number.isFinite(v)); const seasonBest=scored.length?Math.max(...scored):null;
   const streak=universalCurrentStreak(rows); const rank=universalRank(player);
   const isCaptain=!!(player.is_captain||player.captain||player.role==='captain');
@@ -6106,24 +6161,24 @@ function renderMyProfile() {
   const captainPct=career?.captainPct || 0;
   const memberSince=permanentPlayer?.created_at ? new Date(permanentPlayer.created_at).toLocaleDateString(undefined,{month:'long',year:'numeric'}) : 'League Member';
   const recentRows=summary.rows.slice().sort((a,b)=>new Date(b.game_date||b.date||b.created_at||0)-new Date(a.game_date||a.date||a.created_at||0)).slice(0,5);
-  const recentScores=recentRows.map(r=>num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score)).filter(v=>v>0);
+  const recentScores=recentRows.map(r=>num(r.golf_score||r.stroke_score||r.round_score||r.gross_score||r.total_strokes||r.score||r.total_score)).filter(v=>v>0);
   const chartScores=recentScores.length ? recentScores : [];
   const minScore=chartScores.length?Math.min(...chartScores):0, maxScore=chartScores.length?Math.max(...chartScores):0;
   const barHtml=recentRows.length ? recentRows.map((r,i)=>{
-    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const score=num(r.golf_score||r.stroke_score||r.round_score||r.gross_score||r.total_strokes||r.score||r.total_score);
     const range=Math.max(1,maxScore-minScore); const pct=score?Math.max(28,Math.min(88,82-((score-minScore)/range)*46)):28;
     return `<div class="mgc-mini-bar" data-score="${score||'—'}" style="height:${pct}%"></div>`;
   }).join('') : '<div class="award-empty" style="width:100%;">Recent rounds will appear here.</div>';
   const chipsHtml=recentRows.length ? recentRows.map((r,i)=>{
     const rawDate=r.game_date||r.date||r.created_at; const d=rawDate?new Date(rawDate):null;
-    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const score=num(r.golf_score||r.stroke_score||r.round_score||r.gross_score||r.total_strokes||r.score||r.total_score);
     const finish=num(r.place||r.finish||r.position); const dateText=d&&!Number.isNaN(d.getTime())?d.toLocaleDateString(undefined,{month:'short',day:'numeric'}):`Round ${i+1}`;
     return `<div class="mgc-round-chip"><strong>${score||'—'}</strong><small>${finish?`#${finish} · `:''}${escapeHtml(dateText)}</small></div>`;
   }).join('') : '';
   const timelineHtml=recentRows.length ? recentRows.map(r=>{
     const rawDate=r.game_date||r.date||r.created_at; const d=rawDate?new Date(rawDate):null;
     const dateText=d&&!Number.isNaN(d.getTime())?d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'League round';
-    const score=num(r.golf_score||r.stroke_score||r.gross_score||r.total_strokes||r.total_score||r.score||r.round_score);
+    const score=num(r.golf_score||r.stroke_score||r.round_score||r.gross_score||r.total_strokes||r.score||r.total_score);
     const finish=num(r.place||r.finish||r.position); const won=num(r.money_won||r.winnings||r.payout);
     return `<div class="mgc-profile-timeline-row"><span>${escapeHtml(dateText)}</span><span class="mgc-place-pill">${finish?`#${finish}`:'Played'}</span><span>${score?`Round score ${score}`:'Round recorded'}</span><strong class="money-col ${won>0?'mgc-money-positive':''}">${money(won)}</strong></div>`;
   }).join('') : '<div class="award-empty">Your career timeline will grow as league history is recorded.</div>';
@@ -8704,15 +8759,19 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
       return Number.isNaN(d.getTime()) ? String(raw).slice(0, 10) : roundDateKey(d);
     }
 
-    function hasOfficialHistoryForPlayer(player, dateKey) {
+    function findOfficialHistoryRowForPlayer(player, dateKey) {
       const pid = String(player?.league_player_id || '');
       const pname = cleanName(player?.name || '');
-      return (appState.leagueHistory || []).some(row => {
+      return (appState.leagueHistory || []).find(row => {
         if (historyRowDateKey(row) !== dateKey) return false;
         const rowPid = String(row?.league_player_id || row?.player_id || row?.player?.id || '');
         const rowName = cleanName(playerNameFromRow(row));
         return (pid && rowPid && pid === rowPid) || (pname && rowName === pname);
-      });
+      }) || null;
+    }
+
+    function hasOfficialHistoryForPlayer(player, dateKey) {
+      return !!findOfficialHistoryRowForPlayer(player, dateKey);
     }
 
     async function ensureLeaguePlayerForAdmin(name) {
@@ -8930,6 +8989,24 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
       throw new Error(`Could not match the ${table} history schema.`);
     }
 
+
+    async function updateAdaptiveHistoryRow(table, rowId, fullPayload) {
+      const payload = { ...fullPayload };
+      delete payload.created_at;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const result = await window.supabaseClient.from(table).update(payload).eq('id', rowId).select('*').single();
+        if (!result?.error) return result.data || { id: rowId, ...payload };
+
+        const badColumn = unknownColumnFromError(result.error);
+        if (badColumn && Object.prototype.hasOwnProperty.call(payload, badColumn)) {
+          delete payload[badColumn];
+          continue;
+        }
+        throw result.error;
+      }
+      throw new Error(`Could not update the ${table} history row.`);
+    }
+
     async function resolveLeagueHistoryTable() {
       for (const table of LEAGUE_HISTORY_TABLES) {
         try {
@@ -8966,7 +9043,8 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
         if (!table) throw new Error('No league history table was found in Supabase.');
 
         let added = 0;
-        let skipped = 0;
+        let updated = 0;
+        let unchanged = 0;
         const finalizedBy = automatic ? 'Auto Finalize' : 'Admin';
 
         for (const item of rows) {
@@ -8981,15 +9059,21 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
             } catch (_) {}
           }
 
-          if (hasOfficialHistoryForPlayer(item.player, dateKey)) {
-            skipped++;
-            continue;
-          }
-
           const payload = buildCanonicalHistoryPayload(item, dateKey, finalizedBy);
-          const inserted = await insertAdaptiveHistoryRow(table, payload);
-          appState.leagueHistory = [inserted, ...(appState.leagueHistory || [])];
-          added++;
+          const existing = findOfficialHistoryRowForPlayer(item.player, dateKey);
+
+          if (existing?.id) {
+            const saved = await updateAdaptiveHistoryRow(table, existing.id, payload);
+            appState.leagueHistory = (appState.leagueHistory || []).map(r => String(r.id) === String(existing.id) ? saved : r);
+            updated++;
+          } else if (existing) {
+            // Schema has no usable id in the loaded row. Do not create a duplicate.
+            unchanged++;
+          } else {
+            const inserted = await insertAdaptiveHistoryRow(table, payload);
+            appState.leagueHistory = [inserted, ...(appState.leagueHistory || [])];
+            added++;
+          }
         }
 
         markRoundLocallyFinalized(dateKey);
@@ -8997,7 +9081,7 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
         await recordActivity(
           'results',
           automatic ? 'Round Auto-Finalized' : 'Round Finalized',
-          `${dateKey}: ${added} player result${added === 1 ? '' : 's'} posted to league history${skipped ? `, ${skipped} already existed` : ''}.`,
+          `${dateKey}: ${added} new, ${updated} updated${unchanged ? `, ${unchanged} unchanged` : ''} in ${table}.`,
           { icon:'🏁', actor:automatic ? 'System' : 'Admin' }
         );
 
@@ -9005,7 +9089,7 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
         updateRoundFinalizeAdmin();
 
         if (!automatic) {
-          alert(`Round is official.\n\n${added} player result${added === 1 ? '' : 's'} posted to league history.${skipped ? `\n${skipped} already existed and were not duplicated.` : ''}`);
+          alert(`Round is official.\n\nLeague table: ${table}\nNew player rows: ${added}\nUpdated player rows: ${updated}${unchanged ? `\nUnchanged rows: ${unchanged}` : ''}\n\nProfiles and league stats will now read the official round correctly.`);
         }
         return true;
       } catch (err) {
@@ -9028,11 +9112,11 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
       const dateKey = roundDateKey();
       const finalized = isRoundLocallyFinalized(dateKey);
 
-      if (finalized) {
-        btn.disabled = true;
-        btn.textContent = '✅ Round Posted to League';
+      if (finalized && complete) {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh Official League Results';
         badge.textContent = 'Official';
-        text.textContent = 'Today’s final results have been posted to permanent league history.';
+        text.textContent = 'Today’s round is posted. If you corrected a score or are testing, press Refresh to update today’s existing league rows without creating duplicates.';
         return;
       }
 
