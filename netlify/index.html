@@ -6974,14 +6974,24 @@ function copyCaptainAccessLink(encodedUrl) {
   });
 }
 
-function showCaptainTeamsPage() {
+async function showCaptainTeamsPage() {
   if (!canAccessCaptainPage()) {
     alert('🔒 Captains Only is locked. Admin must show the captain QR code, or use Admin Override.');
     return;
   }
 
-  renderCaptainTeamsPage();
   showView('view-captain-teams');
+
+  const list = document.getElementById('captain-team-assignment-list');
+  if (list) list.innerHTML = '<div class="empty-state">Loading current players and teams...</div>';
+
+  try {
+    await loadAllData();
+  } catch (err) {
+    console.warn('Captain page refresh failed', err);
+  }
+
+  renderCaptainTeamsPage();
 }
 
 function getCaptainTeamTargets(activeTeams = getActiveTeams(), players = getApprovedPlayers()) {
@@ -7039,23 +7049,47 @@ function renderCaptainTeamsPage() {
 
   let draftRows = '';
 
-  if (!availablePlayers.length) {
-    draftRows = '<div class="empty-state">No available players left to pick.</div>';
-  } else if (!activeTeams.length) {
-    draftRows = '<div class="empty-state">No teams are available. Ask admin to assign captains first.</div>';
+  if (!activeTeams.length) {
+    draftRows = `<div class="empty-state">No active teams are available yet.<br><span class="muted">Admin must set the active team count and assign captains first.</span></div>`;
+  } else if (!availablePlayers.length) {
+    const unassignedApproved = approvedPlayers.filter(p => !p.team);
+    draftRows = unassignedApproved.length
+      ? `<div class="empty-state">${unassignedApproved.length} unassigned player${unassignedApproved.length === 1 ? '' : 's'} found, but they are currently marked as captains.<br><span class="muted">Only non-captains appear in the player draft list.</span></div>`
+      : '<div class="empty-state">No available players left to pick. Everyone is already assigned to a team.</div>';
   } else {
     draftRows = availablePlayers.map(p => {
-      const buttons = activeTeams.map(t => {
+      const options = activeTeams.map(t => {
         const teamPlayers = getTeamPlayers(t.id);
         const target = getCaptainTeamTarget(t.id, teamTargets);
         const isFull = teamPlayers.length >= target;
         const isPreferred = accessTeam && String(accessTeam.id) === String(t.id);
-        const label = `${isPreferred ? '★ ' : ''}+ ${getTeamName(t.id).replace('Team ', 'T')}`;
-
-        return isFull
-          ? `<button class="btn btn-secondary btn-small" disabled style="opacity:.45;cursor:not-allowed;">${getTeamName(t.id).replace('Team ', 'T')} Full</button>`
-          : `<button class="btn btn-primary btn-small" onclick="captainSubmitPlayerToTeam('${p.id}', '${t.id}')">${label}</button>`;
+        const label = `${isPreferred ? '★ ' : ''}${getTeamName(t.id)}${isFull ? ' — Full' : ` — ${teamPlayers.length}/${target}`}`;
+        return `<option value="${t.id}" ${isFull ? 'disabled' : ''}>${escapeHtml(label)}</option>`;
       }).join('');
+
+      const preferredOpenTeam = activeTeams.find(t => {
+        const teamPlayers = getTeamPlayers(t.id);
+        const target = getCaptainTeamTarget(t.id, teamTargets);
+        return accessTeam && String(accessTeam.id) === String(t.id) && teamPlayers.length < target;
+      });
+
+      return `
+        <div class="player-item" style="display:block;background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;">
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:900;color:#f8fafc;">👤 ${escapeHtml(p.name)}</div>
+            <div class="muted">Available player</div>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;">
+            <select id="captain-pick-team-${p.id}" style="width:100%;min-width:0;padding:12px;border-radius:10px;border:1px solid rgba(148,163,184,.35);background:#071321;color:#fff;font-weight:850;">
+              <option value="">-- Select Team --</option>
+              ${options}
+            </select>
+            <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:12px 14px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+          </div>
+          ${preferredOpenTeam ? `<div class="muted" style="font-size:12px;margin-top:7px;">★ Your team: ${escapeHtml(getTeamName(preferredOpenTeam.id))}</div>` : ''}
+        </div>
+      `;
+    }).join('');
 
       return `
         <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
