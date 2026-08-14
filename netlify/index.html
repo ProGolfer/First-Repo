@@ -3747,6 +3747,7 @@
           <button class="admin-side-btn" onclick="switchAdminTab('tools', event)"><span>🔔</span><span>Notifications & Backup</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>System</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('statistics', event)"><span>📈</span><span>Statistics</span></button>
+          <button class="admin-side-btn" onclick="switchAdminTab('league-records', event)"><span>📖</span><span>League Records</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('awards', event)"><span>🏅</span><span>Awards</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity</span></button>
         </div>
@@ -4207,6 +4208,42 @@
             <div class="admin-section">
               <div class="players-header"><h3>Today’s Team Snapshot</h3><span class="players-count" id="stats-team-status">0 Teams</span></div>
               <div id="stats-team-table" class="stats-empty">No teams available yet.</div>
+            </div>
+          </div>
+
+          <div id="admin-league-records" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>League Records</h2>
+                <p>Review, edit, or remove finalized league history without deleting permanent players.</p>
+              </div>
+            </div>
+
+            <div class="approval-note">
+              <div class="title">📖 Official History Editor</div>
+              <div>Use this for test cleanup or score/result corrections after a round has been finalized.</div>
+            </div>
+
+            <div class="admin-section">
+              <div class="form-group">
+                <label>Round Date</label>
+                <select id="league-record-date-filter" onchange="renderAdminLeagueRecords()">
+                  <option value="">All finalized rounds</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Player Search</label>
+                <input type="text" id="league-record-search" placeholder="Search player name" oninput="renderAdminLeagueRecords()">
+              </div>
+
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+                <button class="btn btn-secondary" onclick="loadAdminLeagueRecords()">🔄 Refresh Records</button>
+                <button class="btn btn-danger" id="league-record-delete-round-btn" onclick="deleteSelectedLeagueRound()" disabled>🗑 Delete Selected Round</button>
+              </div>
+
+              <div id="league-record-admin-status" class="muted" style="font-weight:800;margin-bottom:10px;">Loading league history...</div>
+              <div id="league-record-admin-list"></div>
             </div>
           </div>
 
@@ -9167,6 +9204,148 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
     }
 
 
+
+    // ======================================================
+    // ADMIN LEAGUE RECORDS v2.6.5
+    // ======================================================
+
+    async function loadAdminLeagueRecords() {
+      const status = document.getElementById('league-record-admin-status');
+      if (status) status.textContent = 'Loading league history...';
+      try {
+        const result = await window.supabaseClient
+          .from(LEAGUE_HISTORY_TABLE)
+          .select('*')
+          .order('game_date', { ascending:false })
+          .order('player_name', { ascending:true });
+        if (result?.error) throw result.error;
+        appState.leagueHistory = result.data || [];
+        populateLeagueRecordDateFilter();
+        renderAdminLeagueRecords();
+      } catch (err) {
+        console.error('loadAdminLeagueRecords error', err);
+        if (status) status.textContent = `Could not load league records: ${formatError(err)}`;
+      }
+    }
+
+    function populateLeagueRecordDateFilter() {
+      const select = document.getElementById('league-record-date-filter');
+      if (!select) return;
+      const current = select.value;
+      const dates = [...new Set((appState.leagueHistory || []).map(historyRowDateKey).filter(Boolean))].sort().reverse();
+      select.innerHTML = `<option value="">All finalized rounds</option>` + dates.map(d => `<option value="${d}">${d}</option>`).join('');
+      if ([...select.options].some(o => o.value === current)) select.value = current;
+    }
+
+    function leagueRecordField(row, key, fallback='') {
+      const value = row?.[key];
+      return value === null || value === undefined ? fallback : value;
+    }
+
+    function renderAdminLeagueRecords() {
+      const mount = document.getElementById('league-record-admin-list');
+      const status = document.getElementById('league-record-admin-status');
+      const dateFilter = document.getElementById('league-record-date-filter')?.value || '';
+      const search = cleanName(document.getElementById('league-record-search')?.value || '');
+      const deleteRoundBtn = document.getElementById('league-record-delete-round-btn');
+      if (!mount) return;
+
+      let rows = (appState.leagueHistory || []).slice();
+      if (dateFilter) rows = rows.filter(r => historyRowDateKey(r) === dateFilter);
+      if (search) rows = rows.filter(r => cleanName(playerNameFromRow(r)).includes(search));
+      if (deleteRoundBtn) deleteRoundBtn.disabled = !dateFilter;
+
+      if (status) status.textContent = rows.length ? `${rows.length} official player record${rows.length === 1 ? '' : 's'}${dateFilter ? ` for ${dateFilter}` : ''}.` : 'No matching official league records.';
+      if (!rows.length) {
+        mount.innerHTML = '<div class="award-empty">No finalized league records match this filter.</div>';
+        return;
+      }
+
+      const grouped = new Map();
+      rows.forEach(row => {
+        const date = historyRowDateKey(row) || 'Unknown Date';
+        if (!grouped.has(date)) grouped.set(date, []);
+        grouped.get(date).push(row);
+      });
+
+      mount.innerHTML = [...grouped.entries()].map(([date, dateRows]) => `
+        <div class="league-section" style="margin-bottom:12px;">
+          <div class="league-section-head"><h3>📅 ${escapeHtml(date)}</h3><span class="green">${dateRows.length} player${dateRows.length === 1 ? '' : 's'}</span></div>
+          ${dateRows.map(row => `
+            <div class="player-item" style="display:grid;grid-template-columns:minmax(140px,1.3fr) repeat(5,minmax(70px,.7fr)) auto;gap:8px;align-items:center;">
+              <div><strong>${escapeHtml(playerNameFromRow(row))}</strong><div class="muted" style="font-size:12px;">${escapeHtml(leagueRecordField(row,'team_name',''))}</div></div>
+              <input aria-label="18-hole score" type="number" id="lr-round-${row.id}" value="${leagueRecordField(row,'round_score','')}" placeholder="Score">
+              <input aria-label="Points" type="number" id="lr-points-${row.id}" value="${leagueRecordField(row,'total_points','')}" placeholder="Pts">
+              <input aria-label="Money won" type="number" step="0.01" id="lr-money-${row.id}" value="${leagueRecordField(row,'money_won',0)}" placeholder="$">
+              <input aria-label="Finish" type="number" id="lr-place-${row.id}" value="${leagueRecordField(row,'place','')}" placeholder="Place">
+              <input aria-label="Total win" type="number" min="0" max="1" id="lr-totalwin-${row.id}" value="${num(leagueRecordField(row,'total_win',0)) ? 1 : 0}" placeholder="Win">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-small btn-primary" onclick="saveLeagueRecordEdit('${row.id}')">Save</button><button class="btn btn-small btn-danger" onclick="deleteLeagueRecord('${row.id}','${escapeHtml(playerNameFromRow(row))}','${escapeHtml(date)}')">Delete</button></div>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+    async function saveLeagueRecordEdit(rowId) {
+      try {
+        const roundScoreRaw = document.getElementById(`lr-round-${rowId}`)?.value ?? '';
+        const pointsRaw = document.getElementById(`lr-points-${rowId}`)?.value ?? '';
+        const moneyRaw = document.getElementById(`lr-money-${rowId}`)?.value ?? '';
+        const placeRaw = document.getElementById(`lr-place-${rowId}`)?.value ?? '';
+        const totalWinRaw = document.getElementById(`lr-totalwin-${rowId}`)?.value ?? '';
+        const payload = {
+          round_score: roundScoreRaw === '' ? null : Number(roundScoreRaw),
+          stroke_score: roundScoreRaw === '' ? null : Number(roundScoreRaw),
+          total_points: pointsRaw === '' ? null : Number(pointsRaw),
+          points: pointsRaw === '' ? null : Number(pointsRaw),
+          money_won: moneyRaw === '' ? 0 : Number(moneyRaw),
+          winnings: moneyRaw === '' ? 0 : Number(moneyRaw),
+          payout: moneyRaw === '' ? 0 : Number(moneyRaw),
+          place: placeRaw === '' ? null : Number(placeRaw),
+          finish: placeRaw === '' ? null : Number(placeRaw),
+          position: placeRaw === '' ? null : Number(placeRaw),
+          total_win: totalWinRaw === '' ? 0 : Number(totalWinRaw) ? 1 : 0,
+          finalized_by: 'Admin Edit', finalized_at: new Date().toISOString()
+        };
+        const result = await window.supabaseClient.from(LEAGUE_HISTORY_TABLE).update(payload).eq('id', rowId).select('*').single();
+        if (result?.error) throw result.error;
+        await recordActivity('results','League Record Edited',`${playerNameFromRow(result.data || {})} official league record was edited by Admin.`,{ icon:'✏️', actor:'Admin' });
+        await loadAdminLeagueRecords();
+        showToast?.('League record updated.','success');
+      } catch (err) {
+        console.error('saveLeagueRecordEdit error', err);
+        alert(`Could not update league record: ${formatError(err)}`);
+      }
+    }
+
+    async function deleteLeagueRecord(rowId, playerName, date) {
+      if (!confirm(`Delete ${playerName}'s official league record for ${date}?\n\nThis does NOT delete the permanent player profile.`)) return;
+      try {
+        const result = await window.supabaseClient.from(LEAGUE_HISTORY_TABLE).delete().eq('id', rowId);
+        if (result?.error) throw result.error;
+        await recordActivity('results','League Record Deleted',`${playerName}'s ${date} league record was deleted by Admin.`,{ icon:'🗑️', actor:'Admin' });
+        await loadAdminLeagueRecords();
+      } catch (err) {
+        console.error('deleteLeagueRecord error', err);
+        alert(`Could not delete league record: ${formatError(err)}`);
+      }
+    }
+
+    async function deleteSelectedLeagueRound() {
+      const date = document.getElementById('league-record-date-filter')?.value || '';
+      if (!date) { alert('Select a round date first.'); return; }
+      if (!confirm(`Delete ALL official league records for ${date}?\n\nThis removes the test/finalized round from league history but keeps every permanent player.`)) return;
+      try {
+        const result = await window.supabaseClient.from(LEAGUE_HISTORY_TABLE).delete().eq('game_date', date);
+        if (result?.error) throw result.error;
+        localStorage.removeItem(roundFinalizedLocalKey(date));
+        await recordActivity('results','League Round Deleted',`All official league records for ${date} were deleted by Admin.`,{ icon:'🗑️', actor:'Admin' });
+        await loadAdminLeagueRecords();
+        updateRoundFinalizeAdmin();
+      } catch (err) {
+        console.error('deleteSelectedLeagueRound error', err);
+        alert(`Could not delete league round: ${formatError(err)}`);
+      }
+    }
+
     // ADMIN CONTROL CENTER
 
     // ======================================================
@@ -10697,6 +10876,7 @@ async function toggleCaptain(id, makeCaptain) {
       if(t==='settings') updateSettingsView();
       if(t==='tools') renderSystemTools();
       if(t==='statistics') loadStatisticsModule();
+      if(t==='league-records') loadAdminLeagueRecords();
       if(t==='awards') renderAdminAwards();
     }
 
