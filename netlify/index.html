@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.7 — Cross-Device Team Sync</title>
+  <title>Money Game Central v2.6.7.1 — Startup Connection Fix</title>
 
   <!--
     Golf Money Game
@@ -7044,8 +7044,8 @@ function renderCaptainTeamsPage() {
   const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
 
   const unlockNote = isAdminOverride
-    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Select a team and tap Add.`
-    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Select a team and tap Add.`;
+    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`
+    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`;
 
   const getTeamPlayers = (teamId) => approvedPlayers
     .filter(p => String(p.team || '') === String(teamId))
@@ -9863,88 +9863,36 @@ async function toggleCaptain(id, makeCaptain) {
 
       appState.teamMode = modeSelect?.value || appState.teamMode || 'auto';
       appState.selectedNumTeams = parseInt(numTeamsSelect?.value || appState.selectedNumTeams || appState.numTeams || 4, 10);
-
-      if (appState.teamMode === 'manual') {
-        appState.numTeams = appState.selectedNumTeams;
-      } else {
-        appState.numTeams = getAutoTeamCount();
-      }
+      appState.numTeams = appState.teamMode === 'manual'
+        ? appState.selectedNumTeams
+        : getAutoTeamCount();
 
       try {
         const result = await db(
-          window.supabaseClient
-            .from('settings')
-            .update({
-              team_mode: appState.teamMode,
-              num_teams: appState.numTeams,
-              teams_submitted: false
-            })
-            .eq('key', SETTINGS_KEY)
-            .select(),
-          'Save cross-device team settings'
+          window.supabaseClient.from('settings').update({
+            team_mode: appState.teamMode,
+            num_teams: appState.numTeams,
+            teams_submitted: false
+          }).eq('key', SETTINGS_KEY).select(),
+          'Save team settings for all devices'
         );
-
-        if (result.data?.[0]) {
-          appState.settings = { ...appState.settings, ...result.data[0] };
-        }
-
-        const allowedTeamIds = new Set(getActiveTeams().map(t => String(t.id)));
-
-        const outOfRangePlayers = appState.players.filter(p => p.team && !allowedTeamIds.has(String(p.team)));
-        for (const player of outOfRangePlayers) {
-          await db(
-            window.supabaseClient.from('players').update({ team: null }).eq('id', player.id),
-            'Clear inactive player team'
-          );
-        }
-
-        const outOfRangeTeams = appState.teams.filter(t => !allowedTeamIds.has(String(t.id)) && t.captain_id);
-        for (const team of outOfRangeTeams) {
-          await db(
-            window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', team.id),
-            'Clear inactive team captain'
-          );
-        }
+        if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
 
         await loadAllData();
-        updateSettingsView();
         renderCaptainTeamsPage();
-
-        alert(`Team settings saved for ALL devices: ${appState.teamMode === 'manual' ? 'Manual' : 'Auto'} mode, ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
+        alert(`Team settings synced to all devices: ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
       } catch (err) {
         alert(`Could not save team settings: ${formatError(err)}`);
       }
     }
 
-    async function submitTeams() {
-      try {
-        appState.teamsSubmitted = true;
-
-        const result = await db(
-          window.supabaseClient
-            .from('settings')
-            .update({
-              team_mode: appState.teamMode || 'auto',
-              num_teams: getActiveTeamCount(),
-              teams_submitted: true
-            })
-            .eq('key', SETTINGS_KEY)
-            .select(),
-          'Publish teams to all devices'
-        );
-
-        if (result.data?.[0]) {
-          appState.settings = { ...appState.settings, ...result.data[0] };
-        }
-
-        saveAutoBackup('after-submit-teams');
-        renderHome();
-        renderAdminTeams();
-        await recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
-        alert('Teams submitted successfully and synced to all devices.');
-      } catch (err) {
-        alert(`Could not submit teams: ${formatError(err)}`);
-      }
+    function submitTeams() {
+      appState.teamsSubmitted = true;
+      saveAutoBackup('after-submit-teams');
+      renderHome();
+      renderAdminTeams();
+      recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
+      alert('Teams submitted successfully! Auto-save backup updated.');
     }
 
     async function setCaptainFromPlayerRow(playerId, value) {
@@ -11190,41 +11138,66 @@ async function resetDailyGameIfNeeded() {
   localStorage.removeItem(getAdminCaptainOverrideKey());
   localStorage.removeItem('gmg_open_captain_after_load');
 }
+
+    function withStartupTimeout(promise, ms, label) {
+      let timer;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms/1000)} seconds`)), ms);
+      });
+      return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+    }
+
     // ======================================================
     // STARTUP / INITIALIZATION
     // ======================================================
 
     async function initApp() {
       try {
-        setStatus('Connecting...');
+        setStatus('Connecting: captain access...');
         processCaptainAccessFromUrl();
         saveThisDevicePlayerName(localStorage.getItem('gmg_player_name') || '');
-        await ensureBaseData();
-        await resetDailyGameIfNeeded();
-        await loadAllData();
+
+        setStatus('Connecting: Supabase...');
+        await withStartupTimeout(ensureBaseData(), 10000, 'Supabase base-data check');
+
+        // Daily cleanup must never be allowed to freeze the whole app.
+        setStatus('Connecting: daily setup...');
+        try {
+          await withStartupTimeout(resetDailyGameIfNeeded(), 7000, 'Daily setup');
+        } catch (resetErr) {
+          console.warn('Daily setup skipped so app can continue:', resetErr);
+        }
+
+        setStatus('Connecting: players & teams...');
+        await withStartupTimeout(loadAllData(), 12000, 'Players/teams/settings load');
+
         renderNotificationCenter();
         updateNotificationBadge();
-        subscribeToNotificationUpdates();
-        await loadNotificationsFromDb();
+
+        // Optional services should not block the core app.
+        try { subscribeToNotificationUpdates(); } catch (err) { console.warn('Notification subscription skipped', err); }
+        try { await withStartupTimeout(loadNotificationsFromDb(), 5000, 'Notifications'); } catch (err) { console.warn('Notifications load skipped', err); }
+
         if (localStorage.getItem('gmg_open_captain_after_load') === 'true') {
           localStorage.removeItem('gmg_open_captain_after_load');
-          renderCaptainTeamsPage();
-          showView('view-captain-teams');
+          await showCaptainTeamsPage();
         }
-        await loadWeather();
+
+        setStatus('Connected');
+
+        // Weather is optional and happens after the app is usable.
+        loadWeather().catch(err => console.warn('Weather skipped', err));
         setInterval(loadWeather, 600000);
+
         setInterval(() => {
           const adminDashboard = document.getElementById('admin-dashboard');
           if (adminDashboard && adminDashboard.classList.contains('active')) renderAdminCommandDashboard();
         }, 30000);
-        setStatus(appState.settingsLiveEnabled ? 'Connected' : 'Connected (settings limited)');
 
         window.supabaseClient
           .channel('players-live')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, async (payload) => {
             if (payload?.eventType === 'INSERT' && payload?.new?.status === 'pending') {
-              // Fallback notification if the dedicated notifications table has not been created yet.
-              // When the notifications table exists, the real notification comes from notifications-live.
               if (!notificationDbAvailable) {
                 createLocalNotification(
                   'registration',
@@ -11234,27 +11207,38 @@ async function resetDailyGameIfNeeded() {
               }
             }
             setStatus('Live: players updated');
-            await loadAllData();
+            try { await withStartupTimeout(loadAllData(), 10000, 'Live player refresh'); }
+            catch (err) { console.warn('Live player refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
             setStatus('Live: teams updated');
-            await loadAllData();
+            try { await withStartupTimeout(loadAllData(), 10000, 'Live team refresh'); }
+            catch (err) { console.warn('Live team refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
             setStatus('Live: settings updated');
-            await loadAllData();
+            try { await withStartupTimeout(loadAllData(), 10000, 'Live settings refresh'); }
+            catch (err) { console.warn('Live settings refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: ANNOUNCEMENTS_TABLE }, async () => {
-            setStatus('Live: announcements updated');
-            await loadAnnouncements();
-            renderAnnouncements();
+            try {
+              await loadAnnouncements();
+              renderAnnouncements();
+            } catch (err) {
+              console.warn('Announcement refresh failed', err);
+            }
           })
           .subscribe((status) => {
-            setStatus('Status: ' + status);
+            if (status === 'SUBSCRIBED') setStatus('Connected • Live');
+            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              setStatus('Connected • Polling');
+            }
           });
+
       } catch (err) {
         const msg = formatError(err);
-        setStatus('Startup error');
+        console.error('Startup failed', err);
+        setStatus(`Connection error: ${msg}`);
         alert(`Startup failed: ${msg}`);
       }
     }
