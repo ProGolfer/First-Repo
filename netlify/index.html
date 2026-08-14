@@ -6327,7 +6327,8 @@ async function loadPlayerHistory() {
       const key = player.id ? `id:${player.id}` : `name:${cleanName(player.name)}`;
       playersByKey.set(key, {
         playerId:player.id || '', name:player.name || 'Unknown Player', games:0,
-        points:0, pointRounds:0, frontWins:0, backWins:0, totalWins:0,
+        points:0, pointRounds:0, strokeTotal:0, strokeRounds:0,
+        frontWins:0, backWins:0, totalWins:0,
         moneyWon:0, finishTotal:0, finishRounds:0
       });
     });
@@ -6338,16 +6339,29 @@ async function loadPlayerHistory() {
       if (!playerId && (!name || name === 'Unknown Player')) return;
       const key = playerId ? `id:${playerId}` : `name:${cleanName(name)}`;
       const item = playersByKey.get(key) || {
-        playerId, name, games:0, points:0, pointRounds:0, frontWins:0,
-        backWins:0, totalWins:0, moneyWon:0, finishTotal:0, finishRounds:0
+        playerId, name, games:0, points:0, pointRounds:0, strokeTotal:0, strokeRounds:0,
+        frontWins:0, backWins:0, totalWins:0, moneyWon:0, finishTotal:0, finishRounds:0
       };
 
       item.games += 1;
-      const points = num(row.total_points ?? row.points ?? row.total_score ?? row.score ?? row.round_score);
-      if (points || row.total_points === 0 || row.points === 0) { item.points += points; item.pointRounds += 1; }
-      if (row.front_win === true || row.won_front === true || num(row.front_place) === 1 || String(row.front_result || '').toLowerCase() === 'win') item.frontWins += 1;
-      if (row.back_win === true || row.won_back === true || num(row.back_place) === 1 || String(row.back_result || '').toLowerCase() === 'win') item.backWins += 1;
-      if (row.total_win === true || row.won === true || row.is_winner === true || num(row.place) === 1 || String(row.result || '').toLowerCase() === 'win') item.totalWins += 1;
+
+      const rawPoints = row.total_points ?? row.points;
+      if (rawPoints !== null && rawPoints !== undefined && rawPoints !== '') {
+        const points = num(rawPoints);
+        item.points += points;
+        item.pointRounds += 1;
+      }
+
+      const strokeScore = historyStrokeScore(row);
+      if (strokeScore > 0) {
+        item.strokeTotal += strokeScore;
+        item.strokeRounds += 1;
+      }
+
+      if (row.front_win === true || num(row.front_win) === 1 || row.won_front === true || num(row.front_place) === 1 || String(row.front_result || '').toLowerCase() === 'win') item.frontWins += 1;
+      if (row.back_win === true || num(row.back_win) === 1 || row.won_back === true || num(row.back_place) === 1 || String(row.back_result || '').toLowerCase() === 'win') item.backWins += 1;
+      if (row.total_win === true || num(row.total_win) === 1 || row.won === true || row.is_winner === true || num(row.place) === 1 || String(row.result || '').toLowerCase() === 'win') item.totalWins += 1;
+
       item.moneyWon += num(row.money_won ?? row.winnings ?? row.payout);
       const finish = num(row.place ?? row.finish ?? row.finishing_position);
       if (finish > 0) { item.finishTotal += finish; item.finishRounds += 1; }
@@ -6358,31 +6372,37 @@ async function loadPlayerHistory() {
       .filter(player => player.games > 0)
       .map(player => ({
         ...player,
+        averageScore:player.strokeRounds ? player.strokeTotal / player.strokeRounds : null,
         averagePoints:player.pointRounds ? player.points / player.pointRounds : 0,
         averageFinish:player.finishRounds ? player.finishTotal / player.finishRounds : null
       }))
       .sort((a,b) => b.averagePoints - a.averagePoints || b.totalWins - a.totalWins || b.moneyWon - a.moneyWon || a.name.localeCompare(b.name));
 
     if (leaders.length) {
+      const uniqueGameDates = new Set(
+        seasonRows.map(row => historyRowDateKey(row)).filter(Boolean)
+      ).size;
+
       mount.innerHTML = `
         <div class="league-hero" style="margin-bottom:14px;">
           <div class="league-kicker">${escapeHtml(season)} Season</div>
           <div class="league-title">League Leaderboard</div>
-          <div class="league-subtitle">Permanent player records from Supabase league history.</div>
+          <div class="league-subtitle">Official season standings and player results.</div>
           <div class="profile-stat-grid">
             <div class="profile-stat"><strong>${leaders.length}</strong><small>Players</small></div>
             <div class="profile-stat"><strong>${seasonRows.length}</strong><small>Records</small></div>
-            <div class="profile-stat"><strong>${leaders.reduce((sum,p)=>sum+p.games,0)}</strong><small>Games</small></div>
+            <div class="profile-stat"><strong>${uniqueGameDates}</strong><small>Games</small></div>
             <div class="profile-stat"><strong>${money(leaders.reduce((sum,p)=>sum+p.moneyWon,0))}</strong><small>Payouts</small></div>
           </div>
         </div>
         <div class="table-container">
           <table>
-            <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Avg Pts</th><th>Total Pts</th><th>Front</th><th>Back</th><th>Total</th><th>Money</th><th>Avg Finish</th></tr></thead>
+            <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Avg Score</th><th>Avg Pts</th><th>Total Pts</th><th>Front</th><th>Back</th><th>Total</th><th>Money</th><th>Avg Finish</th></tr></thead>
             <tbody>${leaders.map((player,index)=>`<tr>
               <td style="font-weight:950;color:${index===0?'#54e86f':'#94a3b8'};">${index+1}</td>
               <td style="font-weight:900;">${escapeHtml(player.name)}</td>
               <td>${player.games}</td>
+              <td>${player.averageScore === null ? '—' : player.averageScore.toFixed(1)}</td>
               <td style="color:#54e86f;font-weight:950;">${player.averagePoints.toFixed(1)}</td>
               <td>${player.points.toFixed(1).replace('.0','')}</td>
               <td>${player.frontWins}</td><td>${player.backWins}</td><td>${player.totalWins}</td>
@@ -8912,7 +8932,7 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
             teamBack: Number(row.back || 0),
             teamTotal: Number(row.total || 0),
             roundScore: card?.completed === 18 ? Number(card.totalScore) : null,
-            playerPoints: card?.completed === 18 ? Number(card.totalPoints) : Number(row.total || 0),
+            playerPoints: card?.completed === 18 ? Number(card.totalPoints) : null,
             moneyWon: Number(perPlayerPayout.toFixed(2)),
             birdies,
             frontWin,
