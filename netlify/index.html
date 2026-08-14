@@ -4227,17 +4227,19 @@
             <div class="admin-section">
               <div class="form-group">
                 <label>Round Date</label>
-                <select id="league-record-date-filter" onchange="renderAdminLeagueRecords()">
+                <select id="league-record-date-filter">
                   <option value="">All finalized rounds</option>
                 </select>
               </div>
 
               <div class="form-group">
                 <label>Player Search</label>
-                <input type="text" id="league-record-search" placeholder="Search player name" oninput="renderAdminLeagueRecords()">
+                <input type="text" id="league-record-search" placeholder="Search player name">
               </div>
 
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+                <button class="btn btn-primary" onclick="applyLeagueRecordFilters()">🔎 Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearLeagueRecordFilters()">Clear Filters</button>
                 <button class="btn btn-secondary" onclick="loadAdminLeagueRecords()">🔄 Refresh Records</button>
                 <button class="btn btn-danger" id="league-record-delete-round-btn" onclick="deleteSelectedLeagueRound()" disabled>🗑 Delete Selected Round</button>
               </div>
@@ -9209,19 +9211,38 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
     // ADMIN LEAGUE RECORDS v2.6.5
     // ======================================================
 
+    function leagueRecordDateValue(row) {
+      // game_date is a Postgres DATE, so do not run it through new Date()
+      // (UTC conversion can shift it to the previous day in local time).
+      const raw = row?.game_date || row?.date || '';
+      if (raw) return String(raw).slice(0, 10);
+      if (row?.created_at) {
+        const d = new Date(row.created_at);
+        if (!Number.isNaN(d.getTime())) {
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+          return local.toISOString().slice(0, 10);
+        }
+      }
+      return '';
+    }
+
     async function loadAdminLeagueRecords() {
       const status = document.getElementById('league-record-admin-status');
       if (status) status.textContent = 'Loading league history...';
+
       try {
         const result = await window.supabaseClient
           .from(LEAGUE_HISTORY_TABLE)
           .select('*')
           .order('game_date', { ascending:false })
           .order('player_name', { ascending:true });
+
         if (result?.error) throw result.error;
+
         appState.leagueHistory = result.data || [];
         populateLeagueRecordDateFilter();
-        renderAdminLeagueRecords();
+        applyLeagueRecordFilters();
+        bindLeagueRecordFilterEvents();
       } catch (err) {
         console.error('loadAdminLeagueRecords error', err);
         if (status) status.textContent = `Could not load league records: ${formatError(err)}`;
@@ -9231,10 +9252,19 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
     function populateLeagueRecordDateFilter() {
       const select = document.getElementById('league-record-date-filter');
       if (!select) return;
+
       const current = select.value;
-      const dates = [...new Set((appState.leagueHistory || []).map(historyRowDateKey).filter(Boolean))].sort().reverse();
-      select.innerHTML = `<option value="">All finalized rounds</option>` + dates.map(d => `<option value="${d}">${d}</option>`).join('');
-      if ([...select.options].some(o => o.value === current)) select.value = current;
+      const dates = [...new Set(
+        (appState.leagueHistory || [])
+          .map(leagueRecordDateValue)
+          .filter(Boolean)
+      )].sort().reverse();
+
+      select.innerHTML =
+        `<option value="">All finalized rounds</option>` +
+        dates.map(d => `<option value="${d}">${d}</option>`).join('');
+
+      if (current && dates.includes(current)) select.value = current;
     }
 
     function leagueRecordField(row, key, fallback='') {
@@ -9242,46 +9272,119 @@ function showPlayerScorecard(playerId, backView = 'view-game') {
       return value === null || value === undefined ? fallback : value;
     }
 
-    function renderAdminLeagueRecords() {
+    function bindLeagueRecordFilterEvents() {
+      const dateEl = document.getElementById('league-record-date-filter');
+      const searchEl = document.getElementById('league-record-search');
+
+      if (dateEl && !dateEl.dataset.boundLeagueFilter) {
+        dateEl.dataset.boundLeagueFilter = '1';
+        dateEl.addEventListener('change', applyLeagueRecordFilters);
+      }
+
+      if (searchEl && !searchEl.dataset.boundLeagueFilter) {
+        searchEl.dataset.boundLeagueFilter = '1';
+        searchEl.addEventListener('input', applyLeagueRecordFilters);
+        searchEl.addEventListener('keydown', event => {
+          if (event.key === 'Enter') applyLeagueRecordFilters();
+        });
+      }
+    }
+
+    function clearLeagueRecordFilters() {
+      const dateEl = document.getElementById('league-record-date-filter');
+      const searchEl = document.getElementById('league-record-search');
+      if (dateEl) dateEl.value = '';
+      if (searchEl) searchEl.value = '';
+      applyLeagueRecordFilters();
+    }
+
+    function applyLeagueRecordFilters() {
+      const dateFilter = String(document.getElementById('league-record-date-filter')?.value || '').trim();
+      const searchText = String(document.getElementById('league-record-search')?.value || '').trim().toLowerCase();
+
+      let rows = (appState.leagueHistory || []).slice();
+
+      if (dateFilter) {
+        rows = rows.filter(row => leagueRecordDateValue(row) === dateFilter);
+      }
+
+      if (searchText) {
+        rows = rows.filter(row => {
+          const player = String(playerNameFromRow(row) || '').toLowerCase();
+          const team = String(row?.team_name || '').toLowerCase();
+          return player.includes(searchText) || team.includes(searchText);
+        });
+      }
+
+      renderAdminLeagueRecords(rows, { dateFilter, searchText });
+    }
+
+    function renderAdminLeagueRecords(filteredRows, filters = {}) {
       const mount = document.getElementById('league-record-admin-list');
       const status = document.getElementById('league-record-admin-status');
-      const dateFilter = document.getElementById('league-record-date-filter')?.value || '';
-      const search = cleanName(document.getElementById('league-record-search')?.value || '');
       const deleteRoundBtn = document.getElementById('league-record-delete-round-btn');
       if (!mount) return;
 
-      let rows = (appState.leagueHistory || []).slice();
-      if (dateFilter) rows = rows.filter(r => historyRowDateKey(r) === dateFilter);
-      if (search) rows = rows.filter(r => cleanName(playerNameFromRow(r)).includes(search));
+      const dateFilter = filters.dateFilter ?? String(document.getElementById('league-record-date-filter')?.value || '').trim();
+      const searchText = filters.searchText ?? String(document.getElementById('league-record-search')?.value || '').trim().toLowerCase();
+
+      let rows = Array.isArray(filteredRows)
+        ? filteredRows.slice()
+        : (appState.leagueHistory || []).slice();
+
+      if (!Array.isArray(filteredRows)) {
+        if (dateFilter) rows = rows.filter(row => leagueRecordDateValue(row) === dateFilter);
+        if (searchText) rows = rows.filter(row => String(playerNameFromRow(row) || '').toLowerCase().includes(searchText));
+      }
+
       if (deleteRoundBtn) deleteRoundBtn.disabled = !dateFilter;
 
-      if (status) status.textContent = rows.length ? `${rows.length} official player record${rows.length === 1 ? '' : 's'}${dateFilter ? ` for ${dateFilter}` : ''}.` : 'No matching official league records.';
+      if (status) {
+        const pieces = [];
+        if (dateFilter) pieces.push(`round ${dateFilter}`);
+        if (searchText) pieces.push(`search "${searchText}"`);
+        status.textContent = rows.length
+          ? `${rows.length} official player record${rows.length === 1 ? '' : 's'}${pieces.length ? ` • ${pieces.join(' • ')}` : ''}.`
+          : `No matching official league records${pieces.length ? ` • ${pieces.join(' • ')}` : ''}.`;
+      }
+
       if (!rows.length) {
-        mount.innerHTML = '<div class="award-empty">No finalized league records match this filter.</div>';
+        mount.innerHTML = '<div class="award-empty">No finalized league records match these filters.</div>';
         return;
       }
 
       const grouped = new Map();
       rows.forEach(row => {
-        const date = historyRowDateKey(row) || 'Unknown Date';
+        const date = leagueRecordDateValue(row) || 'Unknown Date';
         if (!grouped.has(date)) grouped.set(date, []);
         grouped.get(date).push(row);
       });
 
       mount.innerHTML = [...grouped.entries()].map(([date, dateRows]) => `
         <div class="league-section" style="margin-bottom:12px;">
-          <div class="league-section-head"><h3>📅 ${escapeHtml(date)}</h3><span class="green">${dateRows.length} player${dateRows.length === 1 ? '' : 's'}</span></div>
+          <div class="league-section-head">
+            <h3>📅 ${escapeHtml(date)}</h3>
+            <span class="green">${dateRows.length} player${dateRows.length === 1 ? '' : 's'}</span>
+          </div>
           ${dateRows.map(row => `
             <div class="player-item" style="display:grid;grid-template-columns:minmax(140px,1.3fr) repeat(5,minmax(70px,.7fr)) auto;gap:8px;align-items:center;">
-              <div><strong>${escapeHtml(playerNameFromRow(row))}</strong><div class="muted" style="font-size:12px;">${escapeHtml(leagueRecordField(row,'team_name',''))}</div></div>
+              <div>
+                <strong>${escapeHtml(playerNameFromRow(row))}</strong>
+                <div class="muted" style="font-size:12px;">${escapeHtml(leagueRecordField(row,'team_name',''))}</div>
+              </div>
               <input aria-label="18-hole score" type="number" id="lr-round-${row.id}" value="${leagueRecordField(row,'round_score','')}" placeholder="Score">
               <input aria-label="Points" type="number" id="lr-points-${row.id}" value="${leagueRecordField(row,'total_points','')}" placeholder="Pts">
               <input aria-label="Money won" type="number" step="0.01" id="lr-money-${row.id}" value="${leagueRecordField(row,'money_won',0)}" placeholder="$">
               <input aria-label="Finish" type="number" id="lr-place-${row.id}" value="${leagueRecordField(row,'place','')}" placeholder="Place">
               <input aria-label="Total win" type="number" min="0" max="1" id="lr-totalwin-${row.id}" value="${num(leagueRecordField(row,'total_win',0)) ? 1 : 0}" placeholder="Win">
-              <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-small btn-primary" onclick="saveLeagueRecordEdit('${row.id}')">Save</button><button class="btn btn-small btn-danger" onclick="deleteLeagueRecord('${row.id}','${escapeHtml(playerNameFromRow(row))}','${escapeHtml(date)}')">Delete</button></div>
-            </div>`).join('')}
-        </div>`).join('');
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-small btn-primary" onclick="saveLeagueRecordEdit('${row.id}')">Save</button>
+                <button class="btn btn-small btn-danger" onclick="deleteLeagueRecord('${row.id}','${escapeHtml(playerNameFromRow(row))}','${escapeHtml(date)}')">Delete</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
     }
 
     async function saveLeagueRecordEdit(rowId) {
