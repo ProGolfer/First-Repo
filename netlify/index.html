@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.5 — Broadcast Profile Polish</title>
+  <title>Money Game Central v2.6.7 — Cross-Device Team Sync</title>
 
   <!--
     Golf Money Game
@@ -4291,7 +4291,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
-    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false };
+    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false, team_mode: 'auto', num_teams: 4, teams_submitted: false };
     const ANNOUNCEMENTS_TABLE = 'announcements';
     const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_announcements_v1';
     const ACTIVITY_TABLE = 'activity_log';
@@ -5205,8 +5205,17 @@
           ...appState.settings,
           game_started: !!settingsRow.game_started,
           cutoff_time: settingsRow.cutoff_time || appState.settings.cutoff_time,
-          open_time: settingsRow.open_time || appState.settings.open_time
+          open_time: settingsRow.open_time || appState.settings.open_time,
+          registration_closed: !!settingsRow.registration_closed,
+          team_mode: settingsRow.team_mode || appState.settings.team_mode || 'auto',
+          num_teams: Number(settingsRow.num_teams || appState.settings.num_teams || 4),
+          teams_submitted: !!settingsRow.teams_submitted
         };
+
+        appState.teamMode = appState.settings.team_mode || 'auto';
+        appState.numTeams = Number(appState.settings.num_teams || 4);
+        appState.selectedNumTeams = appState.numTeams;
+        appState.teamsSubmitted = !!appState.settings.teams_submitted;
       } else if (!settingsRow) {
         appState.settingsLiveEnabled = true;
       } else {
@@ -7035,8 +7044,8 @@ function renderCaptainTeamsPage() {
   const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
 
   const unlockNote = isAdminOverride
-    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`
-    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`;
+    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Select a team and tap Add.`
+    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Select a team and tap Add.`;
 
   const getTeamPlayers = (teamId) => approvedPlayers
     .filter(p => String(p.team || '') === String(teamId))
@@ -9848,7 +9857,7 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
-    function submitNumTeams() {
+    async function submitNumTeams() {
       const modeSelect = document.getElementById('team-mode');
       const numTeamsSelect = document.getElementById('num-teams');
 
@@ -9861,24 +9870,81 @@ async function toggleCaptain(id, makeCaptain) {
         appState.numTeams = getAutoTeamCount();
       }
 
-      const allowedTeamIds = new Set(getActiveTeams().map(t => String(t.id)));
-      appState.players = appState.players.map(p => allowedTeamIds.has(String(p.team)) ? p : { ...p, team: null });
-      appState.teams = appState.teams.map(t => allowedTeamIds.has(String(t.id)) ? t : { ...t, captain_id: null });
+      try {
+        const result = await db(
+          window.supabaseClient
+            .from('settings')
+            .update({
+              team_mode: appState.teamMode,
+              num_teams: appState.numTeams,
+              teams_submitted: false
+            })
+            .eq('key', SETTINGS_KEY)
+            .select(),
+          'Save cross-device team settings'
+        );
 
-      renderHome();
-      renderAdminTeams();
-      updateSettingsView();
-      renderCaptainTeamsPage();
-      alert(`Team settings saved: ${appState.teamMode === 'manual' ? 'Manual' : 'Auto'} mode, ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
+        if (result.data?.[0]) {
+          appState.settings = { ...appState.settings, ...result.data[0] };
+        }
+
+        const allowedTeamIds = new Set(getActiveTeams().map(t => String(t.id)));
+
+        const outOfRangePlayers = appState.players.filter(p => p.team && !allowedTeamIds.has(String(p.team)));
+        for (const player of outOfRangePlayers) {
+          await db(
+            window.supabaseClient.from('players').update({ team: null }).eq('id', player.id),
+            'Clear inactive player team'
+          );
+        }
+
+        const outOfRangeTeams = appState.teams.filter(t => !allowedTeamIds.has(String(t.id)) && t.captain_id);
+        for (const team of outOfRangeTeams) {
+          await db(
+            window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', team.id),
+            'Clear inactive team captain'
+          );
+        }
+
+        await loadAllData();
+        updateSettingsView();
+        renderCaptainTeamsPage();
+
+        alert(`Team settings saved for ALL devices: ${appState.teamMode === 'manual' ? 'Manual' : 'Auto'} mode, ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
+      } catch (err) {
+        alert(`Could not save team settings: ${formatError(err)}`);
+      }
     }
 
-    function submitTeams() {
-      appState.teamsSubmitted = true;
-      saveAutoBackup('after-submit-teams');
-      renderHome();
-      renderAdminTeams();
-      recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
-      alert('Teams submitted successfully! Auto-save backup updated.');
+    async function submitTeams() {
+      try {
+        appState.teamsSubmitted = true;
+
+        const result = await db(
+          window.supabaseClient
+            .from('settings')
+            .update({
+              team_mode: appState.teamMode || 'auto',
+              num_teams: getActiveTeamCount(),
+              teams_submitted: true
+            })
+            .eq('key', SETTINGS_KEY)
+            .select(),
+          'Publish teams to all devices'
+        );
+
+        if (result.data?.[0]) {
+          appState.settings = { ...appState.settings, ...result.data[0] };
+        }
+
+        saveAutoBackup('after-submit-teams');
+        renderHome();
+        renderAdminTeams();
+        await recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
+        alert('Teams submitted successfully and synced to all devices.');
+      } catch (err) {
+        alert(`Could not submit teams: ${formatError(err)}`);
+      }
     }
 
     async function setCaptainFromPlayerRow(playerId, value) {
