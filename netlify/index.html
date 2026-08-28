@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.7.1 — Startup Connection Fix</title>
+  <title>Money Game Central v2.6.7.2 — Syntax Connection Fix</title>
 
   <!--
     Golf Money Game
@@ -7096,19 +7096,6 @@ function renderCaptainTeamsPage() {
             <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:12px 14px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
           </div>
           ${preferredOpenTeam ? `<div class="muted" style="font-size:12px;margin-top:7px;">★ Your team: ${escapeHtml(getTeamName(preferredOpenTeam.id))}</div>` : ''}
-        </div>
-      `;
-    }).join('');
-
-      return `
-        <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-          <div style="min-width:130px;flex:1;">
-            <div style="font-weight:900;color:#f8fafc;">👤 ${p.name}</div>
-            <div class="muted">Available</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-            ${buttons}
-          </div>
         </div>
       `;
     }).join('');
