@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.1 — Shared Draft Settings + Sync</title>
+  <title>Money Game Central v2.7.2 — Captain Counts as Player</title>
 
   <!--
     Golf Money Game
@@ -7196,6 +7196,46 @@ function copyCaptainAccessLink(encodedUrl) {
   });
 }
 
+
+async function ensureCaptainIsOnOwnTeam() {
+  const access = getCaptainAccess();
+  if (!access?.captainId || !access?.teamId) return;
+
+  const captainId = String(access.captainId);
+  const teamId = Number(access.teamId);
+  const captain = (appState.players || []).find(p => String(p.id) === captainId);
+  const team = (appState.teams || []).find(t => String(t.id) === String(teamId));
+
+  if (!captain || !team) return;
+
+  let changed = false;
+
+  // A captain is also a player on that team. Repair older/test data if needed.
+  if (String(captain.team || '') !== String(teamId) || !isCaptainPlayer(captain)) {
+    const playerResult = await window.supabaseClient
+      .from('players')
+      .update({ team: teamId, is_captain: true })
+      .eq('id', captainId);
+
+    if (playerResult?.error) throw playerResult.error;
+    changed = true;
+  }
+
+  if (String(team.captain_id || '') !== captainId) {
+    const teamResult = await window.supabaseClient
+      .from('teams')
+      .update({ captain_id: captainId })
+      .eq('id', teamId);
+
+    if (teamResult?.error) throw teamResult.error;
+    changed = true;
+  }
+
+  if (changed) {
+    await loadAllData();
+  }
+}
+
 async function showCaptainTeamsPage() {
   if (!canAccessCaptainPage()) {
     alert('🔒 Captains Only is locked. Admin must show the captain QR code, or use Admin Override.');
@@ -7209,8 +7249,9 @@ async function showCaptainTeamsPage() {
 
   try {
     await loadAllData();
+    await ensureCaptainIsOnOwnTeam();
   } catch (err) {
-    console.warn('Captain page refresh failed', err);
+    console.warn('Captain page refresh/repair failed', err);
   }
 
   renderCaptainTeamsPage();
@@ -7257,6 +7298,12 @@ function getCaptainDraftTarget(teamId) {
 }
 
 async function submitCaptainTeam() {
+  try {
+    await ensureCaptainIsOnOwnTeam();
+  } catch (repairErr) {
+    console.warn('Captain membership repair before submit failed', repairErr);
+  }
+
   const team = getCaptainDraftTeam();
   const myPlayer = getCaptainAccessPlayer() || getMyPlayer();
 
@@ -7745,7 +7792,7 @@ function renderCaptainTeamsPage() {
         <span class="players-count">${myTeamPlayers.length}/${target}</span>
       </div>
       <div class="muted" style="font-weight:850;margin:6px 0 8px;">
-        ${rosterSubmitted ? '✅ Submitted & locked' : 'Your picks appear here immediately.'}
+        ${rosterSubmitted ? '✅ Submitted & locked' : 'Captain counts as a player. Your picks appear here immediately.'}
       </div>
       ${myTeamPlayers.map(p => `
         <div class="player-item" style="padding:10px 0;">
@@ -7790,7 +7837,7 @@ function renderCaptainTeamsPage() {
     submitStatus.textContent = rosterSubmitted
       ? 'Your roster is locked. Live Scorecard is unlocked.'
       : myTeamPlayers.length < target
-        ? `Add ${target - myTeamPlayers.length} more player${target - myTeamPlayers.length === 1 ? '' : 's'} before submitting.`
+        ? `Team size is ${target}. Captain is included — add ${target - myTeamPlayers.length} more player${target - myTeamPlayers.length === 1 ? '' : 's'} before submitting.`
         : 'Your roster is full. Submit your team when ready.';
   }
 }
@@ -10683,13 +10730,21 @@ async function toggleCaptain(id, makeCaptain) {
         const teamId = player.team;
 
         if (value === 'yes') {
-          if (teamId) {
-            await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId), 'Set team captain');
-            appState.teams = appState.teams.map(t => String(t.id) === String(teamId) ? { ...t, captain_id: playerId } : t);
+          let effectiveTeamId = teamId;
+          if (!effectiveTeamId) {
+            const linkedTeam = appState.teams.find(t => String(t.captain_id || '') === String(playerId));
+            effectiveTeamId = linkedTeam?.id || null;
           }
 
-          await db(window.supabaseClient.from('players').update({ is_captain: true }).eq('id', playerId), 'Set player captain');
-          appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: true } : p);
+          if (effectiveTeamId) {
+            await db(window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', effectiveTeamId), 'Set team captain');
+            await db(window.supabaseClient.from('players').update({ is_captain: true, team: Number(effectiveTeamId) }).eq('id', playerId), 'Set captain as team player');
+            appState.teams = appState.teams.map(t => String(t.id) === String(effectiveTeamId) ? { ...t, captain_id: playerId } : t);
+            appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: true, team: Number(effectiveTeamId) } : p);
+          } else {
+            await db(window.supabaseClient.from('players').update({ is_captain: true }).eq('id', playerId), 'Set player captain');
+            appState.players = appState.players.map(p => String(p.id) === String(playerId) ? { ...p, is_captain: true } : p);
+          }
         } else {
           if (teamId) {
             const team = appState.teams.find(t => String(t.id) === String(teamId));
