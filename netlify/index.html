@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.7.2 — Syntax Connection Fix</title>
+  <title>Money Game Central v2.6.8 — Team Controls + Captain UI</title>
 
   <!--
     Golf Money Game
@@ -3282,6 +3282,7 @@
         <button class="quick-nav-item" onclick="quickNavGo('home')"><span class="quick-nav-icon">🏠</span><span>Dashboard</span><small>Saturday experience</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('myteam')"><span class="quick-nav-icon">🏌</span><span>My Team</span><small>Private scorecard</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('money')"><span class="quick-nav-icon">🏆</span><span>Money Game / Recap</span><small>Today's results</small></button>
+        <button id="quick-nav-captain" class="quick-nav-item" style="display:none;" onclick="quickNavGo('captain')"><span class="quick-nav-icon">👑</span><span>Captains Only</span><small>Build today's teams</small></button>
       </div>
       <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
       <div class="quick-nav-grid">
@@ -3844,6 +3845,32 @@
               <div>You can approve or decline players anytime, even while registration is open.</div>
             </div>
 
+
+
+            <div class="section-title">🚩 Today's Team Count</div>
+            <div class="admin-section">
+              <div class="players-header" style="margin-bottom:10px;">
+                <h3>Auto by Default</h3>
+                <span class="players-count" id="admin-player-team-mode-badge">Auto</span>
+              </div>
+              <p class="muted" style="font-weight:800;line-height:1.45;margin-bottom:12px;">
+                Normal Saturdays still use the automatic team count. For an odd turnout, you can override only today's number of teams here.
+              </p>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;">
+                <div class="form-group" style="margin:0;">
+                  <label>Manual Team Count</label>
+                  <select id="admin-player-team-count" style="width:100%;">
+                    <option value="2">2 Teams</option>
+                    <option value="3">3 Teams</option>
+                    <option value="4">4 Teams</option>
+                    <option value="5">5 Teams</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary btn-small" style="margin:0;min-height:48px;padding:0 16px;" onclick="adminApplyPlayerTeamCount()">Apply</button>
+              </div>
+              <button class="btn btn-secondary" style="margin-top:10px;" onclick="adminRestoreAutoTeamCount()">↩ Use Default Auto Team Count</button>
+              <div id="admin-player-team-count-status" class="muted" style="font-weight:850;margin-top:6px;"></div>
+            </div>
 
             <div class="section-title">➕ Add Player Manually</div>
             <div class="admin-section">
@@ -4408,6 +4435,9 @@
           break;
         case 'money':
           showMoneyGameCentral();
+          break;
+        case 'captain':
+          showCaptainTeamsPage();
           break;
         case 'profile':
           showMyProfile();
@@ -6849,6 +6879,89 @@ function isCaptainPlayer(player) {
   );
 }
 
+
+function updateCaptainAccessUi() {
+  const captainNav = document.getElementById('quick-nav-captain');
+  const hasAccess = canAccessCaptainPage();
+  if (captainNav) captainNav.style.display = hasAccess ? '' : 'none';
+}
+
+async function adminApplyPlayerTeamCount() {
+  const select = document.getElementById('admin-player-team-count');
+  const count = Math.max(2, Math.min(5, Number(select?.value || 4)));
+
+  try {
+    const result = await db(
+      window.supabaseClient
+        .from('settings')
+        .update({ team_mode: 'manual', num_teams: count, teams_submitted: false })
+        .eq('key', SETTINGS_KEY)
+        .select(),
+      'Admin manual team-count override'
+    );
+
+    appState.teamMode = 'manual';
+    appState.numTeams = count;
+    appState.selectedNumTeams = count;
+    if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
+
+    await loadAllData();
+    renderAdminPlayers();
+    renderAdminTeams();
+    renderCaptainTeamsPage();
+
+    alert(`Today's team count is manually set to ${count}. Auto remains the normal default when you switch it back.`);
+  } catch (err) {
+    alert(`Could not change today's team count: ${formatError(err)}`);
+  }
+}
+
+async function adminRestoreAutoTeamCount() {
+  try {
+    const autoCount = getAutoTeamCount();
+
+    const result = await db(
+      window.supabaseClient
+        .from('settings')
+        .update({ team_mode: 'auto', num_teams: autoCount, teams_submitted: false })
+        .eq('key', SETTINGS_KEY)
+        .select(),
+      'Restore automatic team count'
+    );
+
+    appState.teamMode = 'auto';
+    appState.numTeams = autoCount;
+    appState.selectedNumTeams = autoCount;
+    if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
+
+    await loadAllData();
+    renderAdminPlayers();
+    renderAdminTeams();
+    renderCaptainTeamsPage();
+
+    alert(`Automatic team count restored: ${autoCount} team${autoCount === 1 ? '' : 's'} for the current approved-player count.`);
+  } catch (err) {
+    alert(`Could not restore automatic team count: ${formatError(err)}`);
+  }
+}
+
+function renderAdminPlayerTeamCountControl() {
+  const select = document.getElementById('admin-player-team-count');
+  const badge = document.getElementById('admin-player-team-mode-badge');
+  const status = document.getElementById('admin-player-team-count-status');
+  if (!select && !badge && !status) return;
+
+  const activeCount = getActiveTeamCount();
+  const approvedCount = getApprovedPlayerCount();
+  if (select) select.value = String(Math.max(2, Math.min(5, Number(appState.numTeams || activeCount || 4))));
+  if (badge) badge.textContent = appState.teamMode === 'manual' ? 'Manual' : 'Auto';
+  if (status) {
+    status.textContent = appState.teamMode === 'manual'
+      ? `Manual override active: ${activeCount} teams for ${approvedCount} approved players.`
+      : `Auto active: ${approvedCount} approved players → ${activeCount} teams.`;
+  }
+}
+
 function getCaptainAccessKey() {
   return `gmg_captain_access_${getTodayKey()}`;
 }
@@ -6914,6 +7027,7 @@ function processCaptainAccessFromUrl() {
   if (captainName) saveThisDevicePlayerName(captainName);
 
   localStorage.setItem('gmg_open_captain_after_load', 'true');
+  updateCaptainAccessUi();
 
   window.history.replaceState({}, document.title, window.location.pathname);
   alert(`Captain access unlocked for ${captainName || 'this captain'}${teamName ? ' - ' + teamName : ''}. This device is now linked for Live Scoring.`);
@@ -6934,6 +7048,7 @@ function clearCaptainAccessForThisDevice() {
   localStorage.removeItem(getCaptainAccessKey());
   localStorage.removeItem(getAdminCaptainOverrideKey());
   localStorage.removeItem('gmg_open_captain_after_load');
+  updateCaptainAccessUi();
   alert('Captain access cleared on this device.');
   showView('view-home');
 }
@@ -7044,8 +7159,8 @@ function renderCaptainTeamsPage() {
   const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
 
   const unlockNote = isAdminOverride
-    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`
-    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Tap a team button to add a player.`;
+    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Choose a team beside each player, then tap Add.`
+    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Choose a team beside each player, then tap Add.`;
 
   const getTeamPlayers = (teamId) => approvedPlayers
     .filter(p => String(p.team || '') === String(teamId))
@@ -7083,19 +7198,20 @@ function renderCaptainTeamsPage() {
       });
 
       return `
-        <div class="player-item" style="display:block;background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;">
-          <div style="margin-bottom:10px;">
-            <div style="font-weight:900;color:#f8fafc;">👤 ${escapeHtml(p.name)}</div>
-            <div class="muted">Available player</div>
+        <div class="player-item" style="display:grid;grid-template-columns:minmax(105px,.85fr) minmax(150px,1.3fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(6,18,30,.96));padding:12px;border-radius:15px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;">
+          <div style="min-width:0;">
+            <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 ${escapeHtml(p.name)}</div>
+            <div class="muted" style="font-size:11px;font-weight:850;margin-top:2px;">AVAILABLE</div>
           </div>
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;">
-            <select id="captain-pick-team-${p.id}" style="width:100%;min-width:0;padding:12px;border-radius:10px;border:1px solid rgba(148,163,184,.35);background:#071321;color:#fff;font-weight:850;">
-              <option value="">-- Select Team --</option>
+          <div style="position:relative;min-width:0;">
+            <select id="captain-pick-team-${p.id}" style="appearance:none;-webkit-appearance:none;width:100%;min-width:0;padding:12px 34px 12px 12px;border-radius:12px;border:1px solid rgba(84,232,111,.32);background:#0b1b29;color:#f8fafc;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);">
+              <option value="">Choose team…</option>
               ${options}
             </select>
-            <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:12px 14px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#54e86f;font-size:12px;">▼</span>
           </div>
-          ${preferredOpenTeam ? `<div class="muted" style="font-size:12px;margin-top:7px;">★ Your team: ${escapeHtml(getTeamName(preferredOpenTeam.id))}</div>` : ''}
+          <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:12px 16px;border-radius:12px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+          ${preferredOpenTeam ? `<div class="muted" style="grid-column:2 / -1;font-size:11px;font-weight:850;margin-top:-3px;">★ ${escapeHtml(getTeamName(preferredOpenTeam.id))} is your team</div>` : ''}
         </div>
       `;
     }).join('');
@@ -9590,6 +9706,8 @@ async function toggleCaptain(id, makeCaptain) {
       if (pendingMini) pendingMini.textContent = pending.length;
       if (captainsMini) captainsMini.textContent = appState.players.filter(p => isCaptainPlayer(p)).length;
       renderCaptainQRList();
+      renderAdminPlayerTeamCountControl();
+      updateCaptainAccessUi();
       updateRoundFinalizeAdmin();
     }
 
@@ -11157,6 +11275,7 @@ async function resetDailyGameIfNeeded() {
 
         setStatus('Connecting: players & teams...');
         await withStartupTimeout(loadAllData(), 12000, 'Players/teams/settings load');
+        updateCaptainAccessUi();
 
         renderNotificationCenter();
         updateNotificationBadge();
