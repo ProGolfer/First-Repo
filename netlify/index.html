@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.2 — Captain Counts as Player</title>
+  <title>Money Game Central v2.7.3 — Phone Captain Roster Sync Fix</title>
 
   <!--
     Golf Money Game
@@ -7199,41 +7199,82 @@ function copyCaptainAccessLink(encodedUrl) {
 
 async function ensureCaptainIsOnOwnTeam() {
   const access = getCaptainAccess();
-  if (!access?.captainId || !access?.teamId) return;
+  if (!access?.captainId || !access?.teamId) return null;
 
   const captainId = String(access.captainId);
   const teamId = Number(access.teamId);
-  const captain = (appState.players || []).find(p => String(p.id) === captainId);
-  const team = (appState.teams || []).find(t => String(t.id) === String(teamId));
 
-  if (!captain || !team) return;
+  // Read the captain fresh from Supabase so a phone never depends on stale appState.
+  const playerRead = await window.supabaseClient
+    .from('players')
+    .select('*')
+    .eq('id', captainId)
+    .maybeSingle();
 
-  let changed = false;
+  if (playerRead?.error) throw playerRead.error;
+  const captain = playerRead?.data;
+  if (!captain) return null;
 
-  // A captain is also a player on that team. Repair older/test data if needed.
-  if (String(captain.team || '') !== String(teamId) || !isCaptainPlayer(captain)) {
+  const playerNeedsRepair =
+    String(captain.team || '') !== String(teamId) ||
+    !(captain.is_captain === true || captain.is_captain === 'true');
+
+  let repairedCaptain = captain;
+
+  if (playerNeedsRepair) {
     const playerResult = await window.supabaseClient
       .from('players')
       .update({ team: teamId, is_captain: true })
-      .eq('id', captainId);
+      .eq('id', captainId)
+      .select('*')
+      .single();
 
     if (playerResult?.error) throw playerResult.error;
-    changed = true;
+    repairedCaptain = playerResult.data || { ...captain, team: teamId, is_captain: true };
   }
 
-  if (String(team.captain_id || '') !== captainId) {
+  const teamRead = await window.supabaseClient
+    .from('teams')
+    .select('*')
+    .eq('id', teamId)
+    .maybeSingle();
+
+  if (teamRead?.error) throw teamRead.error;
+  const team = teamRead?.data;
+
+  let repairedTeam = team;
+  if (team && String(team.captain_id || '') !== captainId) {
     const teamResult = await window.supabaseClient
       .from('teams')
       .update({ captain_id: captainId })
-      .eq('id', teamId);
+      .eq('id', teamId)
+      .select('*')
+      .single();
 
     if (teamResult?.error) throw teamResult.error;
-    changed = true;
+    repairedTeam = teamResult.data || { ...team, captain_id: captainId };
   }
 
-  if (changed) {
-    await loadAllData();
+  // Patch this device immediately. Do not wait for Realtime or the 15-second poll.
+  appState.players = (appState.players || []).map(p =>
+    String(p.id) === captainId
+      ? { ...p, ...repairedCaptain, team: teamId, is_captain: true }
+      : p
+  );
+
+  if (!(appState.players || []).some(p => String(p.id) === captainId)) {
+    appState.players.push({ ...repairedCaptain, team: teamId, is_captain: true });
   }
+
+  if (repairedTeam) {
+    appState.teams = (appState.teams || []).map(t =>
+      String(t.id) === String(teamId)
+        ? { ...t, ...repairedTeam, captain_id: captainId }
+        : t
+    );
+  }
+
+  return { captain: repairedCaptain, team: repairedTeam };
 }
 
 async function showCaptainTeamsPage() {
@@ -7297,54 +7338,110 @@ function getCaptainDraftTarget(teamId) {
   return getCaptainTeamTarget(teamId, targets);
 }
 
+
+async function getFreshCaptainRoster(teamId, captainId = '') {
+  const result = await window.supabaseClient
+    .from('players')
+    .select('*')
+    .eq('status', 'approved')
+    .eq('team', Number(teamId));
+
+  if (result?.error) throw result.error;
+
+  let roster = result.data || [];
+
+  // If Supabase has not reflected the captain assignment in this response yet,
+  // still count the verified captain as a team member for roster completion.
+  if (captainId && !roster.some(p => String(p.id) === String(captainId))) {
+    const capResult = await window.supabaseClient
+      .from('players')
+      .select('*')
+      .eq('id', captainId)
+      .maybeSingle();
+
+    if (capResult?.error) throw capResult.error;
+
+    if (capResult?.data) {
+      roster = [{ ...capResult.data, team: Number(teamId), is_captain: true }, ...roster];
+    }
+  }
+
+  return roster;
+}
+
 async function submitCaptainTeam() {
+  const access = getCaptainAccess();
+
   try {
     await ensureCaptainIsOnOwnTeam();
-  } catch (repairErr) {
-    console.warn('Captain membership repair before submit failed', repairErr);
-  }
 
-  const team = getCaptainDraftTeam();
-  const myPlayer = getCaptainAccessPlayer() || getMyPlayer();
+    const team = getCaptainDraftTeam();
+    const myPlayer = getCaptainAccessPlayer() || getMyPlayer();
 
-  if (!team || !myPlayer) {
-    alert('Captain team could not be identified. Scan the captain QR again.');
-    return;
-  }
+    if (!team || !myPlayer) {
+      alert('Captain team could not be identified. Scan the captain QR again.');
+      return;
+    }
 
-  if (!isCaptainPlayer(myPlayer) && !hasAdminCaptainOverride()) {
-    alert('Only the assigned captain can submit this team.');
-    return;
-  }
+    if (!isCaptainPlayer(myPlayer) && !hasAdminCaptainOverride()) {
+      alert('Only the assigned captain can submit this team.');
+      return;
+    }
 
-  const teamPlayers = (appState.players || []).filter(
-    p => p.status === 'approved' && String(p.team || '') === String(team.id)
-  );
-  const target = getCaptainDraftTarget(team.id);
+    const captainId = String(access?.captainId || myPlayer.id || '');
+    const freshRoster = await getFreshCaptainRoster(team.id, captainId);
+    const target = getCaptainDraftTarget(team.id);
 
-  if (teamPlayers.length < target) {
-    alert(`${getTeamName(team.id)} needs ${target} players before it can be submitted. You currently have ${teamPlayers.length}.`);
-    return;
-  }
+    // Patch the phone immediately with the fresh Supabase roster.
+    const freshIds = new Set(freshRoster.map(p => String(p.id)));
+    appState.players = (appState.players || []).map(p => {
+      const fresh = freshRoster.find(x => String(x.id) === String(p.id));
+      return fresh ? { ...p, ...fresh } : p;
+    });
+    freshRoster.forEach(p => {
+      if (!(appState.players || []).some(x => String(x.id) === String(p.id))) {
+        appState.players.push(p);
+      }
+    });
 
-  const names = teamPlayers.map(p => p.name).join(', ');
-  if (!confirm(`Submit ${getTeamName(team.id)}?\n\n${names}\n\nAfter submitting, this team's Live Scorecard will unlock.`)) return;
+    renderCaptainTeamsPage();
 
-  try {
-    await db(
-      window.supabaseClient
-        .from('teams')
-        .update({
-          roster_submitted: true,
-          roster_submitted_at: new Date().toISOString()
-        })
-        .eq('id', team.id),
-      'Submit captain team roster'
+    if (freshRoster.length < target) {
+      const missing = target - freshRoster.length;
+      alert(
+        `${getTeamName(team.id)} has ${freshRoster.length}/${target} players.\n\n` +
+        `The captain counts as a player. Add ${missing} more player${missing === 1 ? '' : 's'} before submitting.`
+      );
+      return;
+    }
+
+    const names = freshRoster.map(p => p.name).join(', ');
+
+    if (!confirm(
+      `Submit ${getTeamName(team.id)}?\n\n${names}\n\n` +
+      `After submitting, this team's Live Scorecard will unlock.`
+    )) return;
+
+    const rosterResult = await window.supabaseClient
+      .from('teams')
+      .update({
+        roster_submitted: true,
+        roster_submitted_at: new Date().toISOString()
+      })
+      .eq('id', team.id)
+      .select('*')
+      .single();
+
+    if (rosterResult?.error) throw rosterResult.error;
+
+    appState.teams = (appState.teams || []).map(t =>
+      String(t.id) === String(team.id)
+        ? { ...t, ...(rosterResult.data || {}), roster_submitted: true }
+        : t
     );
 
     await loadAllData();
 
-    // Global teams_submitted becomes true only when every active captain team is locked.
     const activeTeams = getActiveTeams();
     const allSubmitted = activeTeams.length > 0 && activeTeams.every(t => {
       const refreshed = (appState.teams || []).find(x => String(x.id) === String(t.id));
@@ -7360,6 +7457,7 @@ async function submitCaptainTeam() {
           .select(),
         'Mark all team rosters submitted'
       );
+
       if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
       appState.teamsSubmitted = true;
     }
@@ -7729,7 +7827,7 @@ function renderCaptainTeamsPage() {
   }
 
   const myTeam = accessTeam;
-  const myTeamPlayers = myTeam
+  let myTeamPlayers = myTeam
     ? approvedPlayers
         .filter(p => String(p.team || '') === String(myTeam.id))
         .sort((a,b) => {
@@ -7738,6 +7836,15 @@ function renderCaptainTeamsPage() {
           return ac - bc || String(a.name || '').localeCompare(String(b.name || ''));
         })
     : [];
+
+  // On a captain phone, never let a stale local refresh hide the captain from
+  // their own roster. The QR identity is authoritative for this display.
+  if (myTeam && accessPlayer && !myTeamPlayers.some(p => String(p.id) === String(accessPlayer.id))) {
+    myTeamPlayers = [
+      { ...accessPlayer, team: Number(myTeam.id), is_captain: true },
+      ...myTeamPlayers
+    ];
+  }
 
   const target = myTeam ? getCaptainDraftTarget(myTeam.id) : 0;
   const rosterSubmitted = myTeam ? isTeamRosterSubmitted(myTeam.id) : false;
