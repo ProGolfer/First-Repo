@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.9 — Captain Draft + Team Submit Flow</title>
+  <title>Money Game Central v2.7.0 — Registration Names + Draft Order</title>
 
   <!--
     Golf Money Game
@@ -3329,10 +3329,21 @@
             </div>
           </div>
           <div class="event-status-grid">
-            <div class="event-mini-stat"><strong id="event-stat-players">0</strong><small>Players</small></div>
-            <div class="event-mini-stat"><strong id="event-stat-pending">0</strong><small>Pending</small></div>
+            <button class="event-mini-stat" type="button" onclick="toggleRegistrationNames('approved')" style="cursor:pointer;color:inherit;">
+              <strong id="event-stat-players">0</strong><small>Approved ▾</small>
+            </button>
+            <button class="event-mini-stat" type="button" onclick="toggleRegistrationNames('pending')" style="cursor:pointer;color:inherit;">
+              <strong id="event-stat-pending">0</strong><small>Pending ▾</small>
+            </button>
             <div class="event-mini-stat"><strong id="event-stat-teams">0</strong><small>Teams</small></div>
             <div class="event-mini-stat"><strong id="event-stat-clock">--</strong><small>Status</small></div>
+          </div>
+          <div id="registration-name-panel" style="display:none;margin-top:12px;background:rgba(2,8,14,.42);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:12px;">
+            <div class="players-header" style="margin-bottom:6px;">
+              <h3 id="registration-name-title" style="font-size:15px;">Approved Players</h3>
+              <button class="btn btn-secondary btn-small" type="button" onclick="toggleRegistrationNames('close')">Close</button>
+            </div>
+            <div id="registration-name-list"></div>
           </div>
         </div>
 
@@ -7238,6 +7249,86 @@ async function submitCaptainTeam() {
   }
 }
 
+
+function getDraftCaptainTeams() {
+  return getActiveTeams()
+    .filter(team => {
+      const captain = (appState.players || []).find(p =>
+        p.status === 'approved' &&
+        (String(team.captain_id || '') === String(p.id) ||
+         (isCaptainPlayer(p) && String(p.team || '') === String(team.id)))
+      );
+      return !!captain;
+    })
+    .sort((a,b) => Number(a.team_number || a.id) - Number(b.team_number || b.id));
+}
+
+function getDraftPickedPlayers() {
+  return (appState.players || [])
+    .filter(p => p.status === 'approved' && p.team && !isCaptainPlayer(p))
+    .slice()
+    .sort((a,b) => {
+      const at = new Date(a.updated_at || a.registered_at || 0).getTime();
+      const bt = new Date(b.updated_at || b.registered_at || 0).getTime();
+      return at - bt || String(a.id).localeCompare(String(b.id));
+    });
+}
+
+function buildDownDownUpDraftOrder() {
+  const teams = getDraftCaptainTeams();
+  const nonCaptains = (appState.players || []).filter(p => p.status === 'approved' && !isCaptainPlayer(p));
+  if (!teams.length || !nonCaptains.length) return [];
+
+  const order = [];
+  const pattern = ['down', 'down', 'up'];
+  let round = 0;
+
+  while (order.length < nonCaptains.length) {
+    const direction = pattern[round % pattern.length];
+    const roundTeams = direction === 'up' ? [...teams].reverse() : [...teams];
+    for (const team of roundTeams) {
+      if (order.length >= nonCaptains.length) break;
+      order.push({
+        teamId: String(team.id),
+        round: round + 1,
+        direction
+      });
+    }
+    round++;
+  }
+  return order;
+}
+
+function getCurrentDraftSlot() {
+  const order = buildDownDownUpDraftOrder();
+  const pickedCount = getDraftPickedPlayers().length;
+  return order[pickedCount] || null;
+}
+
+function getCaptainForTeamId(teamId) {
+  const team = (appState.teams || []).find(t => String(t.id) === String(teamId));
+  if (!team) return null;
+  return (appState.players || []).find(p =>
+    p.status === 'approved' &&
+    (String(team.captain_id || '') === String(p.id) ||
+     (isCaptainPlayer(p) && String(p.team || '') === String(team.id)))
+  ) || null;
+}
+
+function getDraftTurnText() {
+  const slot = getCurrentDraftSlot();
+  if (!slot) return 'Draft complete';
+  const captain = getCaptainForTeamId(slot.teamId);
+  return `${captain?.name || getTeamName(slot.teamId)} is picking`;
+}
+
+function isMyCaptainDraftTurn() {
+  if (hasAdminCaptainOverride()) return true;
+  const slot = getCurrentDraftSlot();
+  const myTeam = getCaptainDraftTeam();
+  return !!slot && !!myTeam && String(slot.teamId) === String(myTeam.id);
+}
+
 function renderCaptainTeamsPage() {
   const approvedPlayers = appState.players.filter(p => p.status === 'approved');
   const activeTeams = getActiveTeams();
@@ -7279,34 +7370,46 @@ function renderCaptainTeamsPage() {
 
   const target = myTeam ? getCaptainDraftTarget(myTeam.id) : 0;
   const rosterSubmitted = myTeam ? isTeamRosterSubmitted(myTeam.id) : false;
+  const currentSlot = getCurrentDraftSlot();
+  const myTurn = isMyCaptainDraftTurn();
 
   const unlockTitle = isAdminOverride
     ? '🛠️ Admin Override'
     : `👑 ${escapeHtml(accessPlayer?.name || 'Captain')} — ${escapeHtml(getTeamName(myTeam.id))}`;
 
+  const turnCaptain = currentSlot ? getCaptainForTeamId(currentSlot.teamId) : null;
+  const turnBanner = currentSlot
+    ? `
+      <div style="margin-top:10px;padding:12px;border-radius:14px;border:1px solid ${myTurn ? 'rgba(84,232,111,.45)' : 'rgba(245,158,11,.35)'};background:${myTurn ? 'rgba(34,197,94,.12)' : 'rgba(245,158,11,.10)'};">
+        <div style="font-weight:950;color:${myTurn ? '#54e86f' : '#fbbf24'};">
+          ${myTurn ? '🟢 YOUR PICK' : '⏳ WAITING'}
+        </div>
+        <div style="font-weight:900;margin-top:3px;">
+          ${escapeHtml(turnCaptain?.name || getTeamName(currentSlot.teamId))} • ${escapeHtml(getTeamName(currentSlot.teamId))}
+        </div>
+        <div class="muted" style="font-size:12px;font-weight:850;margin-top:3px;">
+          Round ${currentSlot.round} • ${currentSlot.direction === 'up' ? '↑ Up' : '↓ Down'} • Down / Down / Up order
+        </div>
+      </div>`
+    : `
+      <div style="margin-top:10px;padding:12px;border-radius:14px;border:1px solid rgba(84,232,111,.35);background:rgba(34,197,94,.10);">
+        <div style="font-weight:950;color:#54e86f;">✅ DRAFT COMPLETE</div>
+      </div>`;
+
   const availableRows = rosterSubmitted
     ? `<div class="empty-state">✅ Your team is submitted and locked. Live Scoring is now available.</div>`
     : availablePlayers.length
       ? availablePlayers.map(p => {
-          if (isAdminOverride && !myTeam) {
-            const options = activeTeams.map(t => `<option value="${t.id}">${escapeHtml(getTeamName(t.id))}</option>`).join('');
-            return `
-              <div class="player-item" style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(150px,1fr) auto;gap:10px;align-items:center;background:rgba(15,30,44,.82);padding:12px;border-radius:14px;margin-bottom:9px;border:1px solid rgba(148,163,184,.16);">
-                <div><strong>👤 ${escapeHtml(p.name)}</strong><div class="muted" style="font-size:11px;">AVAILABLE</div></div>
-                <select id="captain-pick-team-${p.id}" style="width:100%;padding:11px;border-radius:11px;background:#0b1b29;color:#fff;border:1px solid rgba(84,232,111,.30);font-weight:900;">
-                  <option value="">Choose team…</option>${options}
-                </select>
-                <button class="btn btn-primary btn-small" style="margin:0;padding:11px 16px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
-              </div>`;
-          }
-
+          const addDisabled = !myTurn && !isAdminOverride;
           return `
-            <div class="player-item" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(6,18,30,.96));padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;">
+            <div class="player-item" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(6,18,30,.96));padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;${addDisabled ? 'opacity:.72;' : ''}">
               <div style="min-width:0;">
                 <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 ${escapeHtml(p.name)}</div>
                 <div class="muted" style="font-size:11px;font-weight:850;margin-top:2px;">AVAILABLE</div>
               </div>
-              <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:11px 18px;border-radius:12px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+              <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:11px 18px;border-radius:12px;" onclick="captainSubmitPlayerToTeam('${p.id}')" ${addDisabled ? 'disabled' : ''}>
+                ${addDisabled ? 'Wait' : 'Add'}
+              </button>
             </div>`;
         }).join('')
       : '<div class="empty-state">No unassigned players remain.</div>';
@@ -7318,7 +7421,7 @@ function renderCaptainTeamsPage() {
         <span class="players-count">${myTeamPlayers.length}/${target}</span>
       </div>
       <div class="muted" style="font-weight:850;margin:6px 0 8px;">
-        ${rosterSubmitted ? '✅ Submitted & locked' : 'Players you add appear here immediately.'}
+        ${rosterSubmitted ? '✅ Submitted & locked' : 'Your picks appear here immediately.'}
       </div>
       ${myTeamPlayers.map(p => `
         <div class="player-item" style="padding:10px 0;">
@@ -7335,8 +7438,9 @@ function renderCaptainTeamsPage() {
         <span class="players-count">${availablePlayers.length} Available</span>
       </div>
       <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
-        All captains see the same available-player pool. When any captain adds a player, that player is assigned immediately and disappears from every other captain's list.
+        Every captain sees the same available-player pool. Picks happen in Down / Down / Up order. When a player is picked, they disappear from every other captain's list.
       </p>
+      ${turnBanner}
     </div>
 
     <div class="section-title">Available Players</div>
@@ -7347,7 +7451,7 @@ function renderCaptainTeamsPage() {
   `;
 
   if (submitBtn) {
-    if (!myTeam || isAdminOverride && !accessTeam) {
+    if (!myTeam || (isAdminOverride && !accessTeam)) {
       submitBtn.style.display = 'none';
     } else {
       submitBtn.style.display = '';
@@ -7368,6 +7472,9 @@ function renderCaptainTeamsPage() {
 }
 async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
   try {
+    // Refresh first so PC/phones all validate against the same latest pick.
+    await loadAllData();
+
     const player = appState.players.find(p => String(p.id) === String(playerId));
     if (!player) {
       alert('Player not found. Refresh and try again.');
@@ -7375,22 +7482,31 @@ async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
     }
 
     if (player.team) {
-      await loadAllData();
       renderCaptainTeamsPage();
       return;
     }
 
+    const myTeam = getCaptainDraftTeam();
     let teamId = '';
+
     if (hasAdminCaptainOverride() && teamIdOverride) {
       teamId = teamIdOverride;
-    } else if (hasAdminCaptainOverride() && !getCaptainAccessTeam()) {
-      teamId = document.getElementById(`captain-pick-team-${playerId}`)?.value || '';
+    } else if (hasAdminCaptainOverride() && !myTeam) {
+      const slot = getCurrentDraftSlot();
+      teamId = String(slot?.teamId || '');
     } else {
-      teamId = String(getCaptainDraftTeam()?.id || '');
+      teamId = String(myTeam?.id || '');
     }
 
     if (!teamId) {
       alert('Your captain team could not be identified.');
+      return;
+    }
+
+    const slot = getCurrentDraftSlot();
+    if (!hasAdminCaptainOverride() && (!slot || String(slot.teamId) !== String(teamId))) {
+      alert(`It is not your pick yet. ${getDraftTurnText()}.`);
+      renderCaptainTeamsPage();
       return;
     }
 
@@ -7414,17 +7530,21 @@ async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
       return;
     }
 
-    await db(
-      window.supabaseClient
-        .from('players')
-        .update({ team: parseInt(teamId, 10) })
-        .eq('id', playerId)
-        .is('team', null),
-      'Captain draft player'
-    );
+    let result = await window.supabaseClient
+      .from('players')
+      .update({ team: parseInt(teamId, 10) })
+      .eq('id', playerId)
+      .is('team', null)
+      .select();
+
+    if (result?.error) throw result.error;
+    if (!result?.data?.length) {
+      alert('That player was just selected by another captain. Refreshing the draft.');
+    }
 
     await loadAllData();
     renderCaptainTeamsPage();
+    renderHome();
   } catch (err) {
     alert(`Could not add player to your team: ${formatError(err)}`);
   }
@@ -7687,6 +7807,48 @@ function renderMyTeamLiveDashboard() {
 }
 
 
+
+let registrationNameView = '';
+
+function toggleRegistrationNames(type) {
+  const panel = document.getElementById('registration-name-panel');
+  const title = document.getElementById('registration-name-title');
+  const list = document.getElementById('registration-name-list');
+  if (!panel || !title || !list) return;
+
+  if (type === 'close' || (registrationNameView === type && panel.style.display !== 'none')) {
+    registrationNameView = '';
+    panel.style.display = 'none';
+    return;
+  }
+
+  registrationNameView = type;
+  const rows = (appState.players || [])
+    .filter(p => p.status === type)
+    .slice()
+    .sort((a,b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+  title.textContent = type === 'approved' ? '✅ Approved Players' : '⏳ Pending Players';
+  list.innerHTML = rows.length
+    ? rows.map((p, i) => `
+        <div class="player-item" style="padding:9px 2px;">
+          <span style="font-weight:900;">${i + 1}. ${escapeHtml(p.name)}</span>
+          <span class="${type === 'approved' ? 'green' : 'orange'}" style="font-size:12px;font-weight:950;text-transform:uppercase;">
+            ${type === 'approved' ? 'Approved' : 'Pending'}
+          </span>
+        </div>`).join('')
+    : `<div class="empty-state">No ${type} players right now.</div>`;
+
+  panel.style.display = 'block';
+}
+
+function refreshRegistrationNamePanel() {
+  if (!registrationNameView) return;
+  const current = registrationNameView;
+  registrationNameView = '';
+  toggleRegistrationNames(current);
+}
+
 function renderHome() {
   const dashDate = document.getElementById('saturday-dashboard-date');
   if (dashDate) dashDate.textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
@@ -7780,6 +7942,8 @@ const teamCount = getActiveTeamCount();
       registerBtn.style.opacity = '1';
     }
   }
+
+  refreshRegistrationNamePanel();
 }
 
 
