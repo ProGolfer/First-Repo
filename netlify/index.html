@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.0 — Registration Names + Draft Order</title>
+  <title>Money Game Central v2.7.1 — Shared Draft Settings + Sync</title>
 
   <!--
     Golf Money Game
@@ -3884,6 +3884,58 @@
               <div id="admin-player-team-count-status" class="muted" style="font-weight:850;margin-top:6px;"></div>
             </div>
 
+
+            <div class="section-title">🐍 Captain Picking Order</div>
+            <div class="admin-section">
+              <div class="players-header" style="margin-bottom:10px;">
+                <h3>Shared Draft Order</h3>
+                <span class="players-count" id="admin-draft-mode-badge">Down / Down / Up</span>
+              </div>
+
+              <p class="muted" style="font-weight:800;line-height:1.45;margin-bottom:12px;">
+                This order is stored in Supabase, so every captain phone and the PC use the exact same next pick.
+              </p>
+
+              <div class="form-group">
+                <label>Picking Style</label>
+                <select id="admin-draft-mode" onchange="updateAdminDraftModeUi()">
+                  <option value="down_down_up">↓ ↓ ↑ Down / Down / Up</option>
+                  <option value="snake">🐍 Snake (Down / Up / Down / Up)</option>
+                  <option value="custom">✍ Custom Team Sequence</option>
+                </select>
+              </div>
+
+              <div id="admin-draft-first-team-wrap" class="form-group">
+                <label>First Pick</label>
+                <select id="admin-draft-first-team"></select>
+              </div>
+
+              <div id="admin-draft-custom-wrap" class="form-group" style="display:none;">
+                <label>Custom Pick Sequence</label>
+                <input id="admin-draft-custom-sequence" type="text" placeholder="Example: 1,2,2,1,1,2">
+                <div class="muted" style="font-size:12px;font-weight:800;margin-top:5px;">
+                  Enter team numbers in the exact order you want them to pick. The sequence repeats if more picks are needed.
+                </div>
+              </div>
+
+              <label style="display:flex;align-items:center;gap:10px;margin:12px 0;font-weight:900;">
+                <input id="admin-draft-make-default" type="checkbox" style="width:20px;height:20px;">
+                Make this picking setup my default
+              </label>
+
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="saveAdminDraftSettings()">💾 Save Picking Order</button>
+                <button class="btn btn-secondary" onclick="useSavedDraftDefault()">↩ Use Saved Default</button>
+              </div>
+
+              <div id="admin-draft-save-status" class="muted" style="font-weight:850;margin-top:8px;"></div>
+
+              <div style="margin-top:12px;padding:12px;border-radius:14px;background:rgba(2,8,14,.38);border:1px solid rgba(148,163,184,.15);">
+                <div style="font-weight:950;margin-bottom:6px;">Preview</div>
+                <div id="admin-draft-preview" class="muted" style="font-weight:850;line-height:1.55;">Loading...</div>
+              </div>
+            </div>
+
             <div class="section-title">➕ Add Player Manually</div>
             <div class="admin-section">
               <p class="muted" style="font-weight:800;line-height:1.45;margin-bottom:12px;">
@@ -4330,7 +4382,22 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3a21tcnFucG5obHVzdHJ4ZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjA5NDIsImV4cCI6MjA5MTI5Njk0Mn0.yHsEZIxvHnLX7WIoUT1CPm8opl0iY3ll-oFetHqht5E';
     const ADMIN_PASSWORD = 'golf123';
     const SETTINGS_KEY = 'app';
-    const DEFAULT_SETTINGS = { key: SETTINGS_KEY, game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false, team_mode: 'auto', num_teams: 4, teams_submitted: false };
+    const DEFAULT_SETTINGS = {
+      key: SETTINGS_KEY,
+      game_started: false,
+      cutoff_time: '09:30',
+      open_time: '06:00',
+      registration_closed: false,
+      team_mode: 'auto',
+      num_teams: 4,
+      teams_submitted: false,
+      draft_mode: 'down_down_up',
+      draft_first_team: 1,
+      draft_custom_sequence: '',
+      draft_default_mode: 'down_down_up',
+      draft_default_first_team: 1,
+      draft_default_custom_sequence: ''
+    };
     const ANNOUNCEMENTS_TABLE = 'announcements';
     const ANNOUNCEMENTS_LOCAL_KEY = 'gmg_announcements_v1';
     const ACTIVITY_TABLE = 'activity_log';
@@ -4357,7 +4424,18 @@
     let appState = {
       players: [],
       teams: [],
-      settings: { game_started: false, cutoff_time: '09:30', open_time: '06:00', registration_closed: false },
+      settings: {
+        game_started: false,
+        cutoff_time: '09:30',
+        open_time: '06:00',
+        registration_closed: false,
+        draft_mode: 'down_down_up',
+        draft_first_team: 1,
+        draft_custom_sequence: '',
+        draft_default_mode: 'down_down_up',
+        draft_default_first_team: 1,
+        draft_default_custom_sequence: ''
+      },
       myTeam: null,
       myPlayerName: '',
       settingsLiveEnabled: false,
@@ -5251,7 +5329,13 @@
           registration_closed: !!settingsRow.registration_closed,
           team_mode: settingsRow.team_mode || appState.settings.team_mode || 'auto',
           num_teams: Number(settingsRow.num_teams || appState.settings.num_teams || 4),
-          teams_submitted: !!settingsRow.teams_submitted
+          teams_submitted: !!settingsRow.teams_submitted,
+          draft_mode: settingsRow.draft_mode || appState.settings.draft_mode || 'down_down_up',
+          draft_first_team: Number(settingsRow.draft_first_team || appState.settings.draft_first_team || 1),
+          draft_custom_sequence: settingsRow.draft_custom_sequence || '',
+          draft_default_mode: settingsRow.draft_default_mode || appState.settings.draft_default_mode || 'down_down_up',
+          draft_default_first_team: Number(settingsRow.draft_default_first_team || appState.settings.draft_default_first_team || 1),
+          draft_default_custom_sequence: settingsRow.draft_default_custom_sequence || ''
         };
 
         appState.teamMode = appState.settings.team_mode || 'auto';
@@ -5272,6 +5356,8 @@
       renderAdminPlayers();
       renderCaptainQRList();
       renderAdminTeams();
+      renderCaptainTeamsPage();
+      renderAdminDraftControls();
       renderLeaderboard();
       loadGameView();
       updateSettingsView();
@@ -7250,6 +7336,268 @@ async function submitCaptainTeam() {
 }
 
 
+
+function draftModeLabel(mode) {
+  if (mode === 'snake') return '🐍 Snake';
+  if (mode === 'custom') return '✍ Custom';
+  return '↓ ↓ ↑ Down / Down / Up';
+}
+
+function parseCustomDraftSequence(value) {
+  return String(value || '')
+    .split(/[\s,>|\-]+/)
+    .map(v => Number(v))
+    .filter(v => Number.isInteger(v) && v > 0);
+}
+
+function getCurrentDraftSettings() {
+  return {
+    mode: appState.settings?.draft_mode || 'down_down_up',
+    firstTeam: Number(appState.settings?.draft_first_team || 1),
+    customSequence: String(appState.settings?.draft_custom_sequence || '')
+  };
+}
+
+function getSavedDraftDefaultSettings() {
+  return {
+    mode: appState.settings?.draft_default_mode || 'down_down_up',
+    firstTeam: Number(appState.settings?.draft_default_first_team || 1),
+    customSequence: String(appState.settings?.draft_default_custom_sequence || '')
+  };
+}
+
+function rotateDraftTeams(teams, firstTeamId) {
+  if (!teams.length) return [];
+  const index = teams.findIndex(t => String(t.id) === String(firstTeamId));
+  return index >= 0 ? teams.slice(index).concat(teams.slice(0, index)) : teams.slice();
+}
+
+function buildSharedDraftOrder() {
+  const teams = getDraftCaptainTeams();
+  const nonCaptains = (appState.players || []).filter(
+    p => p.status === 'approved' && !isCaptainPlayer(p)
+  );
+  if (!teams.length || !nonCaptains.length) return [];
+
+  const settings = getCurrentDraftSettings();
+  const needed = nonCaptains.length;
+  const order = [];
+
+  if (settings.mode === 'custom') {
+    const validTeamIds = new Set(teams.map(t => Number(t.id)));
+    let custom = parseCustomDraftSequence(settings.customSequence)
+      .filter(id => validTeamIds.has(Number(id)));
+
+    if (!custom.length) {
+      custom = rotateDraftTeams(teams, settings.firstTeam).map(t => Number(t.id));
+    }
+
+    for (let i = 0; i < needed; i++) {
+      order.push({
+        teamId: String(custom[i % custom.length]),
+        round: Math.floor(i / Math.max(1, teams.length)) + 1,
+        direction: 'custom'
+      });
+    }
+    return order;
+  }
+
+  const base = rotateDraftTeams(teams, settings.firstTeam);
+  let round = 0;
+
+  while (order.length < needed) {
+    let direction = 'down';
+
+    if (settings.mode === 'snake') {
+      direction = round % 2 === 0 ? 'down' : 'up';
+    } else {
+      const pattern = ['down', 'down', 'up'];
+      direction = pattern[round % pattern.length];
+    }
+
+    const roundTeams = direction === 'up' ? [...base].reverse() : [...base];
+    for (const team of roundTeams) {
+      if (order.length >= needed) break;
+      order.push({
+        teamId: String(team.id),
+        round: round + 1,
+        direction
+      });
+    }
+    round++;
+  }
+
+  return order;
+}
+
+function getDraftPreviewText() {
+  const order = buildSharedDraftOrder();
+  if (!order.length) return 'Assign captains and approve players to preview the pick order.';
+  return order.map((slot, index) => {
+    const captain = getCaptainForTeamId(slot.teamId);
+    return `#${index + 1} ${captain?.name || getTeamName(slot.teamId)}`;
+  }).join('  →  ');
+}
+
+function updateAdminDraftModeUi() {
+  const mode = document.getElementById('admin-draft-mode')?.value || 'down_down_up';
+  const firstWrap = document.getElementById('admin-draft-first-team-wrap');
+  const customWrap = document.getElementById('admin-draft-custom-wrap');
+
+  if (firstWrap) firstWrap.style.display = mode === 'custom' ? 'none' : '';
+  if (customWrap) customWrap.style.display = mode === 'custom' ? '' : 'none';
+
+  renderAdminDraftPreviewFromForm();
+}
+
+function renderAdminDraftPreviewFromForm() {
+  const mount = document.getElementById('admin-draft-preview');
+  if (!mount) return;
+
+  const mode = document.getElementById('admin-draft-mode')?.value || appState.settings.draft_mode || 'down_down_up';
+  const firstTeam = Number(document.getElementById('admin-draft-first-team')?.value || appState.settings.draft_first_team || 1);
+  const customSequence = document.getElementById('admin-draft-custom-sequence')?.value || '';
+
+  const old = {
+    mode: appState.settings.draft_mode,
+    firstTeam: appState.settings.draft_first_team,
+    custom: appState.settings.draft_custom_sequence
+  };
+
+  appState.settings.draft_mode = mode;
+  appState.settings.draft_first_team = firstTeam;
+  appState.settings.draft_custom_sequence = customSequence;
+
+  mount.textContent = getDraftPreviewText();
+
+  appState.settings.draft_mode = old.mode;
+  appState.settings.draft_first_team = old.firstTeam;
+  appState.settings.draft_custom_sequence = old.custom;
+}
+
+function renderAdminDraftControls() {
+  const modeEl = document.getElementById('admin-draft-mode');
+  const firstEl = document.getElementById('admin-draft-first-team');
+  const customEl = document.getElementById('admin-draft-custom-sequence');
+  const badge = document.getElementById('admin-draft-mode-badge');
+  const status = document.getElementById('admin-draft-save-status');
+
+  if (!modeEl || !firstEl || !customEl) return;
+
+  const settings = getCurrentDraftSettings();
+  const teams = getDraftCaptainTeams().length ? getDraftCaptainTeams() : getActiveTeams();
+
+  modeEl.value = settings.mode;
+  firstEl.innerHTML = teams.length
+    ? teams.map(t => `<option value="${t.id}">${escapeHtml(getTeamName(t.id))}</option>`).join('')
+    : '<option value="1">Team 1</option>';
+
+  if ([...firstEl.options].some(o => String(o.value) === String(settings.firstTeam))) {
+    firstEl.value = String(settings.firstTeam);
+  }
+
+  customEl.value = settings.customSequence;
+  if (badge) badge.textContent = draftModeLabel(settings.mode);
+  if (status) status.textContent = `Live on all devices: ${draftModeLabel(settings.mode)}`;
+
+  updateAdminDraftModeUi();
+  renderAdminDraftPreviewFromForm();
+}
+
+async function saveAdminDraftSettings() {
+  const mode = document.getElementById('admin-draft-mode')?.value || 'down_down_up';
+  const firstTeam = Number(document.getElementById('admin-draft-first-team')?.value || 1);
+  const customSequence = String(document.getElementById('admin-draft-custom-sequence')?.value || '').trim();
+  const makeDefault = !!document.getElementById('admin-draft-make-default')?.checked;
+  const status = document.getElementById('admin-draft-save-status');
+
+  if (mode === 'custom') {
+    const sequence = parseCustomDraftSequence(customSequence);
+    const activeIds = new Set(getDraftCaptainTeams().map(t => Number(t.id)));
+    const invalid = sequence.filter(id => !activeIds.has(Number(id)));
+
+    if (!sequence.length) {
+      alert('Enter a custom team sequence, such as 1,2,2,1,1,2.');
+      return;
+    }
+    if (invalid.length) {
+      alert(`Custom sequence contains inactive team number(s): ${[...new Set(invalid)].join(', ')}`);
+      return;
+    }
+  }
+
+  const payload = {
+    draft_mode: mode,
+    draft_first_team: firstTeam,
+    draft_custom_sequence: customSequence
+  };
+
+  if (makeDefault) {
+    payload.draft_default_mode = mode;
+    payload.draft_default_first_team = firstTeam;
+    payload.draft_default_custom_sequence = customSequence;
+  }
+
+  try {
+    if (status) status.textContent = 'Saving shared picking order...';
+
+    const result = await db(
+      window.supabaseClient
+        .from('settings')
+        .update(payload)
+        .eq('key', SETTINGS_KEY)
+        .select(),
+      'Save shared captain picking order'
+    );
+
+    if (result.data?.[0]) {
+      appState.settings = { ...appState.settings, ...result.data[0] };
+    }
+
+    await loadAllData();
+
+    if (status) {
+      status.textContent = makeDefault
+        ? `${draftModeLabel(mode)} saved for today and as the future default.`
+        : `${draftModeLabel(mode)} saved for today.`;
+    }
+
+    alert(makeDefault
+      ? 'Picking order saved to all devices and set as your default.'
+      : 'Picking order saved to all devices.');
+  } catch (err) {
+    if (status) status.textContent = `Could not save: ${formatError(err)}`;
+    alert(`Could not save picking order: ${formatError(err)}`);
+  }
+}
+
+async function useSavedDraftDefault() {
+  const defaults = getSavedDraftDefaultSettings();
+  try {
+    const result = await db(
+      window.supabaseClient
+        .from('settings')
+        .update({
+          draft_mode: defaults.mode,
+          draft_first_team: defaults.firstTeam,
+          draft_custom_sequence: defaults.customSequence
+        })
+        .eq('key', SETTINGS_KEY)
+        .select(),
+      'Restore saved draft default'
+    );
+
+    if (result.data?.[0]) {
+      appState.settings = { ...appState.settings, ...result.data[0] };
+    }
+
+    await loadAllData();
+    alert(`Saved default restored: ${draftModeLabel(defaults.mode)}.`);
+  } catch (err) {
+    alert(`Could not restore the saved default: ${formatError(err)}`);
+  }
+}
+
 function getDraftCaptainTeams() {
   return getActiveTeams()
     .filter(team => {
@@ -7274,33 +7622,9 @@ function getDraftPickedPlayers() {
     });
 }
 
-function buildDownDownUpDraftOrder() {
-  const teams = getDraftCaptainTeams();
-  const nonCaptains = (appState.players || []).filter(p => p.status === 'approved' && !isCaptainPlayer(p));
-  if (!teams.length || !nonCaptains.length) return [];
-
-  const order = [];
-  const pattern = ['down', 'down', 'up'];
-  let round = 0;
-
-  while (order.length < nonCaptains.length) {
-    const direction = pattern[round % pattern.length];
-    const roundTeams = direction === 'up' ? [...teams].reverse() : [...teams];
-    for (const team of roundTeams) {
-      if (order.length >= nonCaptains.length) break;
-      order.push({
-        teamId: String(team.id),
-        round: round + 1,
-        direction
-      });
-    }
-    round++;
-  }
-  return order;
-}
 
 function getCurrentDraftSlot() {
-  const order = buildDownDownUpDraftOrder();
+  const order = buildSharedDraftOrder();
   const pickedCount = getDraftPickedPlayers().length;
   return order[pickedCount] || null;
 }
@@ -7388,7 +7712,7 @@ function renderCaptainTeamsPage() {
           ${escapeHtml(turnCaptain?.name || getTeamName(currentSlot.teamId))} • ${escapeHtml(getTeamName(currentSlot.teamId))}
         </div>
         <div class="muted" style="font-size:12px;font-weight:850;margin-top:3px;">
-          Round ${currentSlot.round} • ${currentSlot.direction === 'up' ? '↑ Up' : '↓ Down'} • Down / Down / Up order
+          Round ${currentSlot.round} • ${currentSlot.direction === 'custom' ? 'Custom' : (currentSlot.direction === 'up' ? '↑ Up' : '↓ Down')} • ${draftModeLabel(appState.settings.draft_mode)}
         </div>
       </div>`
     : `
@@ -7438,7 +7762,7 @@ function renderCaptainTeamsPage() {
         <span class="players-count">${availablePlayers.length} Available</span>
       </div>
       <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
-        Every captain sees the same available-player pool. Picks happen in Down / Down / Up order. When a player is picked, they disappear from every other captain's list.
+        Every captain sees the same available-player pool and the same shared picking order. When a player is picked, they disappear from every other captain's list and the next captain goes on the clock.
       </p>
       ${turnBanner}
     </div>
@@ -10007,6 +10331,7 @@ async function toggleCaptain(id, makeCaptain) {
       if (captainsMini) captainsMini.textContent = appState.players.filter(p => isCaptainPlayer(p)).length;
       renderCaptainQRList();
       renderAdminPlayerTeamCountControl();
+      renderAdminDraftControls();
       updateCaptainAccessUi();
       updateRoundFinalizeAdmin();
     }
@@ -11588,6 +11913,27 @@ async function resetDailyGameIfNeeded() {
       .not('id', 'is', null),
     'Daily reset teams'
   );
+
+  try {
+    const settingsResult = await window.supabaseClient
+      .from('settings')
+      .select('draft_default_mode,draft_default_first_team,draft_default_custom_sequence')
+      .eq('key', SETTINGS_KEY)
+      .limit(1);
+
+    const defaults = settingsResult?.data?.[0] || {};
+    await window.supabaseClient
+      .from('settings')
+      .update({
+        draft_mode: defaults.draft_default_mode || 'down_down_up',
+        draft_first_team: Number(defaults.draft_default_first_team || 1),
+        draft_custom_sequence: defaults.draft_default_custom_sequence || '',
+        teams_submitted: false
+      })
+      .eq('key', SETTINGS_KEY);
+  } catch (err) {
+    console.warn('Could not restore saved draft default during daily reset', err);
+  }
 
   localStorage.setItem('gmg_last_reset_date', today);
   localStorage.removeItem(getCaptainAccessKey());
