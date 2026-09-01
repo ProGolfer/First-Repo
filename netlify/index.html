@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.3 — Phone Captain Roster Sync Fix</title>
+  <title>Money Game Central v2.7.4 — Persistent Live Scoring</title>
 
   <!--
     Golf Money Game
@@ -5348,6 +5348,7 @@
         appState.settingsLiveEnabled = false;
       }
 
+      await loadTodayLiveScoresFromDb();
       await loadAnnouncements();
       await loadActivityTimeline();
 
@@ -8444,6 +8445,64 @@ const teamCount = getActiveTeamCount();
       return `gmg_live_score_${getTodayKey()}_${teamId || 'no_team'}`;
     }
 
+    const LIVE_TEAM_SCORES_TABLE = 'live_team_scores';
+
+    async function loadTodayLiveScoresFromDb() {
+      try {
+        const result = await window.supabaseClient
+          .from(LIVE_TEAM_SCORES_TABLE)
+          .select('*')
+          .eq('game_date', getTodayKey());
+
+        if (result?.error) throw result.error;
+
+        (result.data || []).forEach(row => {
+          const scoreData = row.score_data || { currentHole: row.current_hole || 1, scores: {} };
+          if (!scoreData.currentHole) scoreData.currentHole = row.current_hole || 1;
+          if (!scoreData.scores) scoreData.scores = {};
+          localStorage.setItem(
+            getLiveScoreStorageKey(row.team_id),
+            JSON.stringify(scoreData)
+          );
+        });
+
+        return result.data || [];
+      } catch (err) {
+        console.warn('Could not load persistent live scores', err);
+        return [];
+      }
+    }
+
+    async function persistTeamLiveScoreToDb(teamId, scoreData = null) {
+      if (!teamId) return;
+
+      const payloadData = scoreData || loadTeamLiveScore(teamId);
+
+      const payload = {
+        game_date: getTodayKey(),
+        team_id: Number(teamId),
+        current_hole: Math.min(18, Math.max(1, Number(payloadData?.currentHole || 1))),
+        score_data: payloadData || { currentHole: 1, scores: {} },
+        updated_at: new Date().toISOString()
+      };
+
+      const result = await window.supabaseClient
+        .from(LIVE_TEAM_SCORES_TABLE)
+        .upsert([payload], { onConflict: 'game_date,team_id' });
+
+      if (result?.error) throw result.error;
+    }
+
+    async function clearTodayLiveScoresFromDb() {
+      const result = await window.supabaseClient
+        .from(LIVE_TEAM_SCORES_TABLE)
+        .delete()
+        .eq('game_date', getTodayKey());
+
+      if (result?.error) throw result.error;
+    }
+
+
     function getMyPlayer() {
       const myId = localStorage.getItem('gmg_player_id') || '';
       if (myId) {
@@ -8484,6 +8543,11 @@ const teamCount = getActiveTeamCount();
     function saveTeamLiveScore(teamId) {
       if (!teamId) return;
       localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(liveScoreState));
+
+      // Keep local response instant, then mirror to Supabase for refresh/cross-device persistence.
+      persistTeamLiveScoreToDb(teamId, liveScoreState).catch(err => {
+        console.warn('Live score cloud save failed', err);
+      });
     }
 
     function getHoleInfo(holeNumber) {
@@ -8804,7 +8868,7 @@ const teamCount = getActiveTeamCount();
       renderLiveScorecard();
     }
 
-    function submitCurrentHole() {
+    async function submitCurrentHole() {
       const myPlayer = getMyPlayer();
       if (!isCaptainPlayer(myPlayer)) {
         alert('Only the captain can submit the official hole score.');
@@ -8824,7 +8888,15 @@ const teamCount = getActiveTeamCount();
       };
 
       if (liveScoreState.currentHole < 18) liveScoreState.currentHole += 1;
-      saveTeamLiveScore(appState.myTeam);
+
+      localStorage.setItem(getLiveScoreStorageKey(appState.myTeam), JSON.stringify(liveScoreState));
+
+      try {
+        await persistTeamLiveScoreToDb(appState.myTeam, liveScoreState);
+      } catch (err) {
+        alert(`Hole saved on this device, but cloud sync failed: ${formatError(err)}`);
+      }
+
       saveAutoBackup('after-submit-hole');
       renderLiveScorecard();
       renderLiveStandings();
@@ -8870,6 +8942,8 @@ const teamCount = getActiveTeamCount();
         if (missing.length && !confirm(`You still have ${missing.length} holes not submitted. Submit final score anyway?`)) {
           return;
         }
+
+        await persistTeamLiveScoreToDb(appState.myTeam, liveScoreState);
 
         const totals = getTeamMoneyTotals(appState.myTeam);
         const total = totals.total;
@@ -9091,7 +9165,7 @@ Total: ${totals.total}`);
       const allSubmitted = teamsWithPlayers.length > 0 && teamsWithPlayers.every(row => row.total !== null);
 
       if (!allSubmitted) {
-        mount.innerHTML = `<div class="dashboard-panel"><div class="empty-state">Final results unlock after all teams submit.<br>Submitted: ${teamsWithPlayers.filter(row => row.total !== null).length}/${teamsWithPlayers.length}</div></div>`;
+        mount.innerHTML = `<div class="dashboard-panel"><div class="empty-state">Final results unlock for everyone after all teams submit.<br>Submitted: ${teamsWithPlayers.filter(row => row.total !== null).length}/${teamsWithPlayers.length}</div></div>`;
         return;
       }
 
@@ -11165,7 +11239,7 @@ async function toggleCaptain(id, makeCaptain) {
       previewAdminScorePoints();
     }
 
-    function saveAdminScoreCorrection() {
+    async function saveAdminScoreCorrection() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
@@ -11186,6 +11260,7 @@ async function toggleCaptain(id, makeCaptain) {
       };
       scoreData.currentHole = Math.max(scoreData.currentHole || 1, holeNumber);
       localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData));
+      await persistTeamLiveScoreToDb(teamId, scoreData);
       saveAutoBackup('after-admin-score-correction');
 
       if (String(appState.myTeam || '') === String(teamId)) {
@@ -11199,7 +11274,7 @@ async function toggleCaptain(id, makeCaptain) {
       alert('Score correction saved');
     }
 
-    function clearAdminHoleScore() {
+    async function clearAdminHoleScore() {
       const teamId = getAdminSelectedTeamId();
       const holeNumber = getAdminSelectedHole();
       if (!teamId) {
@@ -11211,6 +11286,7 @@ async function toggleCaptain(id, makeCaptain) {
       const scoreData = loadTeamLiveScore(teamId);
       delete scoreData.scores[String(holeNumber)];
       localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData));
+      await persistTeamLiveScoreToDb(teamId, scoreData);
 
       if (String(appState.myTeam || '') === String(teamId)) {
         liveScoreState = scoreData;
@@ -11235,6 +11311,12 @@ async function toggleCaptain(id, makeCaptain) {
           window.supabaseClient.from('players').update({ score: null }).eq('team', parseInt(teamId, 10)),
           'Clear team score'
         );
+        await window.supabaseClient
+          .from(LIVE_TEAM_SCORES_TABLE)
+          .delete()
+          .eq('game_date', getTodayKey())
+          .eq('team_id', Number(teamId));
+        localStorage.removeItem(getLiveScoreStorageKey(teamId));
         appState.players = appState.players.map(p => String(p.team) === String(teamId) ? { ...p, score: null } : p);
         renderAdminTeams();
         renderLeaderboard();
@@ -11481,9 +11563,11 @@ async function toggleCaptain(id, makeCaptain) {
 
         setBackupStatus('Restoring live scores...');
         (appState.teams || []).forEach(t => localStorage.removeItem(getLiveScoreStorageKey(t.id)));
-        Object.entries(backup.liveScores || {}).forEach(([teamId, scoreData]) => {
-          localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(scoreData || { currentHole: 1, scores: {} }));
-        });
+        for (const [teamId, scoreData] of Object.entries(backup.liveScores || {})) {
+          const restoredScore = scoreData || { currentHole: 1, scores: {} };
+          localStorage.setItem(getLiveScoreStorageKey(teamId), JSON.stringify(restoredScore));
+          await persistTeamLiveScoreToDb(teamId, restoredScore);
+        }
 
         appState.teamMode = backup.teamMode || 'auto';
         appState.numTeams = Number(backup.numTeams || backup.selectedNumTeams || 4);
@@ -11671,7 +11755,11 @@ async function toggleCaptain(id, makeCaptain) {
       if (!confirm('Clear all teams and captains? Players will stay approved, but team assignments will be removed.')) return;
       try {
         await db(window.supabaseClient.from('players').update({ team: null, is_captain: false }).not('id', 'is', null), 'Clear player teams');
-        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Clear team captains');
+        await db(window.supabaseClient.from('teams').update({
+          captain_id: null,
+          roster_submitted: false,
+          roster_submitted_at: null
+        }).not('id', 'is', null), 'Clear team captains and submissions');
         await loadAllData();
         renderSystemTools();
         alert('Teams and captains cleared');
@@ -11686,6 +11774,7 @@ async function toggleCaptain(id, makeCaptain) {
         (appState.teams || []).forEach(t => {
           localStorage.removeItem(getLiveScoreStorageKey(t.id));
         });
+        await clearTodayLiveScoresFromDb();
         await db(window.supabaseClient.from('players').update({ score: null }).not('id', 'is', null), 'Clear player scores');
         liveScoreState = { currentHole: 1, scores: {} };
         await loadAllData();
@@ -11704,8 +11793,13 @@ async function toggleCaptain(id, makeCaptain) {
           localStorage.removeItem(getLiveScoreStorageKey(t.id));
         });
 
+        await clearTodayLiveScoresFromDb();
         await db(window.supabaseClient.from('players').delete().not('id', 'is', null), 'Clear all players for new day');
-        await db(window.supabaseClient.from('teams').update({ captain_id: null }).not('id', 'is', null), 'Reset teams for new day');
+        await db(window.supabaseClient.from('teams').update({
+          captain_id: null,
+          roster_submitted: false,
+          roster_submitted_at: null
+        }).not('id', 'is', null), 'Reset teams for new day');
         await db(window.supabaseClient.from('settings').upsert([{
           key: SETTINGS_KEY,
           game_started: false,
