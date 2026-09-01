@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.8.1 — Team Submit Sync Fix</title>
+  <title>Money Game Central v2.6.9 — Captain Draft + Team Submit Flow</title>
 
   <!--
     Golf Money Game
@@ -3527,7 +3527,8 @@
         <div id="captain-team-assignment-list"></div>
       </div>
 
-      <button class="btn btn-primary" onclick="submitTeams()">Submit Teams</button>
+      <button id="captain-submit-team-btn" class="btn btn-primary" onclick="submitCaptainTeam()">✅ Submit My Team</button>
+      <div id="captain-submit-team-status" class="muted" style="font-weight:850;text-align:center;margin:4px 0 10px;"></div>
       <button class="btn btn-back" onclick="showView('view-home')">← Back</button>
     </div>
 
@@ -7135,146 +7136,238 @@ function getCaptainTeamTarget(teamId, targets) {
   return found ? found.target : 4;
 }
 
+
+function isTeamRosterSubmitted(teamId) {
+  const team = (appState.teams || []).find(t => String(t.id) === String(teamId));
+  return !!team?.roster_submitted;
+}
+
+function getCaptainDraftTeam() {
+  const accessTeam = getCaptainAccessTeam();
+  if (accessTeam) return accessTeam;
+
+  const myPlayer = getMyPlayer();
+  if (myPlayer?.team) {
+    return (appState.teams || []).find(t => String(t.id) === String(myPlayer.team)) || null;
+  }
+  return null;
+}
+
+function getCaptainDraftTarget(teamId) {
+  const activeTeams = getActiveTeams();
+  const targets = getCaptainTeamTargets(activeTeams, getApprovedPlayers());
+  return getCaptainTeamTarget(teamId, targets);
+}
+
+async function submitCaptainTeam() {
+  const team = getCaptainDraftTeam();
+  const myPlayer = getCaptainAccessPlayer() || getMyPlayer();
+
+  if (!team || !myPlayer) {
+    alert('Captain team could not be identified. Scan the captain QR again.');
+    return;
+  }
+
+  if (!isCaptainPlayer(myPlayer) && !hasAdminCaptainOverride()) {
+    alert('Only the assigned captain can submit this team.');
+    return;
+  }
+
+  const teamPlayers = (appState.players || []).filter(
+    p => p.status === 'approved' && String(p.team || '') === String(team.id)
+  );
+  const target = getCaptainDraftTarget(team.id);
+
+  if (teamPlayers.length < target) {
+    alert(`${getTeamName(team.id)} needs ${target} players before it can be submitted. You currently have ${teamPlayers.length}.`);
+    return;
+  }
+
+  const names = teamPlayers.map(p => p.name).join(', ');
+  if (!confirm(`Submit ${getTeamName(team.id)}?\n\n${names}\n\nAfter submitting, this team's Live Scorecard will unlock.`)) return;
+
+  try {
+    await db(
+      window.supabaseClient
+        .from('teams')
+        .update({
+          roster_submitted: true,
+          roster_submitted_at: new Date().toISOString()
+        })
+        .eq('id', team.id),
+      'Submit captain team roster'
+    );
+
+    await loadAllData();
+
+    // Global teams_submitted becomes true only when every active captain team is locked.
+    const activeTeams = getActiveTeams();
+    const allSubmitted = activeTeams.length > 0 && activeTeams.every(t => {
+      const refreshed = (appState.teams || []).find(x => String(x.id) === String(t.id));
+      return !!refreshed?.roster_submitted;
+    });
+
+    if (allSubmitted) {
+      const result = await db(
+        window.supabaseClient
+          .from('settings')
+          .update({ teams_submitted: true })
+          .eq('key', SETTINGS_KEY)
+          .select(),
+        'Mark all team rosters submitted'
+      );
+      if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
+      appState.teamsSubmitted = true;
+    }
+
+    await recordActivity(
+      'team',
+      'Captain Team Submitted',
+      `${getTeamName(team.id)} roster was submitted by ${myPlayer.name}.`,
+      { icon:'✅', actor:myPlayer.name || 'Captain' }
+    );
+
+    renderCaptainTeamsPage();
+    loadGameView();
+    renderHome();
+
+    alert(`${getTeamName(team.id)} is locked in. Your Live Scorecard is now available.`);
+    showView('view-game');
+  } catch (err) {
+    alert(`Could not submit your team: ${formatError(err)}`);
+  }
+}
+
 function renderCaptainTeamsPage() {
   const approvedPlayers = appState.players.filter(p => p.status === 'approved');
   const activeTeams = getActiveTeams();
-  const activeTeamIds = new Set(activeTeams.map(t => String(t.id)));
   const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
-  const accessPlayer = getCaptainAccessPlayer();
-  const accessTeamRaw = getCaptainAccessTeam();
-  const accessTeam = accessTeamRaw && activeTeamIds.has(String(accessTeamRaw.id)) ? accessTeamRaw : null;
+  const accessPlayer = getCaptainAccessPlayer() || getMyPlayer();
+  const accessTeam = getCaptainDraftTeam();
   const isAdminOverride = hasAdminCaptainOverride();
-  const teamTargets = getCaptainTeamTargets(activeTeams, approvedPlayers);
 
   const count = document.getElementById('captain-player-count');
   const list = document.getElementById('captain-team-assignment-list');
+  const submitBtn = document.getElementById('captain-submit-team-btn');
+  const submitStatus = document.getElementById('captain-submit-team-status');
+
   if (count) count.textContent = availablePlayers.length;
   if (!list) return;
 
-  const unlockTitle = isAdminOverride
-    ? '🛠️ Admin Override'
-    : `${accessPlayer ? '👑 ' + accessPlayer.name : '👑 Captain Access'}${accessTeam ? ' - ' + getTeamName(accessTeam.id) : ''}`;
-
-  const activeTeamText = `${activeTeams.length} active team${activeTeams.length === 1 ? '' : 's'}`;
-  const modeText = appState.teamMode === 'manual' ? 'Manual mode' : 'Auto mode';
-
-  const unlockNote = isAdminOverride
-    ? `Admin override is active on this device. ${modeText} is using ${activeTeamText}. Choose a team beside each player, then tap Add.`
-    : `QR access is active for today. ${modeText} is using ${activeTeamText}. Choose a team beside each player, then tap Add.`;
-
-  const getTeamPlayers = (teamId) => approvedPlayers
-    .filter(p => String(p.team || '') === String(teamId))
-    .sort((a, b) => {
-      const aCaptain = isCaptainPlayer(a) ? 0 : 1;
-      const bCaptain = isCaptainPlayer(b) ? 0 : 1;
-      if (aCaptain !== bCaptain) return aCaptain - bCaptain;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-
-  let draftRows = '';
-
   if (!activeTeams.length) {
-    draftRows = `<div class="empty-state">No active teams are available yet.<br><span class="muted">Admin must set the active team count and assign captains first.</span></div>`;
-  } else if (!availablePlayers.length) {
-    const unassignedApproved = approvedPlayers.filter(p => !p.team);
-    draftRows = unassignedApproved.length
-      ? `<div class="empty-state">${unassignedApproved.length} unassigned player${unassignedApproved.length === 1 ? '' : 's'} found, but they are currently marked as captains.<br><span class="muted">Only non-captains appear in the player draft list.</span></div>`
-      : '<div class="empty-state">No available players left to pick. Everyone is already assigned to a team.</div>';
-  } else {
-    draftRows = availablePlayers.map(p => {
-      const options = activeTeams.map(t => {
-        const teamPlayers = getTeamPlayers(t.id);
-        const target = getCaptainTeamTarget(t.id, teamTargets);
-        const isFull = teamPlayers.length >= target;
-        const isPreferred = accessTeam && String(accessTeam.id) === String(t.id);
-        const label = `${isPreferred ? '★ ' : ''}${getTeamName(t.id)}${isFull ? ' — Full' : ` — ${teamPlayers.length}/${target}`}`;
-        return `<option value="${t.id}" ${isFull ? 'disabled' : ''}>${escapeHtml(label)}</option>`;
-      }).join('');
-
-      const preferredOpenTeam = activeTeams.find(t => {
-        const teamPlayers = getTeamPlayers(t.id);
-        const target = getCaptainTeamTarget(t.id, teamTargets);
-        return accessTeam && String(accessTeam.id) === String(t.id) && teamPlayers.length < target;
-      });
-
-      return `
-        <div class="player-item" style="display:grid;grid-template-columns:minmax(105px,.85fr) minmax(150px,1.3fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(6,18,30,.96));padding:12px;border-radius:15px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;">
-          <div style="min-width:0;">
-            <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 ${escapeHtml(p.name)}</div>
-            <div class="muted" style="font-size:11px;font-weight:850;margin-top:2px;">AVAILABLE</div>
-          </div>
-          <div style="position:relative;min-width:0;">
-            <select id="captain-pick-team-${p.id}" style="appearance:none;-webkit-appearance:none;width:100%;min-width:0;padding:12px 34px 12px 12px;border-radius:12px;border:1px solid rgba(84,232,111,.32);background:#0b1b29;color:#f8fafc;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);">
-              <option value="">Choose team…</option>
-              ${options}
-            </select>
-            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#54e86f;font-size:12px;">▼</span>
-          </div>
-          <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:12px 16px;border-radius:12px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
-          ${preferredOpenTeam ? `<div class="muted" style="grid-column:2 / -1;font-size:11px;font-weight:850;margin-top:-3px;">★ ${escapeHtml(getTeamName(preferredOpenTeam.id))} is your team</div>` : ''}
-        </div>
-      `;
-    }).join('');
+    list.innerHTML = '<div class="empty-state">No active teams are configured yet.</div>';
+    if (submitBtn) submitBtn.disabled = true;
+    return;
   }
 
-  const teamCards = activeTeams.map(t => {
-    const teamPlayers = getTeamPlayers(t.id);
-    const target = getCaptainTeamTarget(t.id, teamTargets);
-    const isFull = teamPlayers.length >= target;
-    const captain = teamPlayers.find(p => isCaptainPlayer(p));
+  if (!accessTeam && !isAdminOverride) {
+    list.innerHTML = '<div class="empty-state">Your captain team could not be identified. Ask Admin to assign you as captain and scan your QR again.</div>';
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
 
-    return `
-      <div style="background:rgba(15,30,44,.78);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:14px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
-          <div style="font-size:18px;font-weight:950;color:#54e86f;">🏌️ ${getTeamName(t.id)}</div>
-          <div style="font-size:13px;color:${isFull ? '#54e86f' : '#ffb020'};font-weight:950;">${teamPlayers.length}/${target}${isFull ? ' ✅' : ''}</div>
-        </div>
-        ${captain ? `<div style="padding:9px 0;border-top:1px solid rgba(148,163,184,.12);font-weight:900;color:#f8fafc;">👑 ${captain.name}</div>` : ''}
-        ${teamPlayers.filter(p => !isCaptainPlayer(p)).map(p => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid rgba(148,163,184,.12);">
-            <span style="font-weight:850;color:#f8fafc;">${p.name}</span>
-            <button class="btn btn-secondary btn-small" onclick="unassignPlayer('${p.id}'); setTimeout(renderCaptainTeamsPage, 400);">Remove</button>
-          </div>
-        `).join('')}
-        ${!teamPlayers.length ? '<div class="empty-state" style="padding:8px 0;">No players yet</div>' : ''}
+  const myTeam = accessTeam;
+  const myTeamPlayers = myTeam
+    ? approvedPlayers
+        .filter(p => String(p.team || '') === String(myTeam.id))
+        .sort((a,b) => {
+          const ac = isCaptainPlayer(a) ? 0 : 1;
+          const bc = isCaptainPlayer(b) ? 0 : 1;
+          return ac - bc || String(a.name || '').localeCompare(String(b.name || ''));
+        })
+    : [];
+
+  const target = myTeam ? getCaptainDraftTarget(myTeam.id) : 0;
+  const rosterSubmitted = myTeam ? isTeamRosterSubmitted(myTeam.id) : false;
+
+  const unlockTitle = isAdminOverride
+    ? '🛠️ Admin Override'
+    : `👑 ${escapeHtml(accessPlayer?.name || 'Captain')} — ${escapeHtml(getTeamName(myTeam.id))}`;
+
+  const availableRows = rosterSubmitted
+    ? `<div class="empty-state">✅ Your team is submitted and locked. Live Scoring is now available.</div>`
+    : availablePlayers.length
+      ? availablePlayers.map(p => {
+          if (isAdminOverride && !myTeam) {
+            const options = activeTeams.map(t => `<option value="${t.id}">${escapeHtml(getTeamName(t.id))}</option>`).join('');
+            return `
+              <div class="player-item" style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(150px,1fr) auto;gap:10px;align-items:center;background:rgba(15,30,44,.82);padding:12px;border-radius:14px;margin-bottom:9px;border:1px solid rgba(148,163,184,.16);">
+                <div><strong>👤 ${escapeHtml(p.name)}</strong><div class="muted" style="font-size:11px;">AVAILABLE</div></div>
+                <select id="captain-pick-team-${p.id}" style="width:100%;padding:11px;border-radius:11px;background:#0b1b29;color:#fff;border:1px solid rgba(84,232,111,.30);font-weight:900;">
+                  <option value="">Choose team…</option>${options}
+                </select>
+                <button class="btn btn-primary btn-small" style="margin:0;padding:11px 16px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+              </div>`;
+          }
+
+          return `
+            <div class="player-item" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(6,18,30,.96));padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;">
+              <div style="min-width:0;">
+                <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 ${escapeHtml(p.name)}</div>
+                <div class="muted" style="font-size:11px;font-weight:850;margin-top:2px;">AVAILABLE</div>
+              </div>
+              <button class="btn btn-primary btn-small" style="margin:0;white-space:nowrap;padding:11px 18px;border-radius:12px;" onclick="captainSubmitPlayerToTeam('${p.id}')">Add</button>
+            </div>`;
+        }).join('')
+      : '<div class="empty-state">No unassigned players remain.</div>';
+
+  const teamCard = myTeam ? `
+    <div class="dashboard-panel" style="margin-top:12px;border-color:rgba(84,232,111,.30);">
+      <div class="players-header">
+        <h3>🚩 Your Team</h3>
+        <span class="players-count">${myTeamPlayers.length}/${target}</span>
       </div>
-    `;
-  }).join('');
+      <div class="muted" style="font-weight:850;margin:6px 0 8px;">
+        ${rosterSubmitted ? '✅ Submitted & locked' : 'Players you add appear here immediately.'}
+      </div>
+      ${myTeamPlayers.map(p => `
+        <div class="player-item" style="padding:10px 0;">
+          <span style="font-weight:900;">${isCaptainPlayer(p) ? '👑 ' : ''}${escapeHtml(p.name)}</span>
+          ${!rosterSubmitted && !isCaptainPlayer(p) ? `<button class="btn btn-secondary btn-small" onclick="unassignPlayer('${p.id}'); setTimeout(renderCaptainTeamsPage, 250);">Remove</button>` : ''}
+        </div>
+      `).join('') || '<div class="empty-state">No players on your team yet.</div>'}
+    </div>` : '';
 
   list.innerHTML = `
     <div class="captain-unlock-banner">
       <div class="players-header">
         <h3>${unlockTitle}</h3>
-        <span class="players-count">${availablePlayers.length} Left</span>
+        <span class="players-count">${availablePlayers.length} Available</span>
       </div>
-      <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">${unlockNote}</p>
-      <button class="btn btn-secondary btn-small" style="margin-top:10px;" onclick="clearCaptainAccessForThisDevice()">Lock This Device</button>
+      <p class="muted" style="font-weight:800;margin-top:8px;line-height:1.45;">
+        All captains see the same available-player pool. When any captain adds a player, that player is assigned immediately and disappears from every other captain's list.
+      </p>
     </div>
 
     <div class="section-title">Available Players</div>
-    ${draftRows}
+    ${availableRows}
 
-    <div class="section-title">Selected Teams</div>
-    ${teamCards || '<div class="empty-state">No active teams yet.</div>'}
+    <div class="section-title">Your Selected Team</div>
+    ${teamCard}
   `;
-}
 
+  if (submitBtn) {
+    if (!myTeam || isAdminOverride && !accessTeam) {
+      submitBtn.style.display = 'none';
+    } else {
+      submitBtn.style.display = '';
+      submitBtn.disabled = rosterSubmitted || myTeamPlayers.length < target;
+      submitBtn.textContent = rosterSubmitted
+        ? '✅ Team Submitted'
+        : `✅ Submit ${getTeamName(myTeam.id)} (${myTeamPlayers.length}/${target})`;
+    }
+  }
+
+  if (submitStatus) {
+    submitStatus.textContent = rosterSubmitted
+      ? 'Your roster is locked. Live Scorecard is unlocked.'
+      : myTeamPlayers.length < target
+        ? `Add ${target - myTeamPlayers.length} more player${target - myTeamPlayers.length === 1 ? '' : 's'} before submitting.`
+        : 'Your roster is full. Submit your team when ready.';
+  }
+}
 async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
   try {
-    const select = document.getElementById(`captain-pick-team-${playerId}`);
-    const teamId = teamIdOverride || select?.value || '';
-
-    if (!teamId) {
-      alert('Select a team first.');
-      return;
-    }
-
-    if (!isActiveTeamId(teamId)) {
-      alert('That team is not active under the current Auto/Manual team setting.');
-      renderCaptainTeamsPage();
-      return;
-    }
-
     const player = appState.players.find(p => String(p.id) === String(playerId));
     if (!player) {
       alert('Player not found. Refresh and try again.');
@@ -7282,20 +7375,42 @@ async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
     }
 
     if (player.team) {
-      alert(`${player.name} is already on a team.`);
       await loadAllData();
       renderCaptainTeamsPage();
       return;
     }
 
-    const activeTeams = getActiveTeams();
-    const teamTargets = getCaptainTeamTargets(activeTeams, getApprovedPlayers());
-    const target = getCaptainTeamTarget(teamId, teamTargets);
-    const currentCount = appState.players.filter(p => p.status === 'approved' && String(p.team || '') === String(teamId)).length;
+    let teamId = '';
+    if (hasAdminCaptainOverride() && teamIdOverride) {
+      teamId = teamIdOverride;
+    } else if (hasAdminCaptainOverride() && !getCaptainAccessTeam()) {
+      teamId = document.getElementById(`captain-pick-team-${playerId}`)?.value || '';
+    } else {
+      teamId = String(getCaptainDraftTeam()?.id || '');
+    }
+
+    if (!teamId) {
+      alert('Your captain team could not be identified.');
+      return;
+    }
+
+    if (!isActiveTeamId(teamId)) {
+      alert('That team is not active.');
+      return;
+    }
+
+    if (isTeamRosterSubmitted(teamId)) {
+      alert(`${getTeamName(teamId)} is already submitted and locked.`);
+      return;
+    }
+
+    const target = getCaptainDraftTarget(teamId);
+    const currentCount = appState.players.filter(
+      p => p.status === 'approved' && String(p.team || '') === String(teamId)
+    ).length;
 
     if (currentCount >= target) {
       alert(`${getTeamName(teamId)} is already full (${currentCount}/${target}).`);
-      renderCaptainTeamsPage();
       return;
     }
 
@@ -7303,17 +7418,17 @@ async function captainSubmitPlayerToTeam(playerId, teamIdOverride = '') {
       window.supabaseClient
         .from('players')
         .update({ team: parseInt(teamId, 10) })
-        .eq('id', playerId),
-      'Captain assign player to team'
+        .eq('id', playerId)
+        .is('team', null),
+      'Captain draft player'
     );
 
     await loadAllData();
     renderCaptainTeamsPage();
   } catch (err) {
-    alert(`Could not add player to team: ${formatError(err)}`);
+    alert(`Could not add player to your team: ${formatError(err)}`);
   }
 }
-
 function updateCaptainNumTeams() {
   const select = document.getElementById('captain-num-teams');
   appState.selectedNumTeams = parseInt(select?.value || appState.numTeams || 4, 10);
@@ -7860,6 +7975,22 @@ const teamCount = getActiveTeamCount();
       }
 
       if (label) label.textContent = `Your team: ${getTeamName(appState.myTeam)}`;
+
+      if (!isTeamRosterSubmitted(appState.myTeam)) {
+        if (mount) {
+          mount.innerHTML = `
+            <div class="dashboard-panel">
+              <div class="empty-state">
+                🔒 Live Scorecard Locked<br>
+                Your captain must finish selecting players and submit the team first.
+              </div>
+            </div>`;
+        }
+        renderLiveStandings();
+        renderLiveResults();
+        return;
+      }
+
       liveScoreState = loadTeamLiveScore(appState.myTeam);
       liveScoreState.currentHole = Math.min(18, Math.max(1, liveScoreState.currentHole || 1));
 
@@ -7871,6 +8002,11 @@ const teamCount = getActiveTeamCount();
     function renderLiveScorecard() {
       const mount = document.getElementById('live-scorecard');
       if (!mount) return;
+
+      if (!appState.myTeam || !isTeamRosterSubmitted(appState.myTeam)) {
+        mount.innerHTML = '<div class="dashboard-panel"><div class="empty-state">🔒 Live Scorecard unlocks after your captain submits the team roster.</div></div>';
+        return;
+      }
 
       const myPlayer = getMyPlayer();
       const teamPlayers = getMyTeamPlayers();
@@ -9983,6 +10119,14 @@ async function toggleCaptain(id, makeCaptain) {
         );
         if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
 
+        await db(
+          window.supabaseClient
+            .from('teams')
+            .update({ roster_submitted: false, roster_submitted_at: null })
+            .not('id', 'is', null),
+          'Reset roster submissions after team settings change'
+        );
+
         await loadAllData();
         renderCaptainTeamsPage();
         alert(`Team settings synced to all devices: ${getActiveTeamCount()} active team${getActiveTeamCount() === 1 ? '' : 's'}.`);
@@ -9993,49 +10137,51 @@ async function toggleCaptain(id, makeCaptain) {
 
     async function submitTeams() {
       try {
-        const activeTeamCount = getActiveTeamCount();
+        const activeTeams = getActiveTeams();
+        if (!activeTeams.length) {
+          alert('No active teams to submit.');
+          return;
+        }
+
+        for (const team of activeTeams) {
+          await db(
+            window.supabaseClient
+              .from('teams')
+              .update({ roster_submitted: true, roster_submitted_at: new Date().toISOString() })
+              .eq('id', team.id),
+            'Admin submit team roster'
+          );
+        }
 
         const result = await db(
           window.supabaseClient
             .from('settings')
             .update({
               team_mode: appState.teamMode || 'auto',
-              num_teams: activeTeamCount,
+              num_teams: getActiveTeamCount(),
               teams_submitted: true
             })
             .eq('key', SETTINGS_KEY)
             .select(),
-          'Submit teams for all devices'
+          'Admin submit all teams'
         );
 
         appState.teamsSubmitted = true;
-        appState.settings = {
-          ...appState.settings,
-          team_mode: appState.teamMode || 'auto',
-          num_teams: activeTeamCount,
-          teams_submitted: true,
-          ...(result.data?.[0] || {})
-        };
+        if (result.data?.[0]) appState.settings = { ...appState.settings, ...result.data[0] };
 
-        saveAutoBackup('after-submit-teams');
-
-        // Pull the final team/player state back from Supabase so the phone that
-        // submitted and every other device are working from the same data.
         await loadAllData();
-
         renderHome();
-        renderAdminPlayers();
         renderAdminTeams();
         renderCaptainTeamsPage();
 
         await recordActivity(
           'team',
           'Teams Submitted',
-          `${activeTeamCount} team${activeTeamCount === 1 ? '' : 's'} were submitted and published to all devices.`,
-          { icon:'🚩', actor:'Captain/Admin' }
+          `${activeTeams.length} team roster${activeTeams.length === 1 ? '' : 's'} were locked by Admin.`,
+          { icon:'🚩', actor:'Admin' }
         );
 
-        alert('Teams submitted successfully and synced to all devices.');
+        alert('All team rosters are submitted and synced to every device.');
       } catch (err) {
         alert(`Could not submit teams: ${formatError(err)}`);
       }
@@ -11274,7 +11420,7 @@ async function resetDailyGameIfNeeded() {
   await db(
     window.supabaseClient
       .from('teams')
-      .update({ captain_id: null })
+      .update({ captain_id: null, roster_submitted: false, roster_submitted_at: null })
       .not('id', 'is', null),
     'Daily reset teams'
   );
