@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.6.8 — Team Controls + Captain UI</title>
+  <title>Money Game Central v2.6.8.1 — Team Submit Sync Fix</title>
 
   <!--
     Golf Money Game
@@ -9991,13 +9991,54 @@ async function toggleCaptain(id, makeCaptain) {
       }
     }
 
-    function submitTeams() {
-      appState.teamsSubmitted = true;
-      saveAutoBackup('after-submit-teams');
-      renderHome();
-      renderAdminTeams();
-      recordActivity('team', 'Teams Submitted', `${getActiveTeamCount()} team${getActiveTeamCount() === 1 ? '' : 's'} were submitted and locked in.`, { icon:'🚩', actor:'Admin' });
-      alert('Teams submitted successfully! Auto-save backup updated.');
+    async function submitTeams() {
+      try {
+        const activeTeamCount = getActiveTeamCount();
+
+        const result = await db(
+          window.supabaseClient
+            .from('settings')
+            .update({
+              team_mode: appState.teamMode || 'auto',
+              num_teams: activeTeamCount,
+              teams_submitted: true
+            })
+            .eq('key', SETTINGS_KEY)
+            .select(),
+          'Submit teams for all devices'
+        );
+
+        appState.teamsSubmitted = true;
+        appState.settings = {
+          ...appState.settings,
+          team_mode: appState.teamMode || 'auto',
+          num_teams: activeTeamCount,
+          teams_submitted: true,
+          ...(result.data?.[0] || {})
+        };
+
+        saveAutoBackup('after-submit-teams');
+
+        // Pull the final team/player state back from Supabase so the phone that
+        // submitted and every other device are working from the same data.
+        await loadAllData();
+
+        renderHome();
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderCaptainTeamsPage();
+
+        await recordActivity(
+          'team',
+          'Teams Submitted',
+          `${activeTeamCount} team${activeTeamCount === 1 ? '' : 's'} were submitted and published to all devices.`,
+          { icon:'🚩', actor:'Captain/Admin' }
+        );
+
+        alert('Teams submitted successfully and synced to all devices.');
+      } catch (err) {
+        alert(`Could not submit teams: ${formatError(err)}`);
+      }
     }
 
     async function setCaptainFromPlayerRow(playerId, value) {
@@ -11299,6 +11340,16 @@ async function resetDailyGameIfNeeded() {
           const adminDashboard = document.getElementById('admin-dashboard');
           if (adminDashboard && adminDashboard.classList.contains('active')) renderAdminCommandDashboard();
         }, 30000);
+
+        // Cross-device fallback: Supabase Realtime should update immediately,
+        // but every 15 seconds we also refresh the core shared game state.
+        setInterval(async () => {
+          try {
+            await withStartupTimeout(loadAllData(), 10000, 'Cross-device sync refresh');
+          } catch (err) {
+            console.warn('Cross-device fallback refresh failed', err);
+          }
+        }, 15000);
 
         window.supabaseClient
           .channel('players-live')
