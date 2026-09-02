@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.4 — Persistent Live Scoring</title>
+  <title>Money Game Central v2.7.5 — UI + Admin Assignment + Live Stability</title>
 
   <!--
     Golf Money Game
@@ -1843,10 +1843,39 @@
     .hof-timeline-date { color:#c4b5fd; font-size:11px; font-weight:950; text-transform:uppercase; }
     @media(max-width:760px){ .hof-gallery{grid-template-columns:1fr;} .hof-record-grid{grid-template-columns:repeat(2,1fr);} .hof-profile-head{align-items:flex-start;flex-direction:column;} .hof-timeline-row{grid-template-columns:1fr;} }
 
+
+    .admin-direct-assignment-note{
+      margin:10px 0 14px;
+      padding:11px 12px;
+      border-radius:12px;
+      background:rgba(84,232,111,.07);
+      border:1px solid rgba(84,232,111,.18);
+      color:#ccefd4;
+      font-size:12px;
+      font-weight:800;
+      line-height:1.45;
+    }
+    @media(max-width:760px){
+      #approved-no-team-list .player-item{
+        grid-template-columns:1fr !important;
+      }
+      #approved-no-team-list .player-item > div:last-child{
+        justify-content:flex-start !important;
+      }
+    }
+
+
+    @media(max-width:700px){
+      #team-assignment-list .player-item{
+        grid-template-columns:1fr !important;
+      }
+    }
+
     /* Player Search v1.5.4 */
     .player-search-hero { background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(15,23,42,.96)); border:1px solid rgba(84,232,111,.3); border-radius:22px; padding:22px; margin-bottom:18px; }
-    .player-search-box { display:flex; gap:10px; margin-top:16px; }
-    .player-search-input { flex:1; min-width:0; background:#08110d; color:#fff; border:1px solid rgba(84,232,111,.35); border-radius:14px; padding:14px 16px; font-size:16px; font-weight:800; outline:none; }
+    .player-search-box { display:grid; grid-template-columns:minmax(260px,1fr) 150px; gap:10px; margin-top:16px; align-items:stretch; }
+    .player-search-input { display:block; width:100%; min-width:0; box-sizing:border-box; background:#08110d; color:#fff; border:1px solid rgba(84,232,111,.35); border-radius:14px; padding:14px 16px; font-size:16px; font-weight:800; outline:none; }
+    .player-search-box .btn { width:100%; margin:0; min-height:50px; padding:12px 18px; }
     .player-search-input:focus { border-color:#54e86f; box-shadow:0 0 0 3px rgba(84,232,111,.12); }
     .player-search-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(245px,1fr)); gap:12px; margin-top:16px; }
     .player-search-card { text-align:left; background:linear-gradient(145deg,#111b16,#0b120f); color:#fff; border:1px solid rgba(148,163,184,.18); border-radius:17px; padding:16px; cursor:pointer; transition:.18s ease; }
@@ -1857,7 +1886,7 @@
     .player-search-card small { color:#94a3b8; display:block; margin-top:3px; }
     .player-search-stats { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
     .player-search-stat { background:rgba(84,232,111,.08); color:#b7f7c3; border:1px solid rgba(84,232,111,.16); border-radius:999px; padding:5px 8px; font-size:11px; font-weight:900; }
-    @media(max-width:620px){ .player-search-box{flex-direction:column;} .player-search-results{grid-template-columns:1fr;} }
+    @media(max-width:620px){ .player-search-box{grid-template-columns:1fr;} .player-search-results{grid-template-columns:1fr;} }
 
 
     /* Money Game Central v2.0 — Universal Player Profile */
@@ -3963,6 +3992,9 @@
             <div id="pending-players-list"></div>
 
             <div class="section-title">✅ Approved Players / Captains</div>
+            <div class="admin-direct-assignment-note">
+              Admin shortcut: assign any approved player directly to a team and optionally make them captain. This bypasses the captain draft when needed. After Admin submits the teams, the captain's registered device gets the same Live Scorecard access.
+            </div>
             <div id="approved-no-team-list"></div>
 
             <div class="section-title">📱 Captain QR Access</div>
@@ -10513,27 +10545,39 @@ async function toggleCaptain(id, makeCaptain) {
       if (approvedNoTeamList) {
         approvedNoTeamList.innerHTML = approvedPlayers.length ? approvedPlayers.map(p => {
           const captainTeam = availableTeams.find(t => String(t.captain_id || '') === String(p.id));
-          const playerTeam = p.team ? getTeamName(p.team) : 'No team yet';
+          const playerTeamId = p.team ? String(p.team) : '';
+          const playerTeam = playerTeamId ? getTeamName(playerTeamId) : 'No team yet';
+          const isCaptainNow = !!captainTeam || isCaptainPlayer(p);
+
           return `
-            <div class="player-item" style="background:rgba(15,30,44,.72);padding:14px 12px;border-radius:14px;border-bottom:none;margin-bottom:10px;align-items:center;">
-              <div style="min-width:130px;">
-                <div style="font-weight:900;color:#f8fafc;">${p.name} ${captainTeam ? '👑' : ''}</div>
-                <div class="muted">${captainTeam ? 'Captain - ' + getTeamName(captainTeam.id) : playerTeam}</div>
+            <div class="player-item" style="display:grid;grid-template-columns:minmax(135px,1fr) minmax(145px,.9fr) auto auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(7,19,31,.96));padding:13px;border-radius:14px;border:1px solid rgba(148,163,184,.16);margin-bottom:10px;">
+              <div style="min-width:0;">
+                <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  ${isCaptainNow ? '👑 ' : ''}${escapeHtml(p.name)}
+                </div>
+                <div class="muted" style="font-size:12px;font-weight:800;">
+                  ${isCaptainNow && captainTeam ? `Captain • ${escapeHtml(getTeamName(captainTeam.id))}` : escapeHtml(playerTeam)}
+                </div>
               </div>
 
-              <div style="flex:1;min-width:180px;">
-                <select onchange="assignCaptainToTeam('${p.id}', this.value)">
-                  <option value="">-- Not Captain --</option>
-                  ${availableTeams.map(t => `<option value="${t.id}" ${captainTeam && String(captainTeam.id) === String(t.id) ? 'selected' : ''}>Captain ${getTeamName(t.id)}</option>`).join('')}
-                </select>
-              </div>
+              <select id="admin-direct-team-${p.id}" style="width:100%;min-width:0;padding:11px 12px;border-radius:11px;background:#0b1b29;color:#fff;border:1px solid rgba(84,232,111,.28);font-weight:850;">
+                <option value="">No team yet</option>
+                ${availableTeams.map(t => `<option value="${t.id}" ${playerTeamId === String(t.id) ? 'selected' : ''}>${escapeHtml(getTeamName(t.id))}</option>`).join('')}
+              </select>
 
-              <button class="btn btn-danger btn-small" onclick="deleteP('${p.id}')">🗑️ Delete</button>
+              <label style="display:flex;align-items:center;gap:7px;font-weight:900;color:#e5edf5;white-space:nowrap;">
+                <input id="admin-direct-captain-${p.id}" type="checkbox" ${isCaptainNow ? 'checked' : ''} style="width:19px;height:19px;">
+                Captain
+              </label>
+
+              <div style="display:flex;gap:7px;justify-content:flex-end;">
+                <button class="btn btn-primary btn-small" style="margin:0;" onclick="adminSaveDirectPlayerAssignment('${p.id}')">Save</button>
+                <button class="btn btn-danger btn-small" style="margin:0;" onclick="deleteP('${p.id}')">🗑</button>
+              </div>
             </div>
           `;
         }).join('') : '<div class="empty-state">No approved players yet</div>';
       }
-
       const now = new Date();
       const openTime = appState.settings.open_time || '06:00';
       const cutoffTime = appState.settings.cutoff_time || '09:30';
@@ -10604,6 +10648,78 @@ async function toggleCaptain(id, makeCaptain) {
         .slice()
         .sort((a, b) => (a.team_number || a.id) - (b.team_number || b.id))
         .slice(0, activeTeamCount);
+    }
+
+
+    async function adminSaveDirectPlayerAssignment(playerId) {
+      const player = appState.players.find(p => String(p.id) === String(playerId));
+      if (!player) return;
+
+      const teamEl = document.getElementById(`admin-direct-team-${playerId}`);
+      const captainEl = document.getElementById(`admin-direct-captain-${playerId}`);
+      const teamId = teamEl?.value ? Number(teamEl.value) : null;
+      const makeCaptain = !!captainEl?.checked;
+
+      if (makeCaptain && !teamId) {
+        alert('Choose a team before making this player a captain.');
+        return;
+      }
+
+      try {
+        const oldCaptainTeam = appState.teams.find(t => String(t.captain_id || '') === String(playerId));
+
+        // If this player used to captain another team, clear only the captain slot.
+        if (oldCaptainTeam && (!teamId || String(oldCaptainTeam.id) !== String(teamId))) {
+          await db(
+            window.supabaseClient.from('teams').update({ captain_id: null }).eq('id', oldCaptainTeam.id),
+            'Clear previous captain assignment'
+          );
+        }
+
+        if (makeCaptain && teamId) {
+          const targetTeam = appState.teams.find(t => String(t.id) === String(teamId));
+          const replacedCaptainId = targetTeam?.captain_id ? String(targetTeam.captain_id) : '';
+
+          // Demote the old captain to a regular player on that same team.
+          if (replacedCaptainId && replacedCaptainId !== String(playerId)) {
+            await db(
+              window.supabaseClient.from('players').update({ is_captain: false, team: teamId }).eq('id', replacedCaptainId),
+              'Demote replaced captain'
+            );
+          }
+
+          await db(
+            window.supabaseClient.from('players').update({ team: teamId, is_captain: true }).eq('id', playerId),
+            'Assign player as captain'
+          );
+
+          await db(
+            window.supabaseClient.from('teams').update({ captain_id: playerId }).eq('id', teamId),
+            'Assign team captain'
+          );
+        } else {
+          await db(
+            window.supabaseClient.from('players').update({ team: teamId, is_captain: false }).eq('id', playerId),
+            'Assign player to team'
+          );
+        }
+
+        await loadAllData();
+
+        await recordActivity(
+          'team',
+          makeCaptain ? 'Admin Captain Assignment' : 'Admin Team Assignment',
+          `${player.name} was ${makeCaptain ? `assigned captain of ${getTeamName(teamId)}` : (teamId ? `assigned to ${getTeamName(teamId)}` : 'removed from a team')}.`,
+          { icon: makeCaptain ? '👑' : '🚩', actor:'Admin' }
+        );
+
+        renderAdminPlayers();
+        renderAdminTeams();
+        renderCaptainQRList();
+      } catch (err) {
+        alert(`Could not save player assignment: ${formatError(err)}`);
+        await loadAllData();
+      }
     }
 
     async function assignCaptainToTeam(playerId, teamId) {
@@ -10727,18 +10843,16 @@ async function toggleCaptain(id, makeCaptain) {
       if (teamAssignmentList) {
         const availablePlayers = approvedPlayers.filter(p => !p.team && !isCaptainPlayer(p));
         teamAssignmentList.innerHTML = availablePlayers.length ? availablePlayers.map(p => `
-          <div class="player-item" style="background:#f8f9fa;padding:14px 12px;border-radius:12px;border-bottom:none;margin-bottom:10px;align-items:center;">
-            <div style="min-width:120px;">
-              <div style="font-weight:700;">${p.name}</div>
-              <div class="muted">Available</div>
+          <div class="player-item" style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(150px,1fr) auto;gap:10px;align-items:center;background:linear-gradient(180deg,rgba(15,30,44,.92),rgba(7,19,31,.96));padding:13px;border-radius:14px;border:1px solid rgba(148,163,184,.16);margin-bottom:9px;">
+            <div style="min-width:0;">
+              <div style="font-weight:950;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</div>
+              <div class="muted" style="font-size:11px;font-weight:850;">AVAILABLE</div>
             </div>
-            <div style="flex:1;min-width:150px;">
-              <select id="admin-pick-team-${p.id}" style="padding:10px;border-radius:10px;border:2px solid #ddd;width:100%;">
-                <option value="">-- Select Team --</option>
-                ${availableTeams.map(t => `<option value="${t.id}">${getTeamName(t.id)}</option>`).join('')}
-              </select>
-            </div>
-            <button class="btn btn-primary btn-small" onclick="adminSubmitPlayerToTeam('${p.id}')">Submit</button>
+            <select id="admin-pick-team-${p.id}" style="width:100%;min-width:0;padding:11px 12px;border-radius:11px;background:#0b1b29;color:#fff;border:1px solid rgba(84,232,111,.28);font-weight:850;">
+              <option value="">Choose team…</option>
+              ${availableTeams.map(t => `<option value="${t.id}">${escapeHtml(getTeamName(t.id))}</option>`).join('')}
+            </select>
+            <button class="btn btn-primary btn-small" style="margin:0;padding:11px 16px;" onclick="adminSubmitPlayerToTeam('${p.id}')">Add</button>
           </div>
         `).join('') : '<div class="empty-state">No available players. Everyone is already assigned or set as captain.</div>';
       }
@@ -10757,11 +10871,14 @@ async function toggleCaptain(id, makeCaptain) {
           const captain = teamPlayers.find(p => String(p.id) === String(t.captain_id));
           const others = teamPlayers.filter(p => String(p.id) !== String(t.captain_id));
           return `
-            <div class="admin-section" style="background:#eaf4ea;border-radius:12px;padding:14px;">
-              <div style="font-size:18px;font-weight:800;color:#1a472a;margin-bottom:10px;">${getTeamName(t.id)}</div>
-              <div style="padding:4px 8px;">
-                ${captain ? `<div style="font-weight:800;font-size:16px;color:#143b2f;padding:6px 0;border-bottom:1px solid #c6dec6;">👑 ${captain.name} (Captain)</div>` : `<div style="font-weight:700;color:#777;padding:6px 0;border-bottom:1px solid #c6dec6;">No captain selected</div>`}
-                ${others.map(p => `<div style="padding:6px 0;border-bottom:1px solid #c6dec6;display:flex;justify-content:space-between;gap:8px;"><span>${p.name}</span><button class="btn btn-secondary btn-small" onclick="unassignPlayer('${p.id}')">Remove</button></div>`).join('') || '<div style="padding:6px 0;color:#777;">No other players</div>'}
+            <div class="admin-section" style="background:linear-gradient(180deg,rgba(13,31,43,.96),rgba(7,18,29,.98));border:1px solid rgba(84,232,111,.18);border-radius:16px;padding:14px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                <div style="font-size:18px;font-weight:950;color:#f8fafc;">${escapeHtml(getTeamName(t.id))}</div>
+                <span style="font-size:12px;font-weight:950;color:#54e86f;">${teamPlayers.length} PLAYER${teamPlayers.length===1?'':'S'}</span>
+              </div>
+              <div>
+                ${captain ? `<div style="font-weight:950;font-size:15px;color:#54e86f;padding:9px 0;border-bottom:1px solid rgba(148,163,184,.14);">👑 ${escapeHtml(captain.name)} <span class="muted" style="font-size:11px;">CAPTAIN</span></div>` : `<div class="muted" style="font-weight:850;padding:9px 0;border-bottom:1px solid rgba(148,163,184,.14);">No captain selected</div>`}
+                ${others.map(p => `<div style="padding:9px 0;border-bottom:1px solid rgba(148,163,184,.12);display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-weight:850;color:#e5edf5;">${escapeHtml(p.name)}</span><button class="btn btn-secondary btn-small" style="margin:0;" onclick="unassignPlayer('${p.id}')">Remove</button></div>`).join('') || '<div class="muted" style="padding:9px 0;">No other players</div>'}
               </div>
             </div>
           `;
@@ -10898,7 +11015,7 @@ async function toggleCaptain(id, makeCaptain) {
           { icon:'🚩', actor:'Admin' }
         );
 
-        alert('All team rosters are submitted and synced to every device.');
+        alert('All team rosters are submitted and synced. Assigned captains can now open Live Scoring from their registered devices.');
       } catch (err) {
         alert(`Could not submit teams: ${formatError(err)}`);
       }
@@ -12197,6 +12314,21 @@ async function resetDailyGameIfNeeded() {
   localStorage.removeItem('gmg_open_captain_after_load');
 }
 
+
+    function isLiveScorecardInUse() {
+      const gameView = document.getElementById('view-game');
+      if (!gameView || gameView.classList.contains('hidden')) return false;
+
+      // If the live-scoring screen is visible, preserve the captain's hole,
+      // scroll position, +/- edits and buttons until they choose to leave it.
+      return true;
+    }
+
+    async function safeSharedStateRefresh(label = 'Shared state refresh') {
+      if (isLiveScorecardInUse()) return;
+      await withStartupTimeout(loadAllData(), 10000, label);
+    }
+
     function withStartupTimeout(promise, ms, label) {
       let timer;
       const timeout = new Promise((_, reject) => {
@@ -12253,10 +12385,11 @@ async function resetDailyGameIfNeeded() {
           if (adminDashboard && adminDashboard.classList.contains('active')) renderAdminCommandDashboard();
         }, 30000);
 
-        // Cross-device fallback: Supabase Realtime should update immediately,
-        // but every 15 seconds we also refresh the core shared game state.
+        // Cross-device fallback: refresh shared state, but NEVER redraw the app
+        // while a captain is actively using the live scorecard.
         setInterval(async () => {
           try {
+            if (isLiveScorecardInUse()) return;
             await withStartupTimeout(loadAllData(), 10000, 'Cross-device sync refresh');
           } catch (err) {
             console.warn('Cross-device fallback refresh failed', err);
@@ -12276,17 +12409,17 @@ async function resetDailyGameIfNeeded() {
               }
             }
             setStatus('Live: players updated');
-            try { await withStartupTimeout(loadAllData(), 10000, 'Live player refresh'); }
+            try { await safeSharedStateRefresh('Live player refresh'); }
             catch (err) { console.warn('Live player refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
             setStatus('Live: teams updated');
-            try { await withStartupTimeout(loadAllData(), 10000, 'Live team refresh'); }
+            try { await safeSharedStateRefresh('Live team refresh'); }
             catch (err) { console.warn('Live team refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
             setStatus('Live: settings updated');
-            try { await withStartupTimeout(loadAllData(), 10000, 'Live settings refresh'); }
+            try { await safeSharedStateRefresh('Live settings refresh'); }
             catch (err) { console.warn('Live settings refresh failed', err); setStatus('Connected'); }
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: ANNOUNCEMENTS_TABLE }, async () => {
