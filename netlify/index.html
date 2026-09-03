@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Money Game Central v2.7.5 — UI + Admin Assignment + Live Stability</title>
+  <title>Money Game Central v2.7.6 — Midnight Daily Reset Fix</title>
 
   <!--
     Golf Money Game
@@ -11932,6 +11932,7 @@ async function toggleCaptain(id, makeCaptain) {
         localStorage.removeItem(getAdminCaptainOverrideKey());
         localStorage.removeItem('gmg_open_captain_after_load');
         liveScoreState = { currentHole: 1, scores: {} };
+        localStorage.setItem('gmg_last_reset_date', roundDateKey());
 
         await loadAllData();
         updateSettingsView();
@@ -12249,43 +12250,63 @@ async function resetDailyGameIfNeeded() {
   const today = roundDateKey();
   const lastReset = localStorage.getItem('gmg_last_reset_date');
 
-  if (lastReset === today) return;
+  if (lastReset === today) return false;
 
-  // Safety net: if yesterday's round was complete but Admin forgot to finalize,
-  // load the still-current player/team data and post it BEFORE the daily reset.
+  // If this device crossed into a new date, preserve yesterday's official
+  // results first, then fully clear today's registration/game state.
   if (lastReset && !isRoundLocallyFinalized(lastReset)) {
     try {
       const [playersResult, teamsResult] = await Promise.all([
         window.supabaseClient.from('players').select('*').order('registered_at', { ascending:true }),
         window.supabaseClient.from('teams').select('*').order('team_number', { ascending:true })
       ]);
+
       if (!playersResult?.error) appState.players = playersResult.data || [];
       if (!teamsResult?.error) appState.teams = teamsResult.data || [];
-      await finalizeRoundToLeague({ automatic:true, gameDate:lastReset });
+
+      // Only attempt automatic finalization when yesterday actually had players.
+      if ((appState.players || []).length) {
+        await finalizeRoundToLeague({ automatic:true, gameDate:lastReset });
+      }
     } catch (err) {
       console.warn('Automatic finalize safety check failed; daily reset will continue.', err);
     }
   }
 
+  // Today's registration table must start empty. Updating team/captain fields
+  // was not enough because yesterday's registered names remained in players.
   await db(
     window.supabaseClient
       .from('players')
-      .update({
-        team: null,
-        is_captain: false,
-        score: null
-      })
+      .delete()
       .not('id', 'is', null),
-    'Daily reset players'
+    'Daily reset registered players'
   );
 
   await db(
     window.supabaseClient
       .from('teams')
-      .update({ captain_id: null, roster_submitted: false, roster_submitted_at: null })
+      .update({
+        captain_id: null,
+        roster_submitted: false,
+        roster_submitted_at: null
+      })
       .not('id', 'is', null),
     'Daily reset teams'
   );
+
+  // Old live hole-by-hole rows are only needed through the end of that day.
+  // Official league history has already been finalized separately.
+  try {
+    const oldScores = await window.supabaseClient
+      .from(LIVE_TEAM_SCORES_TABLE)
+      .delete()
+      .lt('game_date', today);
+
+    if (oldScores?.error) throw oldScores.error;
+  } catch (err) {
+    console.warn('Could not clear prior-day live score rows', err);
+  }
 
   try {
     const settingsResult = await window.supabaseClient
@@ -12295,23 +12316,43 @@ async function resetDailyGameIfNeeded() {
       .limit(1);
 
     const defaults = settingsResult?.data?.[0] || {};
-    await window.supabaseClient
+
+    const settingsUpdate = await window.supabaseClient
       .from('settings')
       .update({
+        game_started: false,
+        open_time: '06:00',
+        cutoff_time: '09:30',
+        registration_closed: false,
+        teams_submitted: false,
         draft_mode: defaults.draft_default_mode || 'down_down_up',
         draft_first_team: Number(defaults.draft_default_first_team || 1),
-        draft_custom_sequence: defaults.draft_default_custom_sequence || '',
-        teams_submitted: false
+        draft_custom_sequence: defaults.draft_default_custom_sequence || ''
       })
       .eq('key', SETTINGS_KEY);
+
+    if (settingsUpdate?.error) throw settingsUpdate.error;
   } catch (err) {
-    console.warn('Could not restore saved draft default during daily reset', err);
+    console.warn('Could not fully reset daily settings', err);
   }
 
-  localStorage.setItem('gmg_last_reset_date', today);
+  // Remove device-local game state for the new day.
+  Object.keys(localStorage)
+    .filter(key => key.startsWith('gmg_live_score_'))
+    .forEach(key => localStorage.removeItem(key));
+
+  localStorage.removeItem('gmg_player_name');
+  localStorage.removeItem('gmg_player_id');
   localStorage.removeItem(getCaptainAccessKey());
   localStorage.removeItem(getAdminCaptainOverrideKey());
   localStorage.removeItem('gmg_open_captain_after_load');
+
+  appState.myPlayerName = '';
+  appState.myTeam = null;
+  liveScoreState = { currentHole: 1, scores: {} };
+
+  localStorage.setItem('gmg_last_reset_date', today);
+  return true;
 }
 
 
@@ -12384,6 +12425,35 @@ async function resetDailyGameIfNeeded() {
           const adminDashboard = document.getElementById('admin-dashboard');
           if (adminDashboard && adminDashboard.classList.contains('active')) renderAdminCommandDashboard();
         }, 30000);
+
+        // Midnight/date rollover watcher. The app no longer needs to be closed
+        // and reopened for a new day to start.
+        let dailyResetCheckBusy = false;
+        setInterval(async () => {
+          if (dailyResetCheckBusy) return;
+          const todayKey = roundDateKey();
+          if (localStorage.getItem('gmg_last_reset_date') === todayKey) return;
+
+          dailyResetCheckBusy = true;
+          try {
+            setStatus('Starting new day...');
+            const didReset = await resetDailyGameIfNeeded();
+
+            if (didReset) {
+              await loadAllData();
+              updateSettingsView();
+              renderSystemTools();
+              renderHome();
+              showView('view-home');
+              setStatus('Connected • New Day');
+            }
+          } catch (err) {
+            console.warn('Automatic midnight reset failed', err);
+            setStatus('Connected • Reset retry pending');
+          } finally {
+            dailyResetCheckBusy = false;
+          }
+        }, 60000);
 
         // Cross-device fallback: refresh shared state, but NEVER redraw the app
         // while a captain is actively using the live scorecard.
