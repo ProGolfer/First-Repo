@@ -38,10 +38,13 @@ async function approveClaim(db, playerName, { admin = false, email = null } = {}
      where r.auth_user_id = l.auth_user_id and r.status = 'pending'`, params);
 }
 
-async function setup({ migrate = true } = {}) {
+async function setup({ migrate = true, origin, pathname } = {}) {
   const db = await pg.newDb();
   if (migrate) await pg.applyMigrations(db);
-  const b = makeBrowser(db);
+  const opts = {};
+  if (origin) opts.origin = origin;
+  if (pathname) opts.pathname = pathname;
+  const b = makeBrowser(db, opts);
   const acc = loadAccounts(b);
   return { db, b, acc };
 }
@@ -289,4 +292,120 @@ test('index.html wiring: every element the module fills exists, the script loads
   assert.match(html, /showView\('view-home'\)/);
   // the module file ships alongside index.html
   assert.ok(fs.existsSync(path.join(__dirname, '../netlify/mgc-accounts.js')));
+});
+
+
+test('expired magic link in the URL hash shows a friendly message and stays on sign-in', async () => {
+  const { acc, b } = await setup();
+  b.landFromAuthRedirect('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+  await acc.init();
+  assert.match(b.els['account-content'].innerHTML, /expired or has already been used/);
+  assert.ok(b.calls.shown.includes('view-account'), 'the golfer is taken to sign-in so they can request a new link');
+  assert.equal(acc.isLinked(), false);
+  assert.equal(b.win.location.hash, '', 'the error is cleared from the URL so a refresh does not keep showing it');
+  assert.equal(acc.state().step, 'signin');
+});
+
+test('an already-used (reused) magic link shows the same friendly expired/used message', async () => {
+  const { acc, b } = await setup();
+  await acc.init();
+  await acc.sendLink('reuse@example.test');
+  await b.clickMagicLink('reuse@example.test');
+  await acc.submitName('Reuse Golfer');
+  assert.equal(acc.isLinked(), true);
+  await acc.signOut();
+  // A second click of the same one-time link comes back as otp_expired / access_denied.
+  b.landFromAuthRedirect('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+  await acc.init();
+  assert.match(b.els['account-content'].innerHTML, /expired or has already been used/);
+  assert.equal(acc.isLinked(), false);
+  assert.equal(acc.state().session, null);
+  assert.equal(b.win.location.hash, '');
+});
+
+test('invalid emails are rejected in the browser and never sent to Supabase', async () => {
+  const { acc, b } = await setup();
+  await acc.init();
+  for (const bad of ['', 'not-an-email', 'foo@', '@bar.com', 'a b@c.d', 'plainaddress']) {
+    b.calls.otp.length = 0;
+    await acc.sendLink(bad);
+    assert.equal(b.calls.otp.length, 0, bad);
+    assert.match(b.els['account-content'].innerHTML, /valid email/);
+  }
+});
+
+test('returning user signs straight into the same profile with no duplicate and no name form', async () => {
+  const { acc, b, db } = await setup();
+  await acc.init();
+  await acc.sendLink('returning@example.test');
+  await b.clickMagicLink('returning@example.test');
+  await acc.submitName('Returning Golfer');
+  assert.equal(acc.isLinked(), true);
+  const afterCreate = Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c);
+  assert.equal(afterCreate, 13);
+  const shownAfterCreate = b.calls.shown.length;
+  await acc.signOut();
+  await acc.sendLink('returning@example.test');
+  await b.clickMagicLink('returning@example.test');
+  assert.equal(acc.isLinked(), true);
+  assert.equal(acc.accountName(), 'Returning Golfer');
+  assert.equal(acc.state().step, 'done');
+  assert.match(b.els['account-content'].innerHTML, /You.re signed in/);
+  assert.doesNotMatch(b.els['account-content'].innerHTML, /Set up your golfer profile/);
+  assert.equal(b.els['account-banner'].innerHTML, '');
+  assert.equal(b.calls.shown.slice(shownAfterCreate).includes('view-account'), false, 'a linked returning golfer is not sent through setup again');
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 13);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 1);
+});
+
+test('a new golfer creates one permanent profile and a second try at the same normalized name does not duplicate it', async () => {
+  const { acc, b, db } = await setup();
+  await acc.init();
+  await acc.sendLink('casey@example.test');
+  await b.clickMagicLink('casey@example.test');
+  await acc.submitName('  Casey Unique ');
+  assert.equal(acc.isLinked(), true);
+  assert.equal(acc.accountName(), 'Casey Unique');
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 13);
+  await acc.signOut();
+  await b.clickMagicLink('othercasey@example.test');
+  await acc.submitName('casey   unique');
+  assert.equal(acc.isLinked(), false);
+  assert.match(b.els['account-content'].innerHTML, /already linked to another sign-in/);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 13);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 1);
+});
+
+test('claiming an existing name stays pending until an admin approves; no duplicate golfer row', async () => {
+  const { acc, b, db } = await setup();
+  await acc.init();
+  await acc.sendLink('legacy@example.test');
+  await b.clickMagicLink('legacy@example.test');
+  await acc.submitName('Golfer 08');
+  await acc.claimProfile();
+  assert.equal(acc.state().step, 'pending-claim');
+  assert.equal(acc.isLinked(), false);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 12);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 0);
+  assert.equal(Number((await db.query(`select count(*) c from public.profile_claim_requests where status = 'pending'`)).rows[0].c), 1);
+  // sign out and back in: the request is still pending, nothing was created or auto-approved
+  await acc.signOut();
+  await b.clickMagicLink('legacy@example.test');
+  assert.equal(acc.state().step, 'pending-claim');
+  assert.equal(acc.isLinked(), false);
+  assert.match(b.els['account-content'].innerHTML, /waiting for admin approval/);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 12);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 0);
+});
+
+test('a Netlify preview sends the magic-link redirect back to its own origin and path', async () => {
+  const { acc, b } = await setup({
+    origin: 'https://deploy-preview-12--golf-money-game-live.netlify.app',
+    pathname: '/app/'
+  });
+  await acc.init();
+  await acc.sendLink('preview@example.test');
+  assert.equal(b.calls.otp.length, 1);
+  assert.equal(b.calls.otp[0].options.emailRedirectTo, 'https://deploy-preview-12--golf-money-game-live.netlify.app/app/');
+  assert.equal(b.calls.otp[0].options.shouldCreateUser, true);
 });

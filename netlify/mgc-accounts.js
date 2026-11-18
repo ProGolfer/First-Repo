@@ -56,11 +56,40 @@
     user_already_linked: 'That email is already linked to another profile.'
   };
   function friendly(err) {
+    const code = String((err && (err.error_code || err.code)) || '');
+    const kind = String((err && err.error) || '');
     const msg = String((err && (err.message || err.error_description)) || err || '');
-    for (const k of Object.keys(FRIENDLY)) if (new RegExp('\\b' + k + '\\b').test(msg)) return FRIENDLY[k];   // whole code only: 'not_found' must not match 'user_not_found'
-    if (/rate limit|too many|over_email_send_rate_limit/i.test(msg)) return 'Too many sign-in emails were requested. Wait a few minutes and try again.';
-    if (/invalid|expired|otp/i.test(msg)) return 'That code or link did not work. Request a new one.';
+    const blob = [code, kind, msg].join(' ');
+    for (const k of Object.keys(FRIENDLY)) if (new RegExp('\\b' + k + '\\b').test(msg) || code === k) return FRIENDLY[k];   // whole code only: 'not_found' must not match 'user_not_found'
+    if (/rate limit|too many|over_email_send_rate_limit/i.test(blob)) return 'Too many sign-in emails were requested. Wait a few minutes and try again.';
+    // Magic-link returns land with #error=access_denied&error_code=otp_expired (expired or already-used links).
+    if (/otp_expired|access_denied/i.test(blob) || /link.{0,40}(expired|already been used|invalid)/i.test(msg))
+      return 'That sign-in link has expired or has already been used. Request a new one.';
+    if (/invalid|expired|otp/i.test(blob)) return 'That code or link did not work. Request a new one.';
     return 'Something went wrong. Please try again.';
+  }
+
+  function queryParams(raw) {
+    try { return new URLSearchParams(String(raw || '').replace(/^[?#]/, '')); }
+    catch (_) { return new URLSearchParams(); }
+  }
+  // Read otp_expired / access_denied (and similar) from the URL hash or query, then clear them so a refresh does not repeat the message.
+  function consumeAuthRedirectError() {
+    const loc = root.location || {};
+    const params = queryParams(loc.hash);
+    queryParams(loc.search).forEach((v, k) => { if (!params.has(k)) params.set(k, v); });
+    const error = params.get('error') || '';
+    const error_code = params.get('error_code') || params.get('errorCode') || '';
+    const error_description = params.get('error_description') || params.get('errorDescription') || '';
+    if (!error && !error_code) return false;
+    state.message = friendly({ error, error_code, error_description, message: error_description || error_code || error });
+    try {
+      if (root.history && typeof root.history.replaceState === 'function') {
+        root.history.replaceState(null, '', (loc.pathname || '/') + (loc.search || ''));
+      }
+      loc.hash = '';
+    } catch (_) {}
+    return true;
   }
   function isMissingFunction(err) {
     const msg = String((err && err.message) || '');
@@ -134,7 +163,14 @@
   }
 
   async function init() {
-    if (state.started) return;
+    const hadRedirectError = consumeAuthRedirectError();
+    if (state.started) {
+      if (hadRedirectError) {
+        if (!state.session && typeof root.showView === 'function') root.showView('view-account');
+        render();
+      }
+      return;
+    }
     state.started = true;
     if (!client() || !client().auth) { state.available = false; render(); return; }
     try {
@@ -149,12 +185,16 @@
           setTimeout(async () => {
             await refreshAccount();
             const justReturned = root.localStorage.getItem(PENDING_KEY) === '1';
+            // Linked returning golfers go straight in (step=done via refreshAccount) and stay on the current page.
+            // Only unlinked golfers are taken to profile setup.
             if (!had && justReturned && state.available && state.account && !state.account.linked) open();
             if (justReturned && state.account) root.localStorage.removeItem(PENDING_KEY);
           }, 0);
         }
       });
       if (state.session) await refreshAccount(); else render();
+      if (hadRedirectError && !state.session && typeof root.showView === 'function') root.showView('view-account');
+      if (hadRedirectError) render();
     } catch (err) {
       state.message = friendly(err);
       render();
@@ -401,7 +441,7 @@
     // exposed for tests / other modules
     state: () => state, accountName: () => (state.account && state.account.linked ? state.account.name : ''),
     isLinked: () => !!(state.account && state.account.linked), isAdmin: () => !!(state.account && state.account.is_admin),
-    _html: { account: accountViewHtml, banner: bannerHtml, admin: adminHtml }, _util: { normalizeName, validName, validEmail, friendly, isMissingFunction, esc }
+    _html: { account: accountViewHtml, banner: bannerHtml, admin: adminHtml }, _util: { normalizeName, validName, validEmail, friendly, isMissingFunction, esc, consumeAuthRedirectError }
   };
   root.MGCAccounts = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
