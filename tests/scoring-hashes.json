@@ -1,0 +1,18 @@
+{
+  "CLIFFSIDE_HOLES": "079c2985c6165684",
+  "scoreToPoints": "164dceb6515e24b2",
+  "calculateHolePointsForScores": "1eb1a6c6360bf4eb",
+  "getTeamMoneyTotals": "98c7697470d2fb76",
+  "getFrontTotal": "61302353ad75f8fc",
+  "getBackTotal": "6b7f7af385201f60",
+  "getRoundTotal": "5e3965143de33575",
+  "getPlayerScorecardData": "32604f14555cf00e",
+  "calculateMoneyGamePayouts": "20dd98652293c622",
+  "splitPoolAmongTeams": "66e9547769d77b42",
+  "getTeamScoreRows": "7fd0ad5761fd172b",
+  "getFinalRecapData": "29c8845ea77e860a",
+  "buildCanonicalHistoryPayload": "8621fa7b55f8ff06",
+  "currentRoundOfficialRows": "531c446c902c96b5",
+  "adjustHoleScore": "d021b4f06466eabd",
+  "getCurrentHolePlayerScores": "9c6af176660f5330"
+}

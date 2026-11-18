@@ -3315,6 +3315,7 @@
       </div>
       <div style="color:#54e86f;font-weight:950;text-transform:uppercase;font-size:11px;letter-spacing:.11em;margin:16px 0 8px;">📈 League</div>
       <div class="quick-nav-grid">
+        <button id="quick-nav-account" class="quick-nav-item" onclick="toggleQuickNav(false); MGCAccounts.open();"><span class="quick-nav-icon">✉️</span><span>Sign In / Account</span><small>Email sign-in &amp; golfer profile</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('profile')"><span class="quick-nav-icon">👤</span><span>My Profile</span><small>Personal league hub</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('playersearch')"><span class="quick-nav-icon">🔎</span><span>Player Search</span><small>Find any career profile</small></button>
         <button class="quick-nav-item" onclick="quickNavGo('season')"><span class="quick-nav-icon">🏅</span><span>Season Center</span><small>Standings and trends</small></button>
@@ -3343,6 +3344,7 @@
           <button class="icon-btn" onclick="toggleQuickNav(); return false;" aria-label="Open quick menu">☰</button>
         </div>
       </div>
+      <div id="account-banner"></div>
 
       <div class="saturday-hero-row">
         <div id="event-status-dashboard" class="event-status-panel">
@@ -3477,6 +3479,10 @@
       <div style="text-align:center;margin-top:15px;">
         <a href="#" onclick="showAdminLogin(); return false;" style="color:#63de83;font-weight:900;text-decoration:none;">🔒 Admin Access</a>
       </div>
+    </div>
+
+    <div id="view-account" class="card hidden">
+      <div id="account-content"></div>
     </div>
 
     <div id="view-register" class="card hidden">
@@ -3790,6 +3796,7 @@
           <button class="admin-side-btn" onclick="switchAdminTab('settings', event)"><span>⚙️</span><span>System</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('statistics', event)"><span>📈</span><span>Statistics</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('league-records', event)"><span>📖</span><span>League Records</span></button>
+          <button id="admin-profiles-tab" class="admin-side-btn" onclick="switchAdminTab('profiles', event)"><span>🪪</span><span>Golfer Profiles</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('awards', event)"><span>🏅</span><span>Awards</span></button>
           <button class="admin-side-btn" onclick="switchAdminTab('log', event)"><span>📊</span><span>Activity</span></button>
         </div>
@@ -4159,6 +4166,16 @@
               </div>
               <button class="btn btn-warning" onclick="clearSpecificTeamScore()">Clear Selected Team Score</button>
             </div>
+          </div>
+
+          <div id="admin-profiles" class="admin-panel">
+            <div class="admin-panel-header">
+              <div>
+                <h2>Golfer Profiles</h2>
+                <p>See who has signed in, and unlink or relink a profile if someone claimed the wrong name.</p>
+              </div>
+            </div>
+            <div id="admin-profiles-content"></div>
           </div>
 
           <div id="admin-awards" class="admin-panel">
@@ -6780,7 +6797,7 @@ function getMyPlayerName() {
 
     async function registerPlayer(){
       try {
-        const name = document.getElementById('reg-name').value.trim();
+        const name = (window.MGCAccounts && MGCAccounts.isLinked()) ? MGCAccounts.accountName() : document.getElementById('reg-name').value.trim();
 
         const course = document.getElementById('reg-course').value;
         if(!name){ alert('Enter name'); return; }
@@ -12184,6 +12201,7 @@ async function toggleCaptain(id, makeCaptain) {
       if(t==='statistics') loadStatisticsModule();
       if(t==='league-records') loadAdminLeagueRecords();
       if(t==='awards') renderAdminAwards();
+      if(t==='profiles' && window.MGCAccounts) MGCAccounts.renderAdminProfiles();
     }
 
     function logout(){ showView('view-home'); }
@@ -12517,5 +12535,6 @@ async function resetDailyGameIfNeeded() {
 
     window.addEventListener('load', initApp);
   </script>
+  <script src="mgc-accounts.js"></script>
 </body>
 </html>

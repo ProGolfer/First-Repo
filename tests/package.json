@@ -1,0 +1,10 @@
+{
+  "name": "mgc-tests",
+  "private": true,
+  "description": "Regression and simulation tests for Money Game Central (not deployed).",
+  "scripts": { "test": "node --test ." },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "acorn": "^8.12.0"
+  }
+}
