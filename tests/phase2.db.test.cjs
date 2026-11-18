@@ -500,3 +500,84 @@ test('a roster reset cannot delete permanent profiles', async () => {
   await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [LP[0].id]), /cannot be deleted/);
   await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [survivorId]), /cannot be deleted/);
 });
+
+async function insertNamedPlayer(db, name, { active = true } = {}) {
+  const n = String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+  await db.query(`insert into public.league_players (name, normalized_name, active) values ($1, $2, $3)`, [name, n, active]);
+}
+
+test('Gabe B suggests the unclaimed active profile Gabe; claimed or inactive names are not suggested', async () => {
+  const db = await migrated();
+  const u = await pg.newUser(db, 'lookalike@example.test');
+  await insertNamedPlayer(db, 'Gabe');
+  const res = await pg.rpc(db, u, 'check_profile_name', ['Gabe B']);
+  assert.equal(res.status, 'suggest');
+  assert.ok(Array.isArray(res.suggestions));
+  assert.equal(res.suggestions.length, 1);
+  assert.equal(res.suggestions[0].name, 'Gabe');
+  assert.equal(Number(res.suggestions[0].rounds), 0);
+  assert.equal(Object.keys(res.suggestions[0]).sort().join(','), 'name,rounds');
+  assertNoPlayerId(res, 'suggest Gabe B');
+  assert.doesNotMatch(JSON.stringify(res), /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, 'no ids in suggest payload');
+
+  // exact "Gabe" is still the existing claimable path, not a suggestion
+  const exact = await pg.rpc(db, u, 'check_profile_name', ['Gabe']);
+  assert.equal(exact.status, 'claimable');
+
+  // creating the new name is still allowed when the golfer says they are new
+  const created = await pg.rpc(db, u, 'create_my_profile', ['Gabe B']);
+  assert.equal(created.linked, true);
+  assert.equal(created.name, 'Gabe B');
+  assert.equal(await count(db, 'golfer_accounts'), 1);
+  const gabe = (await db.query(`select id, active from public.league_players where normalized_name = 'gabe'`)).rows[0];
+  const gabeB = (await db.query(`select id from public.league_players where normalized_name = 'gabe b'`)).rows[0];
+  assert.ok(gabe && gabeB && String(gabe.id) !== String(gabeB.id));
+
+  // a claimed profile is not suggested
+  const v = await pg.newUser(db, 'other@example.test');
+  const w = await pg.newUser(db, 'claimed-typo@example.test');
+  await pg.rpc(db, w, 'claim_legacy_profile', ['Gabe']);
+  const admin = await makeAdmin(db, 'admin-suggest@example.test', 'Suggest Admin');
+  await approveName(db, admin, 'Gabe');
+  const afterClaim = await pg.rpc(db, v, 'check_profile_name', ['Gabe B2']);
+  // "gabe b2" looks like claimed "gabe b" and claimed "gabe". Neither should appear.
+  assert.equal(afterClaim.status, 'available');
+  assert.ok(!afterClaim.suggestions);
+
+  // inactive profile is not suggested
+  const x = await pg.newUser(db, 'inactive@example.test');
+  await insertNamedPlayer(db, 'Pat', { active: false });
+  const inactive = await pg.rpc(db, x, 'check_profile_name', ['Pat Q']);
+  assert.equal(inactive.status, 'available');
+  assert.ok(!inactive.suggestions);
+
+  // a typo against an unclaimed active name still suggests it
+  await insertNamedPlayer(db, 'Casey');
+  const typo = await pg.rpc(db, x, 'check_profile_name', ['Casee']);
+  assert.equal(typo.status, 'suggest');
+  assert.equal(typo.suggestions[0].name, 'Casey');
+  assertNoPlayerId(typo, 'typo suggest');
+});
+
+test('look-alike helpers and history trigger are not executable by anon or signed-in golfers; search_path is fixed', async () => {
+  const db = await migrated();
+  const u = await pg.newUser(db, 'priv@example.test');
+  for (const fn of ['_golfer_name_distance', '_golfer_name_lookalike', 'norm_golfer_name', '_pending_json', 'league_players_protect_history']) {
+    const msg = await pg.rpcErr(db, null, fn, fn === 'league_players_protect_history' ? [] : ['a', 'b'].slice(0, fn === 'norm_golfer_name' || fn === '_pending_json' ? 1 : 2));
+    assert.match(String(msg), /permission denied/, 'anon ' + fn);
+    const msg2 = await pg.rpcErr(db, u, fn, fn === 'league_players_protect_history' ? [] : ['a', 'b'].slice(0, fn === 'norm_golfer_name' || fn === '_pending_json' ? 1 : 2));
+    assert.match(String(msg2), /permission denied/, 'auth ' + fn);
+  }
+  const rows = (await db.query(`
+    select p.proname, p.proconfig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('norm_golfer_name', '_pending_json', '_golfer_name_distance', '_golfer_name_lookalike', 'check_profile_name', 'league_players_protect_history')
+  `)).rows;
+  for (const r of rows) {
+    const cfg = (r.proconfig || []).join(',');
+    assert.match(cfg, /search_path/, r.proname);
+    assert.match(cfg, /public/, r.proname);
+  }
+});

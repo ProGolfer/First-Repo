@@ -15,10 +15,12 @@
     session: null,        // supabase session (or null)
     account: null,        // { linked, name, is_admin } from my_golfer_profile()
     claim: null,          // { linked, status, name } from my_claim_status()
-    step: 'signin',       // signin | check-email | name | confirm-claim | pending-claim | done
+    step: 'signin',       // signin | check-email | name | suggest-name | confirm-claim | pending-claim | done
     email: '',
     name: '',
+    typedName: '',        // what the golfer typed, kept when we offer a look-alike
     found: null,          // { rounds } for a claimable profile
+    suggestions: null,    // [{ name, rounds }] from check_profile_name status 'suggest'
     busy: false,
     message: '',
     adminRows: null,
@@ -237,6 +239,11 @@
     try {
       const res = await rpc('check_profile_name', { p_name: name });
       if (res.status === 'available') { await createProfile(name); }
+      else if (res.status === 'suggest' && Array.isArray(res.suggestions) && res.suggestions.length) {
+        state.typedName = name;
+        state.suggestions = res.suggestions.map(s => ({ name: s.name, rounds: Number(s.rounds || 0) }));
+        state.step = 'suggest-name';
+      }
       else if (res.status === 'claimable') { state.found = { rounds: Number(res.rounds || 0) }; state.step = 'confirm-claim'; }
       else if (res.status === 'pending') { state.found = { rounds: Number(res.rounds || 0) }; state.step = 'pending-claim'; }
       else if (res.status === 'yours') { await refreshAccount(); }
@@ -271,7 +278,29 @@
     state.busy = false; render();
   }
 
-  function differentName() { state.step = 'name'; state.found = null; state.message = ''; render(); }
+  function differentName() { state.step = 'name'; state.found = null; state.suggestions = null; state.message = ''; render(); }
+
+  // "Did you mean …?" — picking a suggestion continues the existing claim-request flow.
+  function acceptSuggestion(index) {
+    const s = (state.suggestions || [])[Number(index)];
+    if (!s || !s.name) return;
+    state.name = s.name;
+    state.found = { rounds: Number(s.rounds || 0) };
+    state.suggestions = null;
+    state.message = '';
+    state.step = 'confirm-claim';
+    render();
+  }
+
+  // "No, I'm new" — create the name the golfer actually typed, as today.
+  async function createAnyway() {
+    const name = normalizeName(state.typedName || state.name);
+    if (!validName(name)) { state.message = FRIENDLY.invalid_name; return render(); }
+    state.busy = true; state.message = ''; render();
+    try { await createProfile(name); }
+    catch (err) { state.message = friendly(err); }
+    state.busy = false; render();
+  }
   function back() { state.step = 'signin'; state.message = ''; render(); }
 
   async function signOut() {
@@ -349,6 +378,21 @@
       body = '<div class="dashboard-panel"><h3>Request sent, waiting for admin approval</h3><p>Your request to link the league profile <strong>' + esc(nm) + '</strong> has been sent. An admin will review it. Your history will be connected once it\u2019s approved.</p>' +
         '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.differentName()">Use a different name</button>' +
         '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.signOut()">Sign out</button></div>';
+    } else if (state.step === 'suggest-name') {
+      const suggestions = state.suggestions || [];
+      const typed = state.typedName || state.name;
+      const one = suggestions.length === 1 ? suggestions[0] : null;
+      const heading = one ? ('Did you mean ' + esc(one.name) + '?') : 'Did you mean one of these?';
+      const list = suggestions.map((s, i) =>
+        '<div style="margin:10px 0;"><button class="btn btn-primary"' + dis + ' onclick="MGCAccounts.acceptSuggestion(' + i + ')">' +
+        (one ? 'Yes, that\u2019s me' : ('Yes, I meant ' + esc(s.name))) + '</button>' +
+        (s.rounds ? '<div><small>' + esc(s.rounds) + ' past round' + (s.rounds === 1 ? '' : 's') + '</small></div>' : '') +
+        '</div>').join('');
+      body = '<div class="dashboard-panel"><h3>' + heading + '</h3><p>A league profile already exists that looks like <strong>' + esc(typed) +
+        '</strong>. If that\u2019s you, request it so your history stays together. An admin must approve the request before your email is linked.</p>' +
+        list +
+        '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.createAnyway()">No, I\u2019m new</button>' +
+        '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.differentName()">Use a different name</button></div>';
     } else if (state.step === 'confirm-claim') {
       const r = state.found && state.found.rounds;
       body = '<div class="dashboard-panel"><h3>Is this you?</h3><p>We found a league profile named <strong>' + esc(state.name) + '</strong>' +
@@ -436,7 +480,7 @@
   }
 
   const api = {
-    init, open, render, refreshAccount, sendLink, verifyCode, submitName, claimProfile, differentName, back, signOut,
+    init, open, render, refreshAccount, sendLink, verifyCode, submitName, claimProfile, acceptSuggestion, createAnyway, differentName, back, signOut,
     renderAdminProfiles, adminUnlink, adminRelink, adminApproveClaim, adminRejectClaim,
     // exposed for tests / other modules
     state: () => state, accountName: () => (state.account && state.account.linked ? state.account.name : ''),

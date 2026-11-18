@@ -14,7 +14,13 @@ const tick = () => new Promise(r => setTimeout(r, 30));
 
 async function approveClaim(db, playerName, { admin = false, email = null } = {}) {
   const lp = LP.find(l => l.name === playerName);
-  const params = [lp.id, admin];
+  let lpId = lp && lp.id;
+  if (!lpId) {
+    const n = String(playerName).toLowerCase().replace(/\s+/g, ' ').trim();
+    const row = (await db.query(`select id from public.league_players where name = $1 or normalized_name = $2`, [playerName, n])).rows[0];
+    lpId = row && row.id;
+  }
+  const params = [lpId, admin];
   const emailFilter = email ? 'and u.email = $3' : '';
   if (email) params.push(email.toLowerCase());
   await db.query(`
@@ -408,4 +414,75 @@ test('a Netlify preview sends the magic-link redirect back to its own origin and
   assert.equal(b.calls.otp.length, 1);
   assert.equal(b.calls.otp[0].options.emailRedirectTo, 'https://deploy-preview-12--golf-money-game-live.netlify.app/app/');
   assert.equal(b.calls.otp[0].options.shouldCreateUser, true);
+});
+
+async function insertNamedPlayer(db, name, { active = true } = {}) {
+  const n = String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+  await db.query(`insert into public.league_players (name, normalized_name, active) values ($1, $2, $3)`, [name, n, active]);
+}
+
+test('Gabe B asks "Did you mean Gabe?"; Yes starts the claim-request flow and exposes no ids', async () => {
+  const { acc, b, db } = await setup();
+  await insertNamedPlayer(db, 'Gabe');
+  await acc.init();
+  await b.clickMagicLink('gabeb@example.test');
+  await acc.submitName('Gabe B');
+  assert.equal(acc.isLinked(), false);
+  assert.equal(acc.state().step, 'suggest-name');
+  const html = b.els['account-content'].innerHTML;
+  assert.match(html, /Did you mean Gabe\?/);
+  assert.match(html, /Gabe B/);
+  assert.match(html, /No, I.m new/);
+  assert.doesNotMatch(html, UUID);
+  acc.acceptSuggestion(0);
+  assert.equal(acc.state().step, 'confirm-claim');
+  assert.equal(acc.state().name, 'Gabe');
+  assert.match(b.els['account-content'].innerHTML, /We found a league profile named <strong>Gabe<\/strong>/);
+  assert.doesNotMatch(b.els['account-content'].innerHTML, UUID);
+  await acc.claimProfile();
+  assert.equal(acc.state().step, 'pending-claim');
+  assert.equal(acc.isLinked(), false);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 0);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players where normalized_name = 'gabe b'`)).rows[0].c), 0);
+  assert.equal(Number((await db.query(`select count(*) c from public.profile_claim_requests where status = 'pending'`)).rows[0].c), 1);
+  assert.doesNotMatch(allHtml(acc, b), UUID);
+});
+
+test('"No, I\'m new" still creates the typed name and does not claim the look-alike', async () => {
+  const { acc, b, db } = await setup();
+  await insertNamedPlayer(db, 'Gabe');
+  await acc.init();
+  await b.clickMagicLink('newgabeb@example.test');
+  await acc.submitName('Gabe B');
+  assert.equal(acc.state().step, 'suggest-name');
+  await acc.createAnyway();
+  assert.equal(acc.isLinked(), true);
+  assert.equal(acc.accountName(), 'Gabe B');
+  assert.equal(acc.state().step, 'done');
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players where normalized_name = 'gabe'`)).rows[0].c), 1);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players where normalized_name = 'gabe b'`)).rows[0].c), 1);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 1);
+  assert.equal(Number((await db.query(`select count(*) c from public.profile_claim_requests`)).rows[0].c), 0);
+});
+
+test('a claimed or inactive look-alike is not offered; the new name is created', async () => {
+  const { acc, b, db } = await setup();
+  await insertNamedPlayer(db, 'Gabe');
+  await insertNamedPlayer(db, 'Pat', { active: false });
+  const owner = await b.ensureUser('owner@example.test');
+  await pg.rpc(db, owner, 'claim_legacy_profile', ['Gabe']);
+  await approveClaim(db, 'Gabe');
+  await acc.init();
+  await b.clickMagicLink('fresh@example.test');
+  await acc.submitName('Gabe B');
+  assert.equal(acc.state().step, 'done');
+  assert.equal(acc.isLinked(), true);
+  assert.equal(acc.accountName(), 'Gabe B');
+  assert.doesNotMatch(b.els['account-content'].innerHTML, /Did you mean/);
+  await acc.signOut();
+  await b.clickMagicLink('patq@example.test');
+  await acc.submitName('Pat Q');
+  assert.equal(acc.isLinked(), true);
+  assert.equal(acc.accountName(), 'Pat Q');
+  assert.doesNotMatch(allHtml(acc, b), UUID);
 });
