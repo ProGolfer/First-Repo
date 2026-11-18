@@ -12,6 +12,32 @@ const LP = fixture.league_players;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const tick = () => new Promise(r => setTimeout(r, 30));
 
+async function approveClaim(db, playerName, { admin = false, email = null } = {}) {
+  const lp = LP.find(l => l.name === playerName);
+  const params = [lp.id, admin];
+  const emailFilter = email ? 'and u.email = $3' : '';
+  if (email) params.push(email.toLowerCase());
+  await db.query(`
+    with pending as (
+      select r.id, r.league_player_id, r.auth_user_id
+        from public.profile_claim_requests r
+        join auth.users u on u.id = r.auth_user_id
+       where r.league_player_id = $1 and r.status = 'pending' ${emailFilter}
+       order by r.created_at
+       limit 1
+    ),
+    linked as (
+      insert into public.golfer_accounts (league_player_id, auth_user_id, claim_method, is_admin, admin_granted_at)
+      select p.league_player_id, p.auth_user_id, 'claimed', $2, case when $2 then now() else null end
+        from pending p
+      returning auth_user_id
+    )
+    update public.profile_claim_requests r
+       set status = 'approved', resolved_at = now()
+      from linked l
+     where r.auth_user_id = l.auth_user_id and r.status = 'pending'`, params);
+}
+
 async function setup({ migrate = true } = {}) {
   const db = await pg.newDb();
   if (migrate) await pg.applyMigrations(db);
@@ -96,18 +122,30 @@ test('first time: sign in, enter a new name, profile is created once and the dev
   assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 13);
 });
 
-test('returning legacy golfer: confirms "is this you?", links the old history, keeps the same id', async () => {
+test('returning legacy golfer: confirms "is this you?", sends a request, and links only after admin approval', async () => {
   const { acc, b, db } = await setup();
   await acc.init();
   await b.clickMagicLink('g1@example.test');
   await acc.submitName('golfer 01');
   assert.equal(acc.state().step, 'confirm-claim');
   assert.match(b.els['account-content'].innerHTML, /We found a league profile named <strong>golfer 01<\/strong> with 1 past round\./);
+  assert.match(b.els['account-content'].innerHTML, /An admin must approve/);
   await acc.claimProfile();
+  assert.equal(acc.isLinked(), false);
+  assert.equal(acc.state().step, 'pending-claim');
+  assert.match(b.els['account-content'].innerHTML, /Request sent, waiting for admin approval/);
+  assert.match(b.els['account-banner'].innerHTML, /waiting for admin approval/);
+  assert.equal(b.store.get('gmg_league_player_id'), undefined);
+  assert.equal(Number((await db.query(`select count(*) c from public.golfer_accounts`)).rows[0].c), 0);
+  assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 12);
+
+  await approveClaim(db, 'Golfer 01');
+  await acc.refreshAccount();
   assert.equal(acc.isLinked(), true);
   assert.equal(acc.accountName(), 'Golfer 01');
   assert.equal(b.store.get('gmg_league_player_id'), LP[0].id);
   assert.equal(Number((await db.query(`select count(*) c from public.league_players`)).rows[0].c), 12);
+  assert.match(b.els['account-content'].innerHTML, /You.re signed in/);
 });
 
 test('"No, use a different name" goes back and nothing is linked', async () => {
@@ -121,10 +159,13 @@ test('"No, use a different name" goes back and nothing is linked', async () => {
 });
 
 test('duplicate: a second sign-in cannot take a name that is already linked', async () => {
-  const { acc, b } = await setup();
+  const { acc, b, db } = await setup();
   await acc.init();
   await b.clickMagicLink('first@example.test');
   await acc.submitName('Golfer 03'); await acc.claimProfile();
+  await approveClaim(db, 'Golfer 03');
+  await acc.refreshAccount();
+  assert.equal(acc.isLinked(), true);
   await acc.signOut();
   await b.clickMagicLink('second@example.test');
   await acc.submitName('golfer 03');
@@ -152,9 +193,10 @@ test('the permanent id is NEVER shown: no screen contains a uuid, before or afte
   assert.doesNotMatch(allHtml(acc, b), UUID);
   await acc.claimProfile();
   assert.doesNotMatch(allHtml(acc, b), UUID);
-  // make this user an admin (the by-hand seed) and open the admin list
-  await db.query(`update public.golfer_accounts set is_admin = true`);
+  assert.match(b.els['account-content'].innerHTML, /waiting for admin approval/);
+  await approveClaim(db, 'Golfer 01', { admin: true });
   await acc.refreshAccount();
+  assert.doesNotMatch(allHtml(acc, b), UUID);
   await acc.renderAdminProfiles();
   const admin = b.els['admin-profiles-content'].innerHTML;
   assert.match(admin, /Golfer 01/);
@@ -171,10 +213,11 @@ test('admin panel: non-admins see no profile data; admins can unlink and relink,
   await acc.renderAdminProfiles();
   assert.match(b.els['admin-profiles-content'].innerHTML, /Sign in with an admin account/);
   assert.doesNotMatch(b.els['admin-profiles-content'].innerHTML, /Golfer 02/);
-  await db.query(`update public.golfer_accounts set is_admin = true`);
+  await approveClaim(db, 'Golfer 01', { admin: true });
   await acc.refreshAccount();
   const wrong = await b.ensureUser('wrong@example.test');
   await pg.rpc(db, wrong, 'claim_legacy_profile', ['Golfer 04']);
+  await approveClaim(db, 'Golfer 04');
   const before = await pg.legacyFingerprint(db);
   await acc.renderAdminProfiles();
   const rows = acc.state().adminRows;
@@ -199,6 +242,40 @@ test('name and email are HTML-escaped wherever they are shown', async () => {
   await acc.sendLink('a"><b>@example.test');   // fails validation; and even typed text is escaped on re-render
   assert.doesNotMatch(b.els['account-content'].innerHTML, /<b>/);
   assert.equal(acc._util.esc('<a href="x">\'&'), '&lt;a href=&quot;x&quot;&gt;&#039;&amp;');
+});
+
+test('admin can approve or reject a pending request from the profile list', async () => {
+  const { acc, b, db } = await setup();
+  await acc.init();
+  await b.clickMagicLink('admin@example.test');
+  await acc.submitName('League Admin');
+  await db.query(`update public.golfer_accounts set is_admin = true`);
+  await acc.refreshAccount();
+  const claimant = await b.ensureUser('waiter@example.test');
+  await pg.rpc(db, claimant, 'claim_legacy_profile', ['Golfer 05']);
+  const other = await b.ensureUser('nope@example.test');
+  await pg.rpc(db, other, 'claim_legacy_profile', ['Golfer 06']);
+  await acc.renderAdminProfiles();
+  const adminHtml = b.els['admin-profiles-content'].innerHTML;
+  assert.match(adminHtml, /Pending profile requests/);
+  assert.match(adminHtml, /Golfer 05/);
+  assert.match(adminHtml, /Golfer 06/);
+  assert.match(adminHtml, /waiter@example\.test/);
+  assert.match(adminHtml, />Approve</);
+  assert.match(adminHtml, />Reject</);
+  assert.doesNotMatch(adminHtml, UUID);
+  const pending = acc.state().pendingRequests;
+  const i05 = pending.findIndex(r => r.name === 'Golfer 05');
+  const i06 = pending.findIndex(r => r.name === 'Golfer 06');
+  await acc.adminApproveClaim(i05);
+  assert.equal((await pg.rpc(db, claimant, 'my_golfer_profile')).linked, true);
+  assert.equal((await pg.rpc(db, claimant, 'my_golfer_profile')).name, 'Golfer 05');
+  // indices may have shifted after the approve; reload and reject the remaining request
+  const i06b = acc.state().pendingRequests.findIndex(r => r.name === 'Golfer 06');
+  await acc.adminRejectClaim(i06b);
+  assert.equal((await pg.rpc(db, other, 'my_golfer_profile')).linked, false);
+  assert.equal((await pg.rpc(db, other, 'my_claim_status')).status, 'rejected');
+  assert.doesNotMatch(allHtml(acc, b), UUID);
 });
 
 test('index.html wiring: every element the module fills exists, the script loads after the app, scoring code untouched', async () => {

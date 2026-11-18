@@ -1,9 +1,11 @@
 /* Money Game Central — golfer sign-in and permanent profile (Phase 2).
  *
- * Email magic-link sign-in (Supabase Auth), one-time profile creation, and linking an existing league profile.
- * Sign-in is OPTIONAL for now: the existing register / team / scoring flows are untouched and keep working for
- * golfers who have not signed in. If the database functions are not installed yet, this file hides itself.
- * The permanent golfer id is kept in memory/localStorage for the app's own use and is never shown on screen.
+ * Email magic-link sign-in (Supabase Auth), one-time profile creation, and requesting to link an
+ * existing league profile (an admin must approve before the email is linked). Sign-in is OPTIONAL
+ * for now: the existing register / team / scoring flows are untouched and keep working for golfers
+ * who have not signed in. If the database functions are not installed yet, this file hides itself.
+ * The permanent golfer id is fetched with current_golfer_id() after a link is approved, kept in
+ * memory/localStorage for the app's own use, and is never shown on screen.
  */
 (function (root) {
   'use strict';
@@ -11,14 +13,16 @@
   const state = {
     available: true,      // false when the database has no profile functions yet -> hide all sign-in UI
     session: null,        // supabase session (or null)
-    account: null,        // { linked, league_player_id, name, is_admin } from my_golfer_profile()
-    step: 'signin',       // signin | check-email | name | confirm-claim | done
+    account: null,        // { linked, name, is_admin } from my_golfer_profile()
+    claim: null,          // { linked, status, name } from my_claim_status()
+    step: 'signin',       // signin | check-email | name | confirm-claim | pending-claim | done
     email: '',
     name: '',
     found: null,          // { rounds } for a claimable profile
     busy: false,
     message: '',
     adminRows: null,
+    pendingRequests: null,
     started: false
   };
 
@@ -39,10 +43,12 @@
     not_signed_in: 'Please sign in first.',
     invalid_name: 'Please use 2–40 letters or numbers for your name.',
     name_taken: 'That name is already linked to another sign-in. Ask the league admin to relink it.',
-    name_claimable: 'A league profile with that name already exists. Choose “Yes, that’s me” to link it.',
+    name_claimable: 'A league profile with that name already exists. Choose “Yes, that’s me” to request it.',
     not_found: 'We could not find a league profile with that name.',
     already_claimed: 'That profile is already linked to another sign-in. Ask the league admin to relink it.',
     already_linked: 'You already have a profile linked to this sign-in.',
+    already_pending: 'You already have a profile request waiting for approval.',
+    not_pending: 'That request has already been reviewed.',
     not_admin: 'Only league admins can do that.',
     not_linked: 'That profile is not linked to anyone.',
     last_admin: 'You cannot unlink the last admin.',
@@ -69,12 +75,13 @@
   }
 
   // ---- account state -------------------------------------------------------------------------------------
-  function applyAccountToDevice() {
+  async function applyAccountToDevice() {
     // Make the app's existing flows recognise this golfer. The id stays in localStorage only (never rendered).
     const a = state.account;
     if (!a || !a.linked) return;
     try {
-      root.localStorage.setItem('gmg_league_player_id', String(a.league_player_id));
+      const id = await rpc('current_golfer_id');
+      if (id) root.localStorage.setItem('gmg_league_player_id', String(id));
       if (typeof root.saveThisDevicePlayerName === 'function') root.saveThisDevicePlayerName(a.name);
       else root.localStorage.setItem('gmg_player_name', a.name);
       const input = root.document && root.document.getElementById('reg-name');
@@ -82,13 +89,42 @@
     } catch (_) { /* never block the app */ }
   }
 
+  async function loadClaimStatus() {
+    try {
+      state.claim = await rpc('my_claim_status');
+    } catch (err) {
+      if (isMissingFunction(err)) { state.claim = null; return; }
+      throw err;
+    }
+  }
+
+  function applyUnlinkedStep() {
+    if (state.claim && state.claim.status === 'pending') {
+      state.step = 'pending-claim';
+      if (state.claim.name) state.name = state.claim.name;
+    } else if (state.claim && state.claim.status === 'rejected') {
+      if (state.step !== 'name' && state.step !== 'confirm-claim') {
+        state.step = 'name';
+        state.message = 'Your request to link ' + (state.claim.name || 'that profile') + ' was not approved. You can request again or use a different name.';
+      }
+    } else if (state.step === 'done' || state.step === 'signin' || state.step === 'check-email' || state.step === 'pending-claim') {
+      state.step = 'name';
+    }
+  }
+
   async function refreshAccount() {
     if (!state.available) return null;
-    if (!state.session) { state.account = null; render(); return null; }
+    if (!state.session) { state.account = null; state.claim = null; render(); return null; }
     try {
       state.account = await rpc('my_golfer_profile');
-      if (state.account && state.account.linked) { state.step = 'done'; applyAccountToDevice(); }
-      else if (state.step === 'done' || state.step === 'signin' || state.step === 'check-email') state.step = 'name';
+      if (state.account && state.account.linked) {
+        state.claim = { status: 'linked', linked: true, name: state.account.name };
+        state.step = 'done';
+        await applyAccountToDevice();
+      } else {
+        await loadClaimStatus();
+        applyUnlinkedStep();
+      }
     } catch (err) {
       if (isMissingFunction(err)) state.available = false;
       else state.message = friendly(err);
@@ -107,7 +143,7 @@
       client().auth.onAuthStateChange((event, session) => {
         const had = !!state.session;
         state.session = session || null;
-        if (event === 'SIGNED_OUT') { state.account = null; state.step = 'signin'; render(); return; }
+        if (event === 'SIGNED_OUT') { state.account = null; state.claim = null; state.step = 'signin'; render(); return; }
         if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
           // Defer: supabase-js must not be re-entered from inside its own auth callback.
           setTimeout(async () => {
@@ -149,7 +185,7 @@
       if (error) throw error;
       state.session = (data && data.session) || state.session;
       await refreshAccount();
-      if (state.account && !state.account.linked) state.step = 'name';
+      if (state.account && !state.account.linked && state.step !== 'pending-claim') state.step = 'name';
     } catch (err) { state.message = friendly(err); }
     state.busy = false; render();
   }
@@ -162,6 +198,7 @@
       const res = await rpc('check_profile_name', { p_name: name });
       if (res.status === 'available') { await createProfile(name); }
       else if (res.status === 'claimable') { state.found = { rounds: Number(res.rounds || 0) }; state.step = 'confirm-claim'; }
+      else if (res.status === 'pending') { state.found = { rounds: Number(res.rounds || 0) }; state.step = 'pending-claim'; }
       else if (res.status === 'yours') { await refreshAccount(); }
       else if (res.status === 'taken') state.message = FRIENDLY.name_taken;
       else state.message = FRIENDLY.invalid_name;
@@ -171,14 +208,25 @@
 
   async function createProfile(name) {
     state.account = await rpc('create_my_profile', { p_name: name });
-    state.step = 'done'; applyAccountToDevice();
+    state.claim = { status: 'linked', linked: true, name: state.account && state.account.name };
+    state.step = 'done';
+    await applyAccountToDevice();
   }
 
   async function claimProfile() {
     state.busy = true; state.message = ''; render();
     try {
-      state.account = await rpc('claim_legacy_profile', { p_name: state.name });
-      state.step = 'done'; applyAccountToDevice();
+      const res = await rpc('claim_legacy_profile', { p_name: state.name });
+      if (res && res.linked) {
+        state.account = res;
+        state.claim = { status: 'linked', linked: true, name: res.name };
+        state.step = 'done';
+        await applyAccountToDevice();
+      } else {
+        state.claim = res;
+        state.step = 'pending-claim';
+        if (res && res.name) state.name = res.name;
+      }
     } catch (err) { state.message = friendly(err); state.step = 'name'; }
     state.busy = false; render();
   }
@@ -188,20 +236,31 @@
 
   async function signOut() {
     try {
-      const mine = state.account && state.account.league_player_id;
+      let mine = null;
+      if (state.account && state.account.linked) {
+        try { mine = await rpc('current_golfer_id'); } catch (_) {}
+      }
       await client().auth.signOut();
       if (mine && root.localStorage.getItem('gmg_league_player_id') === String(mine)) root.localStorage.removeItem('gmg_league_player_id');
       const input = root.document && root.document.getElementById('reg-name');
       if (input) { input.readOnly = false; }
     } catch (_) { /* ignore */ }
-    state.session = null; state.account = null; state.step = 'signin'; state.message = '';
+    state.session = null; state.account = null; state.claim = null; state.step = 'signin'; state.message = '';
     render();
   }
 
-  // ---- admin: unlink / relink ---------------------------------------------------------------------------------
+  // ---- admin: pending requests, unlink / relink ------------------------------------------------------------
   async function loadAdminRows() {
-    try { state.adminRows = await rpc('admin_list_profiles'); state.message = ''; }
-    catch (err) { state.adminRows = null; state.message = isMissingFunction(err) ? 'Profile tools are not installed yet.' : friendly(err); }
+    try {
+      const [rows, pending] = await Promise.all([rpc('admin_list_profiles'), rpc('admin_list_claim_requests')]);
+      state.adminRows = rows;
+      state.pendingRequests = pending;
+      state.message = '';
+    } catch (err) {
+      state.adminRows = null;
+      state.pendingRequests = null;
+      state.message = isMissingFunction(err) ? 'Profile tools are not installed yet.' : friendly(err);
+    }
   }
   async function renderAdminProfiles() { await loadAdminRows(); render(); }
   async function adminUnlink(index) {
@@ -219,6 +278,20 @@
     catch (err) { state.message = friendly(err); }
     render();
   }
+  async function adminApproveClaim(index) {
+    const row = state.pendingRequests && state.pendingRequests[index]; if (!row) return;
+    if (!root.confirm('Approve ' + row.name + ' for ' + (row.email || 'this sign-in') + '? This links their email to that league profile.')) return;
+    try { await rpc('admin_approve_claim', { p_request_id: row.request_id }); await loadAdminRows(); }
+    catch (err) { state.message = friendly(err); }
+    render();
+  }
+  async function adminRejectClaim(index) {
+    const row = state.pendingRequests && state.pendingRequests[index]; if (!row) return;
+    if (!root.confirm('Reject the request to link ' + row.name + ' for ' + (row.email || 'this sign-in') + '?')) return;
+    try { await rpc('admin_reject_claim', { p_request_id: row.request_id }); await loadAdminRows(); }
+    catch (err) { state.message = friendly(err); }
+    render();
+  }
 
   // ---- views (HTML strings; the golfer id is never included) -------------------------------------------------
   function msgHtml() { return state.message ? '<div class="award-empty" role="alert" style="color:#ffb86b;margin:10px 0;">' + esc(state.message) + '</div>' : ''; }
@@ -231,10 +304,16 @@
     } else if (state.step === 'done' && state.account && state.account.linked) {
       body = '<div class="dashboard-panel"><h3>You\u2019re signed in</h3><p>Your league profile: <strong>' + esc(state.account.name) + '</strong></p>' +
         '<button class="btn btn-back" onclick="MGCAccounts.signOut()">Sign out</button></div>';
+    } else if (state.step === 'pending-claim') {
+      const nm = (state.claim && state.claim.name) || state.name;
+      body = '<div class="dashboard-panel"><h3>Request sent, waiting for admin approval</h3><p>Your request to link the league profile <strong>' + esc(nm) + '</strong> has been sent. An admin will review it. Your history will be connected once it\u2019s approved.</p>' +
+        '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.differentName()">Use a different name</button>' +
+        '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.signOut()">Sign out</button></div>';
     } else if (state.step === 'confirm-claim') {
       const r = state.found && state.found.rounds;
       body = '<div class="dashboard-panel"><h3>Is this you?</h3><p>We found a league profile named <strong>' + esc(state.name) + '</strong>' +
-        (r ? ' with ' + esc(r) + ' past round' + (r === 1 ? '' : 's') : '') + '. Linking it keeps your history.</p>' +
+        (r ? ' with ' + esc(r) + ' past round' + (r === 1 ? '' : 's') : '') +
+        '. Requesting it keeps your history. An admin must approve the request before your email is linked.</p>' +
         '<button class="btn btn-primary"' + dis + ' onclick="MGCAccounts.claimProfile()">Yes, that\u2019s me</button>' +
         '<button class="btn btn-back"' + dis + ' onclick="MGCAccounts.differentName()">No, use a different name</button></div>';
     } else if (state.step === 'name') {
@@ -260,8 +339,11 @@
   function bannerHtml() {
     if (!state.available) return '';
     if (state.account && state.account.linked) return '';
-    const text = state.session ? 'Finish setting up your golfer profile.' : 'Sign in to create your permanent golfer profile.';
-    const label = state.session ? 'Continue' : 'Sign in';
+    const pending = state.claim && state.claim.status === 'pending';
+    const text = pending
+      ? 'Your profile request is waiting for admin approval.'
+      : (state.session ? 'Finish setting up your golfer profile.' : 'Sign in to create your permanent golfer profile.');
+    const label = pending ? 'View status' : (state.session ? 'Continue' : 'Sign in');
     return '<div class="dashboard-panel" style="display:flex;gap:10px;align-items:center;justify-content:space-between;margin:10px 0;">' +
       '<span>' + esc(text) + '</span><button class="btn btn-primary" style="width:auto;margin:0;" onclick="MGCAccounts.open()">' + esc(label) + '</button></div>';
   }
@@ -272,6 +354,19 @@
       return msgHtml() + '<div class="award-empty">Sign in with an admin account to manage golfer profiles.</div>';
     }
     if (!state.adminRows) return msgHtml() + '<div class="award-empty">Loading profiles...</div>';
+    const pending = state.pendingRequests || [];
+    const pendingBlock = '<div class="dashboard-panel" style="margin-bottom:12px;"><h3>Pending profile requests</h3>' +
+      (pending.length
+        ? pending.map((r, i) =>
+          '<div class="avg-line" style="display:grid;grid-template-columns:1.2fr 1.6fr auto;gap:8px;align-items:center;">' +
+          '<span><strong>' + esc(r.name) + '</strong><br><small>' + esc(r.rounds) + ' round' + (r.rounds === 1 ? '' : 's') + '</small></span>' +
+          '<span>' + esc(r.email || 'Signed in') + '</span>' +
+          '<span>' +
+          '<button class="btn btn-primary" style="width:auto;margin:0 6px 0 0;" onclick="MGCAccounts.adminApproveClaim(' + i + ')">Approve</button>' +
+          '<button class="btn btn-back" style="width:auto;margin:0;" onclick="MGCAccounts.adminRejectClaim(' + i + ')">Reject</button>' +
+          '</span></div>').join('')
+        : '<div class="award-empty">No pending profile requests.</div>') +
+      '</div>';
     const rows = state.adminRows.map((r, i) =>
       '<div class="avg-line" style="display:grid;grid-template-columns:1.2fr 1.6fr auto;gap:8px;align-items:center;">' +
       '<span><strong>' + esc(r.name) + '</strong><br><small>' + esc(r.rounds) + ' round' + (r.rounds === 1 ? '' : 's') + (r.is_admin ? ' \u00b7 admin' : '') + '</small></span>' +
@@ -279,7 +374,7 @@
       '<span>' + (r.linked
         ? '<button class="btn btn-back" style="width:auto;margin:0;" onclick="MGCAccounts.adminUnlink(' + i + ')">Unlink</button>'
         : '<button class="btn btn-primary" style="width:auto;margin:0;" onclick="MGCAccounts.adminRelink(' + i + ')">Link to email</button>') + '</span></div>').join('');
-    return msgHtml() + '<div class="award-empty" style="margin-bottom:8px;">Unlinking never changes a golfer\u2019s profile or history. It only frees the profile to be claimed again.</div>' + rows;
+    return msgHtml() + pendingBlock + '<div class="award-empty" style="margin-bottom:8px;">Unlinking never changes a golfer\u2019s profile or history. It only frees the profile to be claimed again.</div>' + rows;
   }
 
   function render() {
@@ -293,15 +388,16 @@
   }
 
   function open() {
-    if (state.session && state.account && !state.account.linked) state.step = 'name';
-    else if (state.account && state.account.linked) state.step = 'done';
+    if (state.account && state.account.linked) state.step = 'done';
+    else if (state.claim && state.claim.status === 'pending') state.step = 'pending-claim';
+    else if (state.session && state.account && !state.account.linked) state.step = 'name';
     render();
     if (typeof root.showView === 'function') root.showView('view-account');
   }
 
   const api = {
     init, open, render, refreshAccount, sendLink, verifyCode, submitName, claimProfile, differentName, back, signOut,
-    renderAdminProfiles, adminUnlink, adminRelink,
+    renderAdminProfiles, adminUnlink, adminRelink, adminApproveClaim, adminRejectClaim,
     // exposed for tests / other modules
     state: () => state, accountName: () => (state.account && state.account.linked ? state.account.name : ''),
     isLinked: () => !!(state.account && state.account.linked), isAdmin: () => !!(state.account && state.account.is_admin),

@@ -10,10 +10,36 @@ const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/legacy
 const LP = fixture.league_players;            // 12 fake golfers, "Golfer 01".."Golfer 12"
 const GH = fixture.game_history;              // the 8 legacy rounds, fake ids, real value patterns
 const byName = n => LP.find(l => l.name === n);
-const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 async function migrated() { const db = await pg.newDb(); await pg.applyMigrations(db); return db; }
 const count = async (db, t) => Number((await db.query(`select count(*)::int c from public.${t}`)).rows[0].c);
+
+function assertNoPlayerId(obj, label) {
+  assert.doesNotMatch(JSON.stringify(obj), /league_player_id/, label || 'golfer-facing response must not include league_player_id');
+}
+
+async function makeAdmin(db, email = 'admin@example.test', name = 'League Admin') {
+  const u = await pg.newUser(db, email);
+  await pg.rpc(db, u, 'create_my_profile', [name]);
+  await db.query(`update public.golfer_accounts set is_admin = true, admin_granted_at = now() where auth_user_id = $1`, [u.id]);
+  return u;
+}
+
+async function requestId(db, admin, name) {
+  const list = await pg.rpc(db, admin, 'admin_list_claim_requests');
+  const row = (list || []).find(r => r.name === name);
+  assert.ok(row, `pending request for ${name}`);
+  return row.request_id;
+}
+
+async function approveName(db, admin, name) {
+  await pg.rpc(db, admin, 'admin_approve_claim', [await requestId(db, admin, name)]);
+}
+
+async function lpIdByName(db, name) {
+  const n = String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+  return (await db.query(`select id from public.league_players where normalized_name = $1`, [n])).rows[0].id;
+}
 
 test('fixture is the shape of production: 12 golfers, 8 history rows, every row linked', async () => {
   const db = await pg.newDb();
@@ -60,19 +86,26 @@ test('re-running the migrations is harmless', async () => {
   assert.equal((await pg.legacyFingerprint(db)).sha, a.sha);
 });
 
-test('ALL 12 legacy golfers can claim their own profile; history stays attached to the right person', async () => {
+test('ALL 12 legacy golfers can request their own profile; after admin approval, history stays attached to the right person', async () => {
   const db = await migrated();
+  const admin = await makeAdmin(db);
   const before = await pg.legacyFingerprint(db);
   const claimed = [];
   for (const lp of LP) {
     const u = await pg.newUser(db, `${lp.normalized_name.replace(/ /g, '')}@example.test`);
     const p = await pg.rpc(db, u, 'claim_legacy_profile', [lp.name.toUpperCase() + '  ']);   // sloppy case and spaces
-    assert.equal(p.linked, true);
-    assert.equal(p.league_player_id, lp.id, 'linked to the existing profile, not a new one');
+    assert.equal(p.linked, false);
+    assert.equal(p.status, 'pending');
+    assert.equal(p.name, lp.name);
+    assertNoPlayerId(p, lp.name);
     claimed.push(u);
   }
-  assert.equal(await count(db, 'league_players'), 12, 'no duplicate profiles were created');
-  assert.equal(await count(db, 'golfer_accounts'), 12);
+  assert.equal(await count(db, 'league_players'), 13, 'no duplicate profiles were created (12 + admin)');
+  assert.equal(await count(db, 'golfer_accounts'), 1, 'a request does not create a sign-in link');
+  assert.equal(await count(db, 'profile_claim_requests'), 12);
+
+  for (const lp of LP) await approveName(db, admin, lp.name);
+  assert.equal(await count(db, 'golfer_accounts'), 13);
   const after = await pg.legacyFingerprint(db);
   assert.equal(after.sha, before.sha, 'legacy tables identical after all claims');
   // every history row still resolves to the golfer who owns it, and that golfer's sign-in sees it
@@ -92,13 +125,15 @@ test('creating a new profile: one time only, no duplicates, no admin approval ne
   assert.equal(p.linked, true);
   assert.equal(p.name, 'Pat Newgolfer');
   assert.equal(p.is_admin, false);
+  assertNoPlayerId(p);
   assert.equal(await count(db, 'league_players'), 13);
-  const lp = (await db.query(`select * from public.league_players where id = $1`, [p.league_player_id])).rows[0];
+  const lp = (await db.query(`select * from public.league_players where normalized_name = 'pat newgolfer'`)).rows[0];
   assert.equal(lp.normalized_name, 'pat newgolfer');
   assert.equal(lp.active, true);
   // asking again never creates a second profile
   const again = await pg.rpc(db, u, 'create_my_profile', ['Someone Else']);
-  assert.equal(again.league_player_id, p.league_player_id);
+  assert.equal(again.name, p.name);
+  assertNoPlayerId(again);
   assert.equal(await count(db, 'league_players'), 13);
   // signing back in later returns the same profile
   assert.deepEqual(await pg.rpc(db, u, 'my_golfer_profile'), p);
@@ -127,10 +162,25 @@ test('duplicate names are blocked (case, spacing) and a legacy name must be clai
 
 test('one sign-in cannot claim a second profile; an inactive profile cannot be claimed', async () => {
   const db = await migrated();
+  const admin = await makeAdmin(db);
   const u = await pg.newUser(db, 'u@example.test');
+  const first = await pg.rpc(db, u, 'claim_legacy_profile', ['Golfer 01']);
+  assert.equal(first.status, 'pending');
+  // requesting the same name again is idempotent: still one pending request, still not linked
+  const again = await pg.rpc(db, u, 'claim_legacy_profile', ['golfer 01']);
+  assert.equal(again.status, 'pending');
+  assert.equal(again.name, 'Golfer 01');
+  assert.equal((await db.query(`select count(*)::int c from public.profile_claim_requests where auth_user_id = $1 and status = 'pending'`, [u.id])).rows[0].c, 1);
+  // requesting a different name replaces the single pending request
+  const moved = await pg.rpc(db, u, 'claim_legacy_profile', ['Golfer 02']);
+  assert.equal(moved.status, 'pending');
+  assert.equal(moved.name, 'Golfer 02');
+  assert.equal((await db.query(`select count(*)::int c from public.profile_claim_requests where auth_user_id = $1`, [u.id])).rows[0].c, 1);
   await pg.rpc(db, u, 'claim_legacy_profile', ['Golfer 01']);
+  await approveName(db, admin, 'Golfer 01');
   assert.match(await pg.rpcErr(db, u, 'claim_legacy_profile', ['Golfer 02']), /already_linked/);
   assert.equal((await pg.rpc(db, u, 'claim_legacy_profile', ['golfer 01'])).name, 'Golfer 01');   // same one again is fine
+  assertNoPlayerId(await pg.rpc(db, u, 'my_golfer_profile'));
   await db.query(`update public.league_players set active = false where name = 'Golfer 07'`);
   const v = await pg.newUser(db, 'v@example.test');
   assert.match(await pg.rpcErr(db, v, 'claim_legacy_profile', ['Golfer 07']), /not_found/);
@@ -138,11 +188,17 @@ test('one sign-in cannot claim a second profile; an inactive profile cannot be c
 
 test('check_profile_name tells the app what to offer', async () => {
   const db = await migrated();
+  const admin = await makeAdmin(db);
   const u = await pg.newUser(db, 'u@example.test');
   assert.deepEqual(await pg.rpc(db, u, 'check_profile_name', ['Brand New']), { status: 'available' });
   assert.deepEqual(await pg.rpc(db, u, 'check_profile_name', ['golfer 01']), { status: 'claimable', rounds: 1 });
   assert.deepEqual(await pg.rpc(db, u, 'check_profile_name', ['?']), { status: 'invalid' });
   await pg.rpc(db, u, 'claim_legacy_profile', ['Golfer 01']);
+  const pending = await pg.rpc(db, u, 'check_profile_name', ['Golfer 01']);
+  assert.equal(pending.status, 'pending');
+  assert.equal(Number(pending.rounds), 1);
+  assertNoPlayerId(pending);
+  await approveName(db, admin, 'Golfer 01');
   assert.deepEqual(await pg.rpc(db, u, 'check_profile_name', ['Golfer 01']), { status: 'yours' });
   const w = await pg.newUser(db, 'w@example.test');
   assert.deepEqual(await pg.rpc(db, w, 'check_profile_name', ['Golfer 01']), { status: 'taken' });
@@ -150,8 +206,10 @@ test('check_profile_name tells the app what to offer', async () => {
 
 test('SECURITY: signed-out visitors can call none of the profile functions', async () => {
   const db = await migrated();
-  for (const [fn, args] of [['my_golfer_profile', []], ['check_profile_name', ['x']], ['create_my_profile', ['Hacker']], ['claim_legacy_profile', ['Golfer 01']],
-    ['admin_list_profiles', []], ['admin_unlink_profile', [LP[0].id]], ['admin_relink_profile', [LP[0].id, 'x@y.z']], ['is_golfer_admin', []]]) {
+  for (const [fn, args] of [['my_golfer_profile', []], ['my_claim_status', []], ['check_profile_name', ['x']], ['create_my_profile', ['Hacker']], ['claim_legacy_profile', ['Golfer 01']],
+    ['admin_list_profiles', []], ['admin_list_claim_requests', []], ['admin_approve_claim', ['00000000-0000-0000-0000-000000000001']],
+    ['admin_reject_claim', ['00000000-0000-0000-0000-000000000001']],
+    ['admin_unlink_profile', [LP[0].id]], ['admin_relink_profile', [LP[0].id, 'x@y.z']], ['is_golfer_admin', []]]) {
     assert.match(await pg.rpcErr(db, null, fn, args), /permission denied/, fn);
   }
   assert.match(await pg.rpcErr(db, { id: '00000000-0000-0000-0000-000000000009', email: 'anon@x', anonymous: true }, 'create_my_profile', ['Anon Person']), /not_signed_in/);
@@ -161,11 +219,14 @@ test('SECURITY: nobody can grant themselves admin or forge a link through the ta
   const db = await migrated();
   const u = await pg.newUser(db, 'u@example.test');
   const p = await pg.rpc(db, u, 'create_my_profile', ['Mallory']);
+  const malloryId = await lpIdByName(db, 'Mallory');
   const attempts = [
-    [u, `update public.golfer_accounts set is_admin = true where league_player_id = $1`, [p.league_player_id]],
+    [u, `update public.golfer_accounts set is_admin = true where league_player_id = $1`, [malloryId]],
     [u, `insert into public.golfer_accounts (league_player_id, auth_user_id, claim_method, is_admin) values ($1, $2, 'claimed', true)`, [LP[0].id, u.id]],
-    [u, `delete from public.golfer_accounts where league_player_id = $1`, [p.league_player_id]],
+    [u, `delete from public.golfer_accounts where league_player_id = $1`, [malloryId]],
     [u, `select * from public.profile_claim_log`, []],
+    [u, `select * from public.profile_claim_requests`, []],
+    [u, `insert into public.profile_claim_requests (league_player_id, auth_user_id, requested_name) values ($1, $2, 'Golfer 01')`, [LP[0].id, u.id]],
     [null, `select * from public.golfer_accounts`, []],
     [null, `insert into public.golfer_accounts (league_player_id, auth_user_id, claim_method) values ($1, $2, 'claimed')`, [LP[0].id, u.id]],
     [u, `select public._require_signed_in()`, []]
@@ -174,9 +235,11 @@ test('SECURITY: nobody can grant themselves admin or forge a link through the ta
   assert.equal(await pg.rpc(db, u, 'is_golfer_admin'), false);
   // RLS: a golfer only ever sees their own account row
   const other = await pg.newUser(db, 'o@example.test');
+  const admin = await makeAdmin(db);
   await pg.rpc(db, other, 'claim_legacy_profile', ['Golfer 02']);
+  await approveName(db, admin, 'Golfer 02');
   const seen = await pg.run(db, u, `select league_player_id from public.golfer_accounts`);
-  assert.deepEqual(seen.map(r => r.league_player_id), [p.league_player_id]);
+  assert.deepEqual(seen.map(r => r.league_player_id), [malloryId]);
 });
 
 test('ADMIN: list, unlink a wrong claim, relink to the right person; history never moves', async () => {
@@ -184,14 +247,15 @@ test('ADMIN: list, unlink a wrong claim, relink to the right person; history nev
   const gabe = await pg.newUser(db, 'admin@example.test');
   await pg.rpc(db, gabe, 'claim_legacy_profile', ['Golfer 01']);
   assert.match(await pg.rpcErr(db, gabe, 'admin_list_profiles'), /not_admin/);
-  // the one-time seed (run by hand after the claim), with the fake name swapped in
+  // the one-time seed (run by hand after the request), with the fake name swapped in
   const seed = fs.readFileSync(path.join(pg.ROOT, 'supabase/seed/admin-gabe-after-claim.sql'), 'utf8').replaceAll("'gabe'", "'golfer 01'");
   const seeded = await db.query(seed);
   assert.equal(seeded.rows.length, 1);
   assert.equal((await pg.rpc(db, gabe, 'my_golfer_profile')).is_admin, true);
 
-  const wrong = await pg.newUser(db, 'wrong@example.test');   // someone claimed "Golfer 04" by mistake
+  const wrong = await pg.newUser(db, 'wrong@example.test');   // someone requested "Golfer 04" by mistake
   await pg.rpc(db, wrong, 'claim_legacy_profile', ['Golfer 04']);
+  await approveName(db, gabe, 'Golfer 04');
   const right = await pg.newUser(db, 'right@example.test');
   await pg.rpc(db, right, 'create_my_profile', ['Right Person']);   // has a different profile of their own
 
@@ -208,16 +272,21 @@ test('ADMIN: list, unlink a wrong claim, relink to the right person; history nev
   assert.equal((await pg.rpc(db, wrong, 'my_golfer_profile')).linked, false);
   assert.match(await pg.rpcErr(db, gabe, 'admin_relink_profile', [byName('Golfer 04').id, 'nobody@example.test']), /user_not_found/);
   assert.match(await pg.rpcErr(db, gabe, 'admin_relink_profile', [byName('Golfer 04').id, 'right@example.test']), /user_already_linked/);
-  await pg.rpc(db, gabe, 'admin_unlink_profile', [(await pg.rpc(db, right, 'my_golfer_profile')).league_player_id]);
+  const rightId = (await pg.rpc(db, gabe, 'admin_list_profiles')).find(r => r.name === 'Right Person').league_player_id;
+  await pg.rpc(db, gabe, 'admin_unlink_profile', [rightId]);
   await pg.rpc(db, gabe, 'admin_relink_profile', [byName('Golfer 04').id, 'RIGHT@example.test']);
-  assert.equal((await pg.rpc(db, right, 'my_golfer_profile')).league_player_id, byName('Golfer 04').id);
+  const relinked = await pg.rpc(db, right, 'my_golfer_profile');
+  assert.equal(relinked.name, 'Golfer 04');
+  assertNoPlayerId(relinked);
+  const linkedId = (await db.query(`select league_player_id from public.golfer_accounts where auth_user_id = $1`, [right.id])).rows[0].league_player_id;
+  assert.equal(linkedId, byName('Golfer 04').id);
   assert.match(await pg.rpcErr(db, gabe, 'admin_relink_profile', [byName('Golfer 04').id, 'wrong@example.test']), /already_linked/);
   assert.equal((await pg.legacyFingerprint(db)).sha, before.sha, 'unlink/relink never touches league_players or game_history');
 
   // the last admin cannot lock everyone out
   assert.match(await pg.rpcErr(db, gabe, 'admin_unlink_profile', [byName('Golfer 01').id]), /last_admin/);
   const log = (await db.query(`select action from public.profile_claim_log order by id`)).rows.map(r => r.action);
-  assert.deepEqual(log, ['claim', 'claim', 'create', 'unlink', 'unlink', 'relink']);
+  assert.deepEqual(log, ['request', 'approve', 'request', 'approve', 'create', 'unlink', 'unlink', 'relink']);
 });
 
 test('history protection: a golfer with rounds or a sign-in link cannot be deleted; others can', async () => {
@@ -229,8 +298,9 @@ test('history protection: a golfer with rounds or a sign-in link cannot be delet
   await assert.rejects(pg.run(db, null, `truncate public.league_players`));
   // linked but no rounds
   const u = await pg.newUser(db, 'u@example.test');
-  const p = await pg.rpc(db, u, 'create_my_profile', ['Linked Newbie']);
-  await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [p.league_player_id]), /cannot be deleted/);
+  await pg.rpc(db, u, 'create_my_profile', ['Linked Newbie']);
+  const newbieId = await lpIdByName(db, 'Linked Newbie');
+  await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [newbieId]), /cannot be deleted/);
   // a plain unused row (like a test player) can still be removed, as today
   await db.query(`insert into public.league_players (name, normalized_name) values ('Throwaway', 'throwaway')`);
   await pg.run(db, 'service', `delete from public.league_players where normalized_name = 'throwaway'`);
@@ -283,5 +353,150 @@ test('the read-only live check query is stable across the migrations (same SQL G
   assert.equal(Number(before.history_rows_unlinked), 0);
   await pg.applyMigrations(db);
   for (const lp of LP) { const u = await pg.newUser(db, `${lp.normalized_name.replace(/ /g, '')}@example.test`); await pg.rpc(db, u, 'claim_legacy_profile', [lp.name]); }
+  const seed = fs.readFileSync(path.join(pg.ROOT, 'supabase/seed/admin-gabe-after-claim.sql'), 'utf8').replaceAll("'gabe'", "'golfer 01'");
+  await db.query(seed);
+  const admin = (await db.query(`select ga.auth_user_id as id, u.email from public.golfer_accounts ga join auth.users u on u.id = ga.auth_user_id join public.league_players lp on lp.id = ga.league_player_id where lp.normalized_name = 'golfer 01'`)).rows[0];
+  for (const lp of LP.filter(l => l.normalized_name !== 'golfer 01')) await approveName(db, admin, lp.name);
   assert.deepEqual((await db.query(sql)).rows[0], before);
+});
+
+test('a claim creates a pending request but no link', async () => {
+  const db = await migrated();
+  const u = await pg.newUser(db, 'claimant@example.test');
+  const res = await pg.rpc(db, u, 'claim_legacy_profile', ['Golfer 06']);
+  assert.deepEqual(res, { linked: false, status: 'pending', name: 'Golfer 06' });
+  assert.equal(await count(db, 'golfer_accounts'), 0);
+  assert.equal(await count(db, 'profile_claim_requests'), 1);
+  assert.equal((await db.query(`select status from public.profile_claim_requests`)).rows[0].status, 'pending');
+  assert.equal((await pg.rpc(db, u, 'my_golfer_profile')).linked, false);
+  const status = await pg.rpc(db, u, 'my_claim_status');
+  assert.deepEqual(status, { linked: false, status: 'pending', name: 'Golfer 06' });
+  assertNoPlayerId(status);
+  const fp = await pg.legacyFingerprint(db);
+  assert.equal(fp.gh.length, 8);
+  assert.equal(fp.lp.length, 12);
+  for (const orig of GH) {
+    const now = fp.gh.find(r => String(r.id) === String(orig.id));
+    assert.equal(now.league_player_id, orig.league_player_id);
+  }
+});
+
+test('a non-admin cannot approve a claim; admin approve links; reject does not', async () => {
+  const db = await migrated();
+  const admin = await makeAdmin(db);
+  const claimant = await pg.newUser(db, 'needslink@example.test');
+  const other = await pg.newUser(db, 'other@example.test');
+  await pg.rpc(db, claimant, 'claim_legacy_profile', ['Golfer 08']);
+  const id08 = await requestId(db, admin, 'Golfer 08');
+
+  assert.match(await pg.rpcErr(db, claimant, 'admin_approve_claim', [id08]), /not_admin/);
+  assert.match(await pg.rpcErr(db, claimant, 'admin_reject_claim', [id08]), /not_admin/);
+  assert.match(await pg.rpcErr(db, claimant, 'admin_list_claim_requests'), /not_admin/);
+  assert.match(await pg.rpcErr(db, other, 'admin_approve_claim', [id08]), /not_admin/);
+  assert.equal(await count(db, 'golfer_accounts'), 1, 'only the test admin is linked');
+  assert.equal((await pg.rpc(db, claimant, 'my_golfer_profile')).linked, false);
+
+  await pg.rpc(db, admin, 'admin_approve_claim', [id08]);
+  const linked = await pg.rpc(db, claimant, 'my_golfer_profile');
+  assert.equal(linked.linked, true);
+  assert.equal(linked.name, 'Golfer 08');
+  assertNoPlayerId(linked);
+  const acct = (await db.query(`select league_player_id, claim_method from public.golfer_accounts where auth_user_id = $1`, [claimant.id])).rows[0];
+  assert.equal(acct.league_player_id, byName('Golfer 08').id);
+  assert.equal(acct.claim_method, 'claimed');
+  assert.equal((await pg.rpc(db, claimant, 'my_claim_status')).status, 'linked');
+
+  const rejectedUser = await pg.newUser(db, 'rejected@example.test');
+  await pg.rpc(db, rejectedUser, 'claim_legacy_profile', ['Golfer 09']);
+  const id09 = await requestId(db, admin, 'Golfer 09');
+  await pg.rpc(db, admin, 'admin_reject_claim', [id09]);
+  assert.equal((await pg.rpc(db, rejectedUser, 'my_golfer_profile')).linked, false);
+  assert.deepEqual(await pg.rpc(db, rejectedUser, 'my_claim_status'), { linked: false, status: 'rejected', name: 'Golfer 09' });
+  assert.equal((await db.query(`select count(*)::int c from public.golfer_accounts where auth_user_id = $1`, [rejectedUser.id])).rows[0].c, 0);
+  assert.equal((await db.query(`select status from public.profile_claim_requests where auth_user_id = $1`, [rejectedUser.id])).rows[0].status, 'rejected');
+  // the 8 history rows are still on the original golfers
+  const after = await pg.legacyFingerprint(db);
+  assert.equal(after.gh.length, 8);
+  for (const orig of GH) {
+    const now = after.gh.find(r => String(r.id) === String(orig.id));
+    assert.equal(now.league_player_id, orig.league_player_id);
+  }
+});
+
+test('golfer-facing responses contain no league_player_id', async () => {
+  const db = await migrated();
+  const admin = await makeAdmin(db);
+  const u = await pg.newUser(db, 'face@example.test');
+  assertNoPlayerId(await pg.rpc(db, u, 'my_golfer_profile'), 'my_golfer_profile unlinked');
+  assertNoPlayerId(await pg.rpc(db, u, 'my_claim_status'), 'my_claim_status none');
+  assertNoPlayerId(await pg.rpc(db, u, 'check_profile_name', ['Brand New']), 'check available');
+  assertNoPlayerId(await pg.rpc(db, u, 'check_profile_name', ['Golfer 01']), 'check claimable');
+  const created = await pg.rpc(db, u, 'create_my_profile', ['Fresh Face']);
+  assertNoPlayerId(created, 'create_my_profile');
+  assertNoPlayerId(await pg.rpc(db, u, 'my_golfer_profile'), 'my_golfer_profile linked');
+  assertNoPlayerId(await pg.rpc(db, u, 'my_claim_status'), 'my_claim_status linked');
+
+  const v = await pg.newUser(db, 'face2@example.test');
+  const pending = await pg.rpc(db, v, 'claim_legacy_profile', ['Golfer 03']);
+  assertNoPlayerId(pending, 'claim_legacy_profile pending');
+  assertNoPlayerId(await pg.rpc(db, v, 'check_profile_name', ['Golfer 03']), 'check pending');
+  assertNoPlayerId(await pg.rpc(db, v, 'my_claim_status'), 'my_claim_status pending');
+  await approveName(db, admin, 'Golfer 03');
+  assertNoPlayerId(await pg.rpc(db, v, 'my_golfer_profile'), 'my_golfer_profile after approve');
+  assertNoPlayerId(await pg.rpc(db, v, 'claim_legacy_profile', ['Golfer 03']), 'claim already-linked self');
+  // admin list may include ids; that is allowed and not asserted here
+  const list = await pg.rpc(db, admin, 'admin_list_profiles');
+  assert.ok(list.some(r => r.league_player_id));
+});
+
+test('a roster reset cannot delete permanent profiles', async () => {
+  const db = await migrated();
+  const admin = await makeAdmin(db);
+  const u = await pg.newUser(db, 'resetme@example.test');
+  await pg.rpc(db, u, 'create_my_profile', ['Reset Survivor']);
+  const survivorId = await lpIdByName(db, 'Reset Survivor');
+  await pg.run(db, null, `insert into public.player_profiles (player_id, nickname) values ($1, 'Stay')`, [survivorId]);
+  await pg.run(db, null, `insert into public.player_profiles (player_id, nickname) values ($1, 'Legacy Stay')`, [LP[0].id]);
+  const pendingUser = await pg.newUser(db, 'pendingreset@example.test');
+  await pg.rpc(db, pendingUser, 'claim_legacy_profile', ['Golfer 01']);
+
+  // Daily roster rows for today, the way startNewDay / resetDailyGameIfNeeded fill the players table.
+  await db.query(`insert into public.players (name, league_player_id, status) values
+    ('Reset Survivor', $1, 'approved'),
+    ('Golfer 01', $2, 'approved'),
+    ('Walk-up only', null, 'pending')`, [survivorId, LP[0].id]);
+  const before = await pg.legacyFingerprint(db);
+  const accountsBefore = await count(db, 'golfer_accounts');
+  const requestsBefore = await count(db, 'profile_claim_requests');
+  const profilesBefore = await count(db, 'player_profiles');
+
+  // The exact delete the front end uses: from('players').delete().not('id', 'is', null)
+  await pg.run(db, null, `delete from public.players where id is not null`);
+  assert.equal(await count(db, 'players'), 0);
+
+  const after = await pg.legacyFingerprint(db);
+  assert.equal(after.sha, before.sha, 'league_players and game_history are unchanged by a roster wipe');
+  assert.equal(after.gh.length, 8);
+  for (const orig of GH) {
+    const now = after.gh.find(r => String(r.id) === String(orig.id));
+    assert.equal(now.league_player_id, orig.league_player_id);
+  }
+  assert.equal(await count(db, 'golfer_accounts'), accountsBefore);
+  assert.equal(await count(db, 'profile_claim_requests'), requestsBefore);
+  assert.equal(await count(db, 'player_profiles'), profilesBefore);
+  assert.equal((await db.query(`select nickname from public.player_profiles where player_id = $1`, [survivorId])).rows[0].nickname, 'Stay');
+  assert.equal((await pg.rpc(db, u, 'my_golfer_profile')).name, 'Reset Survivor');
+  assert.equal((await pg.rpc(db, pendingUser, 'my_claim_status')).status, 'pending');
+
+  // FKs from the daily roster must not cascade into permanent tables.
+  const fks = (await db.query(`
+    select conname, pg_get_constraintdef(oid) d
+      from pg_constraint
+     where confrelid = 'public.players'::regclass
+       and contype = 'f'`)).rows;
+  assert.equal(fks.length, 0, 'no table should cascade from a delete of daily players');
+
+  // The front end never deletes league_players on reset; if someone tried, history/links would be blocked.
+  await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [LP[0].id]), /cannot be deleted/);
+  await assert.rejects(pg.run(db, 'service', `delete from public.league_players where id = $1`, [survivorId]), /cannot be deleted/);
 });
